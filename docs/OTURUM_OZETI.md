@@ -16,7 +16,7 @@
 - Sesli asistan ertelendi.
 
 ## Açık işler / sonraki adımlar
-1. Supabase projesi oluşturulunca migration + seed uygulanacak, admin rolü atanacak.
+1. ✅ Supabase projesi (Sanal_market, ref enyrrmnpwfdmfxrjurlv) kuruldu: migration + seed (9 kategori, 28 ürün) + güvenlik sertleştirmesi uygulandı. Kalan: admin rolü ataması (kullanıcı üye olduktan sonra).
 2. Vercel'e bağlama ve ortam değişkenleri.
 3. Arayüzün kullanıcı isteğine göre ince ayarı (renk, logo, banner, kart düzeni).
 4. Yasal sayfalar (mesafeli satış, ön bilgilendirme, KVKK).
