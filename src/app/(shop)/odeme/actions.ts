@@ -1,0 +1,55 @@
+"use server";
+import { createClient } from "@/lib/supabase/server";
+import { orderErrorMessage } from "@/lib/format";
+import type { PaymentMethod } from "@/lib/types";
+
+export type PlaceOrderInput = {
+  items: { product_id: string; quantity: number }[];
+  name: string;
+  phone: string;
+  address: string;
+  address_note?: string;
+  delivery_slot: string;
+  payment_method: PaymentMethod;
+  note?: string;
+  accepted_terms: boolean;
+};
+
+export type PlaceOrderResult =
+  | { ok: true; id: string; token: string; orderNo: number }
+  | { ok: false; error: string };
+
+const PHONE_RE = /^(\+90|0)?5\d{9}$/;
+
+export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
+  const phone = input.phone.replace(/[\s()-]/g, "");
+  if (!input.accepted_terms) return { ok: false, error: "Devam etmek için sözleşmeyi onaylayın." };
+  if (!PHONE_RE.test(phone)) return { ok: false, error: "Geçerli bir cep telefonu girin (05xx xxx xx xx)." };
+  if (input.name.trim().length < 3) return { ok: false, error: "Ad soyad girin." };
+  if (input.address.trim().length < 10) return { ok: false, error: "Adresi daha ayrıntılı yazın." };
+  if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 100)
+    return { ok: false, error: "Sepetiniz boş." };
+
+  const items = input.items
+    .filter((i) => typeof i.product_id === "string" && Number.isInteger(i.quantity) && i.quantity > 0)
+    .map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("place_order", {
+    p_items: items,
+    p_customer: {
+      name: input.name.trim().slice(0, 120),
+      phone,
+      address: input.address.trim().slice(0, 500),
+      address_note: input.address_note?.trim().slice(0, 200) ?? "",
+      delivery_slot: input.delivery_slot,
+      payment_method: input.payment_method,
+      note: input.note?.trim().slice(0, 300) ?? "",
+    },
+  });
+
+  if (error) return { ok: false, error: orderErrorMessage(error.message) };
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return { ok: false, error: orderErrorMessage("") };
+  return { ok: true, id: row.order_id, token: row.access_token, orderNo: Number(row.order_no) };
+}
