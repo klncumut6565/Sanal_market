@@ -34,3 +34,10 @@
 - Sipariş detayında WhatsApp butonları (hazır şablonlar + serbest mesaj) — wa.me bağlantısı, admin cihazındaki WhatsApp hesabından gönderilir. lib/whatsapp.ts numarayı 90 formatına çevirir.
 - store_settings.whatsapp_phone eklendi (Supabase'e uygulandı); doluysa müşteri sipariş sayfasında "WhatsApp'tan bize yaz" butonu çıkar.
 - Not: WhatsApp gerçek, SMS/arama ile doğrulanmış numara ister; kişisel numarayı gizlemek için ayrı hat (ikinci SIM / sanal numara) + WhatsApp Business önerildi.
+
+## 2026-10-10 — Vercel yayını
+- Site: https://sanalmarket.vercel.app (Vercel projesi: sanal_market).
+- /api/durum teşhisi: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY Vercel'de tanımsızdı → giriş/üyelik ve katalog çalışmıyordu.
+- Çözüm: src/lib/supabase/env.ts içine proje URL + publishable key yedek değer olarak eklendi (herkese açık değerler).
+- Giriş/üyelik hataları Türkçeleştirildi (lib/auth-errors.ts), Türkçe hata sayfaları (app/error.tsx, global-error.tsx).
+- Açık: Supabase Auth → "Confirm email" kapatılmalı (varsayılan SMTP müşterilere e-posta göndermez); Site URL = https://sanalmarket.vercel.app; admin rolü ataması.

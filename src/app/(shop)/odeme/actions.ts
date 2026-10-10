@@ -34,8 +34,10 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     .filter((i) => typeof i.product_id === "string" && Number.isInteger(i.quantity) && i.quantity > 0)
     .map((i) => ({ product_id: i.product_id, quantity: i.quantity }));
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.rpc("place_order", {
+  let data: unknown, error: { message: string } | null;
+  try {
+    const supabase = await createClient();
+    ({ data, error } = await supabase.rpc("place_order", {
     p_items: items,
     p_customer: {
       name: input.name.trim().slice(0, 120),
@@ -46,10 +48,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       payment_method: input.payment_method,
       note: input.note?.trim().slice(0, 300) ?? "",
     },
-  });
+  }));
+  } catch (e) {
+    console.error("[odeme] placeOrder:", e);
+    return { ok: false, error: "Sipariş şu an oluşturulamıyor. Lütfen biraz sonra tekrar dene." };
+  }
 
   if (error) return { ok: false, error: orderErrorMessage(error.message) };
-  const row = Array.isArray(data) ? data[0] : data;
+  const row = (Array.isArray(data) ? data[0] : data) as { order_id: string; access_token: string; order_no: number } | undefined;
   if (!row) return { ok: false, error: orderErrorMessage("") };
   return { ok: true, id: row.order_id, token: row.access_token, orderNo: Number(row.order_no) };
 }
