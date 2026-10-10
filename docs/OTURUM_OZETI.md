@@ -48,3 +48,9 @@
 - products.barcode (unique) eklendi. /admin/barkod: kamerayla (zxing, iOS Safari dahil) veya el okuyucuyla barkod → fiyat/indirim/stok hızlı güncelle; bulunamazsa "Yeni ürün olarak ekle" (barkod dolu gelir). Ürün formunda barkod alanı + "Okut" butonu; ürün listesinde barkodla arama.
 - Kamera okuma sahte kamera ile test edildi (EAN-13 doğru okundu). Gerçek telefonla test kullanıcıda.
 - Telefon alanı: +90 sabit önek, 541 673 58 63 biçimi (components/PhoneInput.tsx, lib/phone.ts), +905xxxxxxxxx olarak saklanır.
+
+## 2026-10-11 — Sipariş akışı + süre göstergesi
+- orders: preparing_at / dispatched_at / delivered_at / cancelled_at; admin_set_order_status bunları doldurur (Supabase'e uygulandı).
+- store_settings: sla_accept_min=2, sla_prepare_min=7, sla_delivery_min=20 (Admin → Ayarlar'dan değişir).
+- /admin/siparisler "Açık siparişler (pano)": 3 sütun (Yeni / Hazırlanıyor / Kurye yolda), her kartta canlı süre çubuğu (yeşil→kırmızı) ve tek tık sonraki adım butonu (Onayla · Hazırlamaya başla → Hazır · Kuryeye ver → Teslim edildi) + onaylı İptal.
+- Sipariş detayında adım çizelgesi (1-2-3-4) + büyük süre çubuğu + sonraki adım butonu; teslimde toplam süre.

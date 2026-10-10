@@ -39,6 +39,9 @@ export type StoreSettings = {
   delivery_slots: string[];
   working_hours: string | null;
   whatsapp_phone: string | null;
+  sla_accept_min: number;
+  sla_prepare_min: number;
+  sla_delivery_min: number;
   is_open: boolean;
 };
 
@@ -62,6 +65,10 @@ export type Order = {
   delivery_fee: number;
   total: number;
   created_at: string;
+  preparing_at?: string | null;
+  dispatched_at?: string | null;
+  delivered_at?: string | null;
+  cancelled_at?: string | null;
 };
 
 export type OrderItem = {

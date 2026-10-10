@@ -25,6 +25,15 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
         <F label="Ücretsiz teslimat eşiği (₺)"><input name="free_delivery_threshold" inputMode="decimal" defaultValue={s.free_delivery_threshold} className="input" /></F>
         <F label="Minimum sipariş (₺)"><input name="min_order_amount" inputMode="decimal" defaultValue={s.min_order_amount} className="input" /></F>
       </section>
+      <section className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-line">
+        <p className="font-bold">Sipariş hedef süreleri (dakika)</p>
+        <p className="text-xs text-muted">Siparişler panosundaki gösterge çubuğu bu sürelere göre yeşilden kırmızıya döner.</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <F label="Onaylama"><input name="sla_accept_min" type="number" min={1} max={240} defaultValue={s.sla_accept_min ?? 2} className="input" /></F>
+          <F label="Hazırlama"><input name="sla_prepare_min" type="number" min={1} max={240} defaultValue={s.sla_prepare_min ?? 7} className="input" /></F>
+          <F label="Teslimat (yolda)"><input name="sla_delivery_min" type="number" min={1} max={240} defaultValue={s.sla_delivery_min ?? 20} className="input" /></F>
+        </div>
+      </section>
       <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
         <F label="Teslimat saatleri (her satıra bir seçenek)">
           <textarea name="delivery_slots" defaultValue={s.delivery_slots.join("\n")} className="input min-h-40 font-mono text-sm" />

@@ -180,7 +180,9 @@ export async function setOrderStatus(fd: FormData) {
   const status = str(fd, "status") as OrderStatus;
   const { error } = await supabase.rpc("admin_set_order_status", { p_order_id: id, p_status: status });
   if (status === "iptal" && !error) updateTag(CATALOG_TAG); // stok iade edildi
-  redirect(`/admin/siparisler/${id}${error ? "?hata=1" : ""}`);
+  const back = str(fd, "back");
+  const target = back.startsWith("/admin") && !back.startsWith("//") ? back : `/admin/siparisler/${id}`;
+  redirect(`${target}${error ? (target.includes("?") ? "&" : "?") + "hata=1" : ""}`);
 }
 
 // ---------------- AYARLAR ----------------
@@ -190,6 +192,8 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
   const free = numOrNull(fd, "free_delivery_threshold");
   const min = numOrNull(fd, "min_order_amount");
   for (const v of [fee, free, min]) if (v == null || Number.isNaN(v) || v < 0) return { error: "Tutarları kontrol edin." };
+  const sla = ["sla_accept_min", "sla_prepare_min", "sla_delivery_min"].map((k) => Math.trunc(Number(str(fd, k))));
+  if (sla.some((v) => !Number.isFinite(v) || v < 1 || v > 240)) return { error: "Hedef süreler 1-240 dakika arasında olmalı." };
   const slots = str(fd, "delivery_slots")
     .split("\n")
     .map((s) => s.trim())
@@ -210,6 +214,9 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
       min_order_amount: min,
       delivery_slots: slots,
       is_open: fd.get("is_open") === "on",
+      sla_accept_min: sla[0],
+      sla_prepare_min: sla[1],
+      sla_delivery_min: sla[2],
     })
     .eq("id", 1);
   if (error) return { error: error.message };

@@ -21,6 +21,9 @@ const DEFAULT_SETTINGS: StoreSettings = {
   delivery_slots: ["En kısa sürede"],
   working_hours: "10:00 - 01:00",
   whatsapp_phone: null,
+  sla_accept_min: 2,
+  sla_prepare_min: 7,
+  sla_delivery_min: 20,
   is_open: true,
 };
 

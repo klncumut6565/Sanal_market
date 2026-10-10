@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import { MessageCircle, Phone } from "lucide-react";
 import { requireAdmin } from "@/lib/data/auth";
 import { StatusBadge } from "@/components/admin/OrderTable";
-import { PAYMENT_LABEL, STATUS_FLOW, STATUS_LABEL, formatDate, formatTL } from "@/lib/format";
-import type { Order, OrderItem, OrderStatus } from "@/lib/types";
-import { setOrderStatus } from "../../actions";
+import { PAYMENT_LABEL, formatDate, formatTL } from "@/lib/format";
+import { NextStepForm, OrderSteps } from "@/components/admin/OrderProgress";
+import { SlaBar } from "@/components/admin/SlaBar";
+import { STAGES, isOpen, stageStart, stageTargetMin } from "@/lib/sla";
+import type { Order, OrderItem } from "@/lib/types";
 import { WhatsAppActions } from "@/components/admin/WhatsAppActions";
 import { waLink } from "@/lib/whatsapp";
 import { displayPhone } from "@/lib/phone";
@@ -23,9 +25,6 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
     getStoreSettings(),
   ]);
 
-  const idx = STATUS_FLOW.indexOf(order.status);
-  const closed = order.status === "iptal" || order.status === "teslim_edildi";
-  const next: OrderStatus | null = !closed && idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null;
 
   return (
     <div className="max-w-3xl space-y-4">
@@ -37,22 +36,18 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
       </div>
       {hata && <p className="rounded-lg bg-brand-soft p-3 text-sm font-semibold text-brand">Durum değiştirilemedi.</p>}
 
-      {!closed && (
-        <div className="flex flex-wrap gap-2">
-          {next && (
-            <form action={setOrderStatus}>
-              <input type="hidden" name="id" value={order.id} />
-              <input type="hidden" name="status" value={next} />
-              <button className="btn-primary">→ {STATUS_LABEL[next]}</button>
-            </form>
-          )}
-          <form action={setOrderStatus}>
-            <input type="hidden" name="id" value={order.id} />
-            <input type="hidden" name="status" value="iptal" />
-            <button className="btn-ghost text-brand">Siparişi iptal et (stok iade)</button>
-          </form>
-        </div>
-      )}
+      <section className="space-y-4 rounded-2xl bg-white p-4 ring-1 ring-line">
+        <OrderSteps order={order} />
+        {isOpen(order.status) && (
+          <SlaBar since={stageStart(order)} targetMin={stageTargetMin(order.status, settings)} label={STAGES[order.status as "alindi"].waitingFor} />
+        )}
+        <NextStepForm order={order} back={`/admin/siparisler/${order.id}`} big />
+        {order.status === "teslim_edildi" && order.delivered_at && (
+          <p className="text-sm font-semibold text-emerald-700">
+            Teslim edildi · toplam {Math.round((new Date(order.delivered_at).getTime() - new Date(order.created_at).getTime()) / 60000)} dk
+          </p>
+        )}
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2">
         <div className="space-y-1 rounded-2xl bg-white p-4 text-sm ring-1 ring-line">
