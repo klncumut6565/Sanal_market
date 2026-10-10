@@ -35,12 +35,13 @@ export async function getCategories(): Promise<Category[]> {
   cacheTag(CATALOG_TAG);
   cacheLife("minutes");
   if (!hasSupabase) return [];
-  const { data } = await createPublicClient()
+  const { data, error } = await createPublicClient()
     .from("categories")
     .select("*")
     .eq("is_active", true)
     .order("sort_order")
     .order("name");
+  if (error) console.error("[katalog] kategoriler alınamadı:", error.message);
   return data ?? [];
 }
 
@@ -49,12 +50,13 @@ export async function getProducts(): Promise<Product[]> {
   cacheTag(CATALOG_TAG);
   cacheLife("minutes");
   if (!hasSupabase) return [];
-  const { data } = await createPublicClient()
+  const { data, error } = await createPublicClient()
     .from("products")
     .select(PRODUCT_COLS)
     .eq("is_active", true)
     .order("sort_order")
     .order("name");
+  if (error) console.error("[katalog] ürünler alınamadı:", error.message);
   return (data ?? []).map(num);
 }
 
