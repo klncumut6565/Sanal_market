@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Check, ChevronRight } from "lucide-react";
+import { Check, ChevronRight, MessageCircle, Phone } from "lucide-react";
+import { waLink } from "@/lib/whatsapp";
 import { setOrderStatus } from "@/app/admin/actions";
 import { STATUS_FLOW, STATUS_LABEL, formatTL } from "@/lib/format";
 import { STAGES, isOpen, stageStart, stageTargetMin, type SlaTargets } from "@/lib/sla";
@@ -96,6 +97,19 @@ export function OrderCard({ order, sla }: { order: Order; sla: SlaTargets }) {
       ) : (
         <p className="text-sm font-bold text-muted">{STATUS_LABEL[st]}</p>
       )}
+      <div className="flex gap-2">
+        <a
+          href={waLink(order.phone, `Merhaba ${order.customer_name.split(" ")[0]}, #${order.order_no} numaralı siparişiniz hakkında yazıyoruz.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2 text-sm font-bold text-white"
+        >
+          <MessageCircle size={16} /> WhatsApp
+        </a>
+        <a href={`tel:${order.phone}`} className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-sm font-bold ring-1 ring-line">
+          <Phone size={16} /> Ara
+        </a>
+      </div>
       <NextStepForm order={order} back="/admin/siparisler" />
     </article>
   );
