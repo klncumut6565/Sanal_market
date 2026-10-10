@@ -8,6 +8,7 @@ import type { Order, OrderItem, OrderStatus } from "@/lib/types";
 import { setOrderStatus } from "../../actions";
 import { WhatsAppActions } from "@/components/admin/WhatsAppActions";
 import { waLink } from "@/lib/whatsapp";
+import { displayPhone } from "@/lib/phone";
 import { getStoreSettings } from "@/lib/data/catalog";
 
 export const metadata = { title: "Sipariş detayı" };
@@ -58,7 +59,7 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
           <h2 className="mb-1 font-extrabold">Müşteri</h2>
           <p className="font-bold">{order.customer_name}</p>
           <div className="flex flex-wrap gap-3">
-            <a href={`tel:${order.phone}`} className="flex items-center gap-1.5 font-semibold text-brand"><Phone size={14} /> {order.phone}</a>
+            <a href={`tel:${order.phone}`} className="flex items-center gap-1.5 font-semibold text-brand"><Phone size={14} /> {displayPhone(order.phone)}</a>
             <a href={waLink(order.phone, "")} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 font-semibold text-[#128c4a]"><MessageCircle size={14} /> WhatsApp</a>
           </div>
           <p>{order.address}</p>

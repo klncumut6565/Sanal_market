@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { orderErrorMessage } from "@/lib/format";
+import { normalizeTrMobile } from "@/lib/phone";
 import type { PaymentMethod } from "@/lib/types";
 
 export type PlaceOrderInput = {
@@ -19,12 +20,11 @@ export type PlaceOrderResult =
   | { ok: true; id: string; token: string; orderNo: number }
   | { ok: false; error: string };
 
-const PHONE_RE = /^(\+90|0)?5\d{9}$/;
 
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
-  const phone = input.phone.replace(/[\s()-]/g, "");
+  const phone = normalizeTrMobile(input.phone ?? "");
   if (!input.accepted_terms) return { ok: false, error: "Devam etmek için sözleşmeyi onaylayın." };
-  if (!PHONE_RE.test(phone)) return { ok: false, error: "Geçerli bir cep telefonu girin (05xx xxx xx xx)." };
+  if (!phone) return { ok: false, error: "Geçerli bir cep telefonu girin (ör. +90 541 673 58 63)." };
   if (input.name.trim().length < 3) return { ok: false, error: "Ad soyad girin." };
   if (input.address.trim().length < 10) return { ok: false, error: "Adresi daha ayrıntılı yazın." };
   if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 100)

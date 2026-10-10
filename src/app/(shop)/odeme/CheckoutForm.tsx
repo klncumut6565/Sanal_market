@@ -8,6 +8,7 @@ import { CartLines, FreeDeliveryBar, Totals, useCartSummary } from "@/components
 import { formatTL } from "@/lib/format";
 import type { PaymentMethod, StoreSettings } from "@/lib/types";
 import { placeOrder } from "./actions";
+import { PhoneInput } from "@/components/PhoneInput";
 
 const SAVED_KEY = "sanal-market-teslimat";
 
@@ -74,7 +75,7 @@ export function CheckoutForm({ settings }: { settings: StoreSettings }) {
         <Card icon={<MapPin size={18} />} title="Teslimat bilgileri">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Ad soyad"><input className="input" required autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
-            <Field label="Cep telefonu"><input className="input" required type="tel" inputMode="tel" autoComplete="tel" placeholder="05xx xxx xx xx" value={form.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+            <Field label="Cep telefonu"><PhoneInput required value={form.phone} onChange={(v) => set("phone", v)} /></Field>
           </div>
           <Field label="Adres (mahalle, sokak, bina no, daire)">
             <textarea className="input min-h-24" required autoComplete="street-address" value={form.address} onChange={(e) => set("address", e.target.value)} />

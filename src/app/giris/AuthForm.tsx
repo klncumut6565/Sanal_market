@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useState } from "react";
 import { signIn, signUp, type AuthState } from "./actions";
+import { PhoneInput } from "@/components/PhoneInput";
 
 export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<"in" | "up">("in");
@@ -23,7 +24,7 @@ export function AuthForm({ next }: { next: string }) {
         {mode === "up" && (
           <>
             <input name="full_name" required placeholder="Ad soyad" autoComplete="name" className="input" />
-            <input name="phone" type="tel" placeholder="Cep telefonu" autoComplete="tel" className="input" />
+            <PhoneInput name="phone" required />
           </>
         )}
         <input name="email" type="email" required placeholder="E-posta" autoComplete="email" className="input" />

@@ -8,6 +8,7 @@ import { PAYMENT_LABEL, STATUS_FLOW, STATUS_LABEL, formatDate, formatTL } from "
 import type { Order, OrderItem } from "@/lib/types";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { waLink } from "@/lib/whatsapp";
+import { displayPhone } from "@/lib/phone";
 import { getStoreSettings } from "@/lib/data/catalog";
 
 export const metadata = { title: "Sipariş takibi" };
@@ -102,7 +103,7 @@ async function OrderContent({ params, searchParams }: Props) {
 
       <section className="space-y-1 rounded-2xl bg-white p-4 text-sm ring-1 ring-line">
         <h2 className="mb-1 font-extrabold">Teslimat & ödeme</h2>
-        <p><b>{order.customer_name}</b> · {order.phone}</p>
+        <p><b>{order.customer_name}</b> · {displayPhone(order.phone)}</p>
         <p className="text-muted">{order.address}{order.address_note ? ` — ${order.address_note}` : ""}</p>
         <p>Teslimat: <b>{order.delivery_slot}</b></p>
         <p>Ödeme: <b>{PAYMENT_LABEL[order.payment_method]}</b></p>

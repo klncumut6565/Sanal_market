@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { authErrorTR } from "@/lib/auth-errors";
+import { normalizeTrMobile } from "@/lib/phone";
 
 export type AuthState = { error?: string; info?: string };
 
@@ -34,6 +35,8 @@ export async function signUp(_: AuthState, fd: FormData): Promise<AuthState> {
   const password = String(fd.get("password") ?? "");
   const fullName = String(fd.get("full_name") ?? "").trim();
   if (fullName.length < 3) return { error: "Ad soyad gir." };
+  const phone = normalizeTrMobile(String(fd.get("phone") ?? ""));
+  if (!phone) return { error: "Geçerli bir cep telefonu gir (ör. +90 541 673 58 63)." };
   if (!EMAIL_RE.test(email)) return { error: "Geçerli bir e-posta adresi gir." };
   if (password.length < 8) return { error: "Şifre en az 8 karakter olmalı." };
 
@@ -44,7 +47,7 @@ export async function signUp(_: AuthState, fd: FormData): Promise<AuthState> {
       email,
       password,
       options: {
-        data: { full_name: fullName, phone: String(fd.get("phone") ?? "").trim() },
+        data: { full_name: fullName, phone },
         emailRedirectTo: site ? `${site}/auth/confirm` : undefined,
       },
     });
