@@ -19,6 +19,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   free_delivery_threshold: 500,
   min_order_amount: 150,
   delivery_slots: ["En kısa sürede"],
+  working_hours: "10:00 - 01:00",
   is_open: true,
 };
 

@@ -15,6 +15,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
         <div className="grid gap-3 sm:grid-cols-2">
           <F label="Telefon"><input name="phone" defaultValue={s.phone ?? ""} className="input" /></F>
           <F label="Teslimat bölgesi notu"><input name="delivery_area_note" defaultValue={s.delivery_area_note ?? ""} className="input" /></F>
+          <F label="Çalışma saatleri (sitede görünür)"><input name="working_hours" defaultValue={s.working_hours ?? ""} placeholder="10:00 - 01:00" className="input" /></F>
         </div>
         <F label="Adres"><textarea name="address" defaultValue={s.address ?? ""} className="input min-h-20" /></F>
       </section>

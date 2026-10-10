@@ -36,6 +36,7 @@ export type StoreSettings = {
   free_delivery_threshold: number;
   min_order_amount: number;
   delivery_slots: string[];
+  working_hours: string | null;
   is_open: boolean;
 };
 

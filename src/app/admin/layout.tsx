@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { Brand } from "@/components/Brand";
 import { requireAdmin } from "@/lib/data/auth";
 import { AdminNav } from "@/components/admin/AdminNav";
 
@@ -11,9 +12,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <div className="min-h-dvh lg:grid lg:grid-cols-[230px_1fr]">
       <aside className="border-b border-line bg-white lg:sticky lg:top-0 lg:h-dvh lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between px-4 py-3 lg:block lg:py-5">
-          <Link href="/admin" className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand font-black text-white">S</span>
-            <span className="font-black">Yönetim Paneli</span>
+          <Link href="/admin" className="block">
+            <Brand size="sm" />
+            <span className="mt-1 block text-xs font-bold uppercase tracking-wider text-muted">Yönetim paneli</span>
           </Link>
           <Link href="/" className="text-sm font-semibold text-brand lg:mt-3 lg:block">Mağazaya git →</Link>
         </div>

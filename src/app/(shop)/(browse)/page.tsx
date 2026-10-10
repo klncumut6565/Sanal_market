@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronRight, Banknote, CreditCard, Truck } from "lucide-react";
+import Image from "next/image";
+import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { getCategories, getProducts, getStoreSettings } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
@@ -11,17 +12,25 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-7">
-      <section className="relative overflow-hidden rounded-3xl bg-brand p-5 text-white sm:p-7">
-        <div className="relative z-10 max-w-md">
-          <p className="text-sm font-semibold opacity-90">{s.store_name}</p>
-          <h1 className="mt-1 text-2xl font-black leading-tight sm:text-3xl">Market alışverişin kapında</h1>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold">
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Truck size={14} /> {formatTL(s.free_delivery_threshold)} üzeri ücretsiz teslimat</span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><Banknote size={14} /> Kapıda nakit</span>
-            <span className="flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5"><CreditCard size={14} /> Kapıda kart</span>
+      <section className="relative overflow-hidden rounded-3xl bg-ink p-5 text-white sm:p-7">
+        <div aria-hidden className="absolute -right-24 -top-28 h-72 w-72 rounded-full border-[14px] border-brand/35 sm:-right-16 sm:-top-20 sm:border-brand/70" />
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-bold text-brand">{s.store_name}</p>
+            <h1 className="mt-1 text-[26px] font-black leading-tight sm:text-4xl">
+              İhtiyacın <span className="text-brand">Kapında!</span>
+            </h1>
+            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
+              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><Bike size={14} className="text-brand" /> Motokurye servisi</span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><CreditCard size={14} className="text-brand" /> Kapıda nakit / kart</span>
+              {s.working_hours && (
+                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><Clock size={14} className="text-brand" /> {s.working_hours}</span>
+              )}
+              <span className="flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5"><Truck size={14} /> {formatTL(s.free_delivery_threshold)} üzeri ücretsiz</span>
+            </div>
           </div>
+          <Image src="/logo-mark.png" alt="" width={240} height={171} priority className="relative hidden w-44 shrink-0 sm:block md:w-56" />
         </div>
-        <div aria-hidden className="absolute -right-6 -top-6 select-none text-[150px] leading-none opacity-25 sm:text-[190px]">🛒</div>
       </section>
 
       {categories.length > 0 && (

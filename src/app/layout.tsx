@@ -4,11 +4,11 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "Sanal Market", template: "%s · Sanal Market" },
-  description: "Market alışverişin kapında. Taze ürünler, hızlı teslimat, kapıda ödeme.",
+  description: "İhtiyacın kapında! Motokurye servisi, kapıda nakit veya kartla ödeme. Her gün 10:00 - 01:00.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#ea004b",
+  themeColor: "#f26a12",
   width: "device-width",
   initialScale: 1,
 };

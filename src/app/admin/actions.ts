@@ -135,6 +135,7 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
       phone: str(fd, "phone") || null,
       address: str(fd, "address") || null,
       delivery_area_note: str(fd, "delivery_area_note") || null,
+      working_hours: str(fd, "working_hours") || null,
       delivery_fee: fee,
       free_delivery_threshold: free,
       min_order_amount: min,
