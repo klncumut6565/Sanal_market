@@ -1,5 +1,6 @@
 import { connection } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase/env";
 
 /** Bağlantı teşhisi: gizli değer göstermez, sadece biçim kontrolü ve deneme sorgusu yapar. */
 export async function GET() {
@@ -24,9 +25,10 @@ export async function GET() {
     key_bicim: rawKey ? (/^(sb_publishable_|eyJ)/.test(rawKey.trim()) ? `doğru (${rawKey.trim().length} karakter)` : "HATALI başlangıç") : null,
   };
 
-  if (rawUrl && rawKey) {
+  report.kullanilan = rawKey?.trim() ? "Vercel değişkenleri" : "koddaki yedek anahtar (Vercel'de anahtar eksik — sorun değil)";
+  {
     try {
-      const sb = createClient(rawUrl.trim(), rawKey.trim(), { auth: { persistSession: false } });
+      const sb = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
       const { count, error } = await sb.from("products").select("id", { count: "exact", head: true });
       report.veritabani = error ? `HATA: ${error.message || error.code}` : `bağlandı — ${count} ürün`;
     } catch (e) {
