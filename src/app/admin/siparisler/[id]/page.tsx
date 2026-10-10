@@ -52,7 +52,7 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
       <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1 rounded-2xl bg-white p-4 text-sm ring-1 ring-line">
           <h2 className="mb-1 font-extrabold">Müşteri</h2>
-          <p className="font-bold">{order.customer_name}</p>
+          <Link href={`/admin/musteriler/${encodeURIComponent(order.phone)}`} className="font-bold text-brand underline-offset-2 hover:underline">{order.customer_name} →</Link>
           <div className="flex flex-wrap gap-3">
             <a href={`tel:${order.phone}`} className="flex items-center gap-1.5 font-semibold text-brand"><Phone size={14} /> {displayPhone(order.phone)}</a>
             <a href={waLink(order.phone, "")} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 font-semibold text-[#128c4a]"><MessageCircle size={14} /> WhatsApp</a>
