@@ -42,7 +42,7 @@ export function AddressPicker({ areas, value, onChange }: { areas: DeliveryAreas
   const typing = value.street_id === OTHER || noStreetList;
 
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <label className="block space-y-1">
         <Lbl>İl</Lbl>
         <select disabled className="input bg-bg font-semibold text-ink opacity-100" value="tekirdag">

@@ -46,7 +46,7 @@ async function ProductContent({ params }: Props) {
             <ChevronLeft size={16} /> {cat.name}
           </Link>
         )}
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="relative">
             <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="lg" />
             {off > 0 && <span className="absolute left-3 top-3 rounded-lg bg-brand px-2 py-1 text-sm font-bold text-white">%{off} indirim</span>}

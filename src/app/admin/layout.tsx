@@ -10,7 +10,7 @@ export const instant = false;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[230px_1fr]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[230px_minmax(0,1fr)]">
       <aside className="border-b border-line bg-white lg:sticky lg:top-0 lg:h-dvh lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between px-4 py-3 lg:block lg:py-5">
           <Link href="/admin" className="block">

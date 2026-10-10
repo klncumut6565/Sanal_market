@@ -80,10 +80,10 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
   const blocked = s.belowMin || !settings.is_open || !addressIsComplete(form.address);
 
   return (
-    <form onSubmit={submit} className="grid gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-0">
+    <form onSubmit={submit} className="grid grid-cols-1 gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-0">
       <div className="space-y-4">
         <Card icon={<MapPin size={18} />} title="Teslimat bilgileri">
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Field label="Ad soyad"><input className="input" required autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
             <Field label="Cep telefonu"><PhoneInput required value={form.phone} onChange={(v) => set("phone", v)} /></Field>
           </div>
@@ -108,7 +108,7 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
         </Card>
 
         <Card icon={<CreditCard size={18} />} title="Ödeme yöntemi">
-          <div className="grid gap-2.5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <PayOption active={form.payment_method === "kapida_nakit"} onClick={() => set("payment_method", "kapida_nakit")} icon={<Banknote size={22} />} title="Kapıda nakit" desc="Siparişini teslim alırken nakit öde" />
             <PayOption active={form.payment_method === "kapida_pos"} onClick={() => set("payment_method", "kapida_pos")} icon={<CreditCard size={22} />} title="Kapıda kart (POS)" desc="Kurye POS cihazı ile kredi/banka kartı" />
             <PayOption disabled icon={<Lock size={22} />} title="Online kart ile öde" desc="Yakında (iyzico)" />

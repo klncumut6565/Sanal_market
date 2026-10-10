@@ -43,7 +43,7 @@ export function ProductForm({ product, categories, initialBarcode }: { product?:
       {product && <input type="hidden" name="id" value={product.id} />}
       <input type="hidden" name="image_url" value={imageUrl} />
 
-      <section className="grid gap-4 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-[160px_1fr]">
+      <section className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-[160px_minmax(0,1fr)]">
         <div className="space-y-2">
           <ProductImage src={imageUrl || null} emoji={product?.emoji ?? null} alt="Ürün görseli" />
           <label className="btn-ghost w-full cursor-pointer py-2 text-sm">
@@ -57,7 +57,7 @@ export function ProductForm({ product, categories, initialBarcode }: { product?:
           )}
           {uploadError && <p className="text-xs font-semibold text-brand">{uploadError}</p>}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <F label="Ürün adı *" className="sm:col-span-2"><input name="name" required defaultValue={product?.name} className="input" /></F>
           <F label="Kategori">
             <select name="category_id" defaultValue={product?.category_id ?? ""} className="input">
@@ -79,7 +79,7 @@ export function ProductForm({ product, categories, initialBarcode }: { product?:
         </div>
       </section>
 
-      <section className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
         <F label="Fiyat (₺) *"><input name="price" required inputMode="decimal" defaultValue={product?.price ?? ""} className="input" /></F>
         <F label="İndirimli fiyat (₺)"><input name="sale_price" inputMode="decimal" defaultValue={product?.sale_price ?? ""} placeholder="Boş = indirim yok" className="input" /></F>
         <F label="Sıralama"><input name="sort_order" type="number" defaultValue={product?.sort_order ?? 0} className="input" /></F>

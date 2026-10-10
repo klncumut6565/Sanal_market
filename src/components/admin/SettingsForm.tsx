@@ -12,7 +12,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
           <input type="checkbox" name="is_open" defaultChecked={s.is_open} className="h-5 w-5 accent-brand" /> Market açık (sipariş alınıyor)
         </label>
         <F label="Market adı"><input name="store_name" defaultValue={s.store_name} className="input" /></F>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <F label="Telefon"><input name="phone" defaultValue={s.phone ?? ""} className="input" /></F>
           <F label="Teslimat bölgesi notu"><input name="delivery_area_note" defaultValue={s.delivery_area_note ?? ""} className="input" /></F>
           <F label="İşletme WhatsApp numarası (müşteriler size yazar)"><input name="whatsapp_phone" type="tel" defaultValue={s.whatsapp_phone ?? ""} placeholder="05xx xxx xx xx" className="input" /></F>
@@ -20,7 +20,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
         </div>
         <F label="Adres"><textarea name="address" defaultValue={s.address ?? ""} className="input min-h-20" /></F>
       </section>
-      <section className="grid gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
         <F label="Teslimat ücreti (₺)"><input name="delivery_fee" inputMode="decimal" defaultValue={s.delivery_fee} className="input" /></F>
         <F label="Ücretsiz teslimat eşiği (₺)"><input name="free_delivery_threshold" inputMode="decimal" defaultValue={s.free_delivery_threshold} className="input" /></F>
         <F label="Minimum sipariş (₺)"><input name="min_order_amount" inputMode="decimal" defaultValue={s.min_order_amount} className="input" /></F>
@@ -28,7 +28,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
       <section className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-line">
         <p className="font-bold">Sipariş hedef süreleri (dakika)</p>
         <p className="text-xs text-muted">Siparişler panosundaki gösterge çubuğu bu sürelere göre yeşilden kırmızıya döner.</p>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <F label="Onaylama"><input name="sla_accept_min" type="number" min={1} max={240} defaultValue={s.sla_accept_min ?? 2} className="input" /></F>
           <F label="Hazırlama"><input name="sla_prepare_min" type="number" min={1} max={240} defaultValue={s.sla_prepare_min ?? 7} className="input" /></F>
           <F label="Teslimat (yolda)"><input name="sla_delivery_min" type="number" min={1} max={240} defaultValue={s.sla_delivery_min ?? 20} className="input" /></F>

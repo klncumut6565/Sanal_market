@@ -49,7 +49,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       {hata && <p className="rounded-lg bg-brand-soft p-3 text-sm font-semibold text-brand">Durum değiştirilemedi. Sayfayı yenileyip tekrar dene.</p>}
 
       {tab.key === "acik" ? (
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {COLUMNS.map((col) => {
             const list = orders.filter((o) => o.status === col);
             return (

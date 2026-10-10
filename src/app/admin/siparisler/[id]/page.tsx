@@ -49,7 +49,7 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
         )}
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2">
+      <section className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1 rounded-2xl bg-white p-4 text-sm ring-1 ring-line">
           <h2 className="mb-1 font-extrabold">Müşteri</h2>
           <p className="font-bold">{order.customer_name}</p>
