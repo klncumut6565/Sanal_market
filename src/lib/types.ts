@@ -37,6 +37,7 @@ export type StoreSettings = {
   min_order_amount: number;
   delivery_slots: string[];
   working_hours: string | null;
+  whatsapp_phone: string | null;
   is_open: boolean;
 };
 

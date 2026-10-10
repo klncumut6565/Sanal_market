@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Brand } from "@/components/Brand";
 import { requireAdmin } from "@/lib/data/auth";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { NewOrderAlarm } from "@/components/admin/NewOrderAlarm";
 
 export const metadata = { title: { default: "Yönetim", template: "%s · Yönetim" } };
 export const instant = false;
@@ -31,5 +32,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
 async function Gate({ children }: { children: React.ReactNode }) {
   await requireAdmin();
-  return <>{children}</>;
+  return (
+    <>
+      <NewOrderAlarm />
+      {children}
+    </>
+  );
 }

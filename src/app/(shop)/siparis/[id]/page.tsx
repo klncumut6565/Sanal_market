@@ -7,6 +7,8 @@ import { hasSupabase } from "@/lib/supabase/env";
 import { PAYMENT_LABEL, STATUS_FLOW, STATUS_LABEL, formatDate, formatTL } from "@/lib/format";
 import type { Order, OrderItem } from "@/lib/types";
 import { AutoRefresh } from "@/components/AutoRefresh";
+import { waLink } from "@/lib/whatsapp";
+import { getStoreSettings } from "@/lib/data/catalog";
 
 export const metadata = { title: "Sipariş takibi" };
 
@@ -39,7 +41,7 @@ async function loadOrder(id: string, token?: string): Promise<{ order: Order; it
 
 async function OrderContent({ params, searchParams }: Props) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const data = await loadOrder(id, sp.t);
+  const [data, settings] = await Promise.all([loadOrder(id, sp.t), getStoreSettings()]);
   if (!data) notFound();
   const { order, items } = data;
   const cancelled = order.status === "iptal";
@@ -107,6 +109,16 @@ async function OrderContent({ params, searchParams }: Props) {
         {order.note && <p className="text-muted">Not: {order.note}</p>}
       </section>
 
+      {settings.whatsapp_phone && !final && (
+        <a
+          href={waLink(settings.whatsapp_phone, `Merhaba, #${order.order_no} numaralı siparişim hakkında yazıyorum.`)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 font-bold text-white"
+        >
+          WhatsApp&apos;tan bize yaz
+        </a>
+      )}
       <Link href="/" className="btn-ghost w-full">Alışverişe devam et</Link>
     </div>
   );

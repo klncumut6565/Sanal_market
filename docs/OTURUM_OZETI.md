@@ -28,3 +28,9 @@
 - Header: logo + "SanalMarket" yazısı + çalışma saatleri rozeti. Ana sayfa banner: "İhtiyacın Kapında!", motokurye, kapıda nakit/kart, 10:00 - 01:00.
 - store_settings.working_hours alanı eklendi (admin → Ayarlar'dan değişir); teslimat aralıkları 10:00 - 01:00'e göre güncellendi (Supabase'e uygulandı).
 - Vercel girişi 2FA kilidinde; kullanıcı hesabı kurtaracak. Sonra: import + 2 env + deploy, Supabase Auth URL ayarı, admin rolü.
+
+## 2026-10-10 — Sipariş zili + WhatsApp
+- Yönetim panelinde yeni sipariş zili (components/admin/NewOrderAlarm.tsx): 8 sn'de bir kontrol, yeni siparişte 20 sn "ding-dong", turuncu banner, sekme başlığı, tarayıcı bildirimi, sustur butonu. Ses için panelde bir kez dokunmak gerekiyor (tarayıcı kuralı). Test edildi: ~20.4 sn çalıp duruyor.
+- Sipariş detayında WhatsApp butonları (hazır şablonlar + serbest mesaj) — wa.me bağlantısı, admin cihazındaki WhatsApp hesabından gönderilir. lib/whatsapp.ts numarayı 90 formatına çevirir.
+- store_settings.whatsapp_phone eklendi (Supabase'e uygulandı); doluysa müşteri sipariş sayfasında "WhatsApp'tan bize yaz" butonu çıkar.
+- Not: WhatsApp gerçek, SMS/arama ile doğrulanmış numara ister; kişisel numarayı gizlemek için ayrı hat (ikinci SIM / sanal numara) + WhatsApp Business önerildi.
