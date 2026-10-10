@@ -54,3 +54,10 @@
 - store_settings: sla_accept_min=2, sla_prepare_min=7, sla_delivery_min=20 (Admin → Ayarlar'dan değişir).
 - /admin/siparisler "Açık siparişler (pano)": 3 sütun (Yeni / Hazırlanıyor / Kurye yolda), her kartta canlı süre çubuğu (yeşil→kırmızı) ve tek tık sonraki adım butonu (Onayla · Hazırlamaya başla → Hazır · Kuryeye ver → Teslim edildi) + onaylı İptal.
 - Sipariş detayında adım çizelgesi (1-2-3-4) + büyük süre çubuğu + sonraki adım butonu; teslimde toplam süre.
+
+## 2026-10-11 — Yapılandırılmış teslimat adresi
+- Tablolar: delivery_districts (Tekirdağ 11 ilçe, yalnızca Çorlu aktif), delivery_neighborhoods (Çorlu 26 mahalle — atlasbig + hangisemt ile doğrulandı), delivery_streets (BOŞ — admin dolduracak).
+- orders.addr_* alanları; place_order artık ilçe/mahalle/sokak(id veya yazı)/dış kapı zorunlu, iç kapı + apartman/site isteğe bağlı; address metni otomatik oluşur.
+- Ödeme: AddressPicker (İl Tekirdağ sabit, ilçe listesi Çorlu dışı pasif "yakında", mahalle → sokak, "Listede yok" ile yazma; sokağı olmayan mahallede doğrudan yazı kutusu). Son adres cihazda hatırlanır.
+- Admin → Teslimat bölgeleri: ilçe aç/kapa, mahalle aç/kapa, mahalleye toplu sokak ekleme (her satıra bir), müşterilerin yazdığı sokakları tek tıkla listeye ekleme.
+- AÇIK İŞ: Çorlu sokak listeleri (kaynak bulunamadı; kullanıcı/belediye listesi gerekli).

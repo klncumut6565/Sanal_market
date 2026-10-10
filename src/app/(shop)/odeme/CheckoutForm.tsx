@@ -8,29 +8,39 @@ import { CartLines, FreeDeliveryBar, Totals, useCartSummary } from "@/components
 import { formatTL } from "@/lib/format";
 import type { PaymentMethod, StoreSettings } from "@/lib/types";
 import { placeOrder } from "./actions";
+import { AddressPicker, addressIsComplete, emptyAddress, OTHER, type AddressValue } from "@/components/shop/AddressPicker";
+import type { DeliveryAreas } from "@/lib/data/areas";
 import { PhoneInput } from "@/components/PhoneInput";
 
 const SAVED_KEY = "sanal-market-teslimat";
 
-function loadSaved() {
-  const empty = { name: "", phone: "", address: "", address_note: "" };
+function loadSaved(areas: DeliveryAreas) {
+  const empty = { name: "", phone: "", address: emptyAddress(areas), address_note: "" };
   if (typeof window === "undefined") return empty;
   try {
     const s = JSON.parse(localStorage.getItem(SAVED_KEY) ?? "null");
-    return s ? { name: s.name ?? "", phone: s.phone ?? "", address: s.address ?? "", address_note: s.address_note ?? "" } : empty;
+    if (!s) return empty;
+    let address = empty.address;
+    // Kayıtlı adres hâlâ geçerliyse geri yükle
+    const a = s.addr as AddressValue | undefined;
+    if (a && areas.neighborhoods.some((n) => String(n.id) === a.neighborhood_id)) {
+      const streetOk = a.street_id === OTHER || areas.streets.some((st) => String(st.id) === a.street_id);
+      address = { ...empty.address, ...a, street_id: streetOk ? a.street_id : "", street_text: streetOk ? a.street_text : "" };
+    }
+    return { name: s.name ?? "", phone: s.phone ?? "", address, address_note: s.address_note ?? "" };
   } catch {
     return empty;
   }
 }
 
-export function CheckoutForm({ settings }: { settings: StoreSettings }) {
+export function CheckoutForm({ settings, areas }: { settings: StoreSettings; areas: DeliveryAreas }) {
   const router = useRouter();
   const s = useCartSummary(settings);
   const clear = useCart((st) => st.clear);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(() => ({
-    ...loadSaved(),
+    ...loadSaved(areas),
     note: "",
     delivery_slot: settings.delivery_slots[0] ?? "",
     payment_method: "kapida_nakit" as PaymentMethod,
@@ -58,7 +68,7 @@ export function CheckoutForm({ settings }: { settings: StoreSettings }) {
         return;
       }
       try {
-        localStorage.setItem(SAVED_KEY, JSON.stringify({ name: form.name, phone: form.phone, address: form.address, address_note: form.address_note }));
+        localStorage.setItem(SAVED_KEY, JSON.stringify({ name: form.name, phone: form.phone, addr: form.address, address_note: form.address_note }));
         const mine = JSON.parse(localStorage.getItem("sanal-market-siparisler") ?? "[]");
         localStorage.setItem("sanal-market-siparisler", JSON.stringify([{ id: res.id, t: res.token, no: res.orderNo }, ...mine].slice(0, 20)));
       } catch {}
@@ -67,7 +77,7 @@ export function CheckoutForm({ settings }: { settings: StoreSettings }) {
     });
   };
 
-  const blocked = s.belowMin || !settings.is_open;
+  const blocked = s.belowMin || !settings.is_open || !addressIsComplete(form.address);
 
   return (
     <form onSubmit={submit} className="grid gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-0">
@@ -77,9 +87,7 @@ export function CheckoutForm({ settings }: { settings: StoreSettings }) {
             <Field label="Ad soyad"><input className="input" required autoComplete="name" value={form.name} onChange={(e) => set("name", e.target.value)} /></Field>
             <Field label="Cep telefonu"><PhoneInput required value={form.phone} onChange={(v) => set("phone", v)} /></Field>
           </div>
-          <Field label="Adres (mahalle, sokak, bina no, daire)">
-            <textarea className="input min-h-24" required autoComplete="street-address" value={form.address} onChange={(e) => set("address", e.target.value)} />
-          </Field>
+          <AddressPicker areas={areas} value={form.address} onChange={(v) => set("address", v)} />
           <Field label="Adres tarifi (isteğe bağlı)"><input className="input" placeholder="Örn. eczanenin üstü, 3. kat" value={form.address_note} onChange={(e) => set("address_note", e.target.value)} /></Field>
           {settings.delivery_area_note && <p className="text-xs text-muted">{settings.delivery_area_note}</p>}
         </Card>

@@ -53,6 +53,14 @@ export function orderErrorMessage(raw: string): string {
       return `${arg ?? "Bir ürün"} için yeterli stok kalmadı.`;
     case "LIMIT_ASILDI":
       return `${arg ?? "Bir ürün"} için sipariş başına adet sınırı aşıldı.`;
+    case "BOLGE_DISI":
+      return "Şu an yalnızca Çorlu'ya teslimat yapıyoruz.";
+    case "MAHALLE_GECERSIZ":
+      return "Lütfen geçerli bir mahalle seçin.";
+    case "SOKAK_GECERSIZ":
+      return "Lütfen cadde / sokak seçin veya yazın.";
+    case "KAPI_NO_EKSIK":
+      return "Dış kapı numarasını girin.";
     case "MIN_TUTAR":
       return `Minimum sipariş tutarı ${formatTL(arg ?? 0)}.`;
     default:

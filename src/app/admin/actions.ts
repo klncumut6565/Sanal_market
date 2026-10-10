@@ -3,6 +3,7 @@ import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/data/auth";
 import { CATALOG_TAG, SETTINGS_TAG } from "@/lib/data/catalog";
+import { AREAS_TAG } from "@/lib/data/areas";
 import { slugify } from "@/lib/format";
 import type { OrderStatus } from "@/lib/types";
 
@@ -144,6 +145,63 @@ export async function quickPriceUpdate(input: {
   if (error || !data) return { ok: false, error: "Kaydedilemedi: " + (error?.message ?? "ürün bulunamadı") };
   updateTag(CATALOG_TAG);
   return { ok: true, product: { ...data, price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price) } as BarcodeProduct };
+}
+
+// ---------------- TESLİMAT BÖLGELERİ ----------------
+const nbBack = (id: number | string) => `/admin/bolgeler/${id}`;
+
+export async function toggleDistrict(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.from("delivery_districts").update({ is_active: str(fd, "on") === "1" }).eq("id", Number(str(fd, "id")));
+  updateTag(AREAS_TAG);
+  redirect("/admin/bolgeler");
+}
+
+export async function toggleNeighborhood(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.from("delivery_neighborhoods").update({ is_active: str(fd, "on") === "1" }).eq("id", Number(str(fd, "id")));
+  updateTag(AREAS_TAG);
+  redirect(str(fd, "back").startsWith("/admin") ? str(fd, "back") : "/admin/bolgeler");
+}
+
+/** Her satıra bir sokak; mevcut olanlar atlanır. */
+export async function addStreets(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const nbId = Number(str(fd, "neighborhood_id"));
+  const names = Array.from(
+    new Set(
+      str(fd, "names")
+        .split(/\r?\n/)
+        .map((l) => l.replace(/\s+/g, " ").trim())
+        .filter((l) => l.length >= 2 && l.length <= 120),
+    ),
+  );
+  if (!nbId || names.length === 0) return { error: "En az bir cadde/sokak adı yaz (her satıra bir tane)." };
+  const { data, error } = await supabase
+    .from("delivery_streets")
+    .upsert(names.map((name) => ({ neighborhood_id: nbId, name, is_active: true })), { onConflict: "neighborhood_id,name", ignoreDuplicates: true })
+    .select("id");
+  if (error) return { error: "Kaydedilemedi: " + error.message };
+  updateTag(AREAS_TAG);
+  const added = data?.length ?? 0;
+  return { ok: `${added} sokak eklendi${names.length - added > 0 ? `, ${names.length - added} tanesi zaten vardı` : ""}.` };
+}
+
+export async function deleteStreet(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  await supabase.from("delivery_streets").delete().eq("id", Number(str(fd, "id")));
+  updateTag(AREAS_TAG);
+  redirect(nbBack(str(fd, "neighborhood_id")));
+}
+
+export async function addSuggestedStreet(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const nbId = Number(str(fd, "neighborhood_id"));
+  const name = str(fd, "name").replace(/\s+/g, " ").slice(0, 120);
+  if (nbId && name.length >= 2)
+    await supabase.from("delivery_streets").upsert({ neighborhood_id: nbId, name }, { onConflict: "neighborhood_id,name", ignoreDuplicates: true });
+  updateTag(AREAS_TAG);
+  redirect(str(fd, "back").startsWith("/admin") ? str(fd, "back") : "/admin/bolgeler");
 }
 
 // ---------------- KATEGORİLER ----------------

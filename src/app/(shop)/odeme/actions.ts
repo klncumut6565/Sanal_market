@@ -8,7 +8,15 @@ export type PlaceOrderInput = {
   items: { product_id: string; quantity: number }[];
   name: string;
   phone: string;
-  address: string;
+  address: {
+    district_id: string;
+    neighborhood_id: string;
+    street_id: string;
+    street_text: string;
+    door_no: string;
+    inner_no: string;
+    building: string;
+  };
   address_note?: string;
   delivery_slot: string;
   payment_method: PaymentMethod;
@@ -26,7 +34,12 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (!input.accepted_terms) return { ok: false, error: "Devam etmek için sözleşmeyi onaylayın." };
   if (!phone) return { ok: false, error: "Geçerli bir cep telefonu girin (ör. +90 541 673 58 63)." };
   if (input.name.trim().length < 3) return { ok: false, error: "Ad soyad girin." };
-  if (input.address.trim().length < 10) return { ok: false, error: "Adresi daha ayrıntılı yazın." };
+  const a = input.address;
+  if (!a?.neighborhood_id) return { ok: false, error: "Teslimat adresi için mahalle seçin." };
+  const otherStreet = !a.street_id || a.street_id === "__other";
+  if (otherStreet ? (a.street_text ?? "").trim().length < 2 : !/^\d+$/.test(a.street_id))
+    return { ok: false, error: "Cadde / sokak seçin veya yazın." };
+  if (!(a.door_no ?? "").trim()) return { ok: false, error: "Dış kapı numarasını girin." };
   if (!Array.isArray(input.items) || input.items.length === 0 || input.items.length > 100)
     return { ok: false, error: "Sepetiniz boş." };
 
@@ -42,7 +55,13 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
     p_customer: {
       name: input.name.trim().slice(0, 120),
       phone,
-      address: input.address.trim().slice(0, 500),
+      district_id: a.district_id,
+      neighborhood_id: a.neighborhood_id,
+      street_id: otherStreet ? "" : a.street_id,
+      street_text: otherStreet ? a.street_text.trim().slice(0, 120) : "",
+      door_no: a.door_no.trim().slice(0, 10),
+      inner_no: (a.inner_no ?? "").trim().slice(0, 10),
+      building: (a.building ?? "").trim().slice(0, 80),
       address_note: input.address_note?.trim().slice(0, 200) ?? "",
       delivery_slot: input.delivery_slot,
       payment_method: input.payment_method,
