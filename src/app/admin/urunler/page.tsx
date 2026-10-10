@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, ScanBarcode } from "lucide-react";
 import { requireAdmin } from "@/lib/data/auth";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
@@ -20,7 +20,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const q = (sp.q ?? "").toLocaleLowerCase("tr");
   const list = ((products ?? []) as Product[]).filter(
     (p) =>
-      (!q || p.name.toLocaleLowerCase("tr").includes(q)) &&
+      (!q || p.name.toLocaleLowerCase("tr").includes(q) || (p.barcode ?? "").includes(q)) &&
       (!sp.kategori || p.category_id === sp.kategori) &&
       (sp.stok !== "kritik" || p.stock <= p.critical_stock),
   );
@@ -29,11 +29,14 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-black">Ürünler & stok</h1>
-        <Link href="/admin/urunler/yeni" className="btn-primary py-2.5"><Plus size={18} /> Yeni ürün</Link>
+        <div className="flex gap-2">
+          <Link href="/admin/barkod" className="btn-ghost py-2.5"><ScanBarcode size={18} /> Barkodla güncelle</Link>
+          <Link href="/admin/urunler/yeni" className="btn-primary py-2.5"><Plus size={18} /> Yeni ürün</Link>
+        </div>
       </div>
 
       <form className="flex flex-wrap gap-2">
-        <input name="q" defaultValue={sp.q} placeholder="Ürün ara" className="input max-w-xs" />
+        <input name="q" defaultValue={sp.q} placeholder="Ürün adı veya barkod" className="input max-w-xs" />
         <select name="kategori" defaultValue={sp.kategori ?? ""} className="input max-w-52">
           <option value="">Tüm kategoriler</option>
           {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -58,7 +61,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
                     <div>
                       <p className="font-bold">{p.name}</p>
-                      <p className="text-xs text-muted">{p.unit_label}</p>
+                      <p className="text-xs text-muted">{p.unit_label}{p.barcode ? ` · ${p.barcode}` : ""}</p>
                     </div>
                   </div>
                 </td>

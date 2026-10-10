@@ -1,12 +1,13 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Package, ReceiptText, Settings, Tags } from "lucide-react";
+import { LayoutDashboard, Package, ReceiptText, ScanBarcode, Settings, Tags } from "lucide-react";
 
 const items = [
   { href: "/admin", label: "Genel bakış", icon: LayoutDashboard },
   { href: "/admin/siparisler", label: "Siparişler", icon: ReceiptText },
   { href: "/admin/urunler", label: "Ürünler & stok", icon: Package },
+  { href: "/admin/barkod", label: "Barkodla fiyat", icon: ScanBarcode },
   { href: "/admin/kategoriler", label: "Kategoriler", icon: Tags },
   { href: "/admin/ayarlar", label: "Ayarlar", icon: Settings },
 ];

@@ -13,6 +13,7 @@ export type Product = {
   category_id: string | null;
   name: string;
   slug: string;
+  barcode?: string | null;
   description: string | null;
   unit_label: string | null;
   price: number;

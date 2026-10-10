@@ -37,6 +37,7 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
     category_id: str(fd, "category_id") || null,
     description: str(fd, "description") || null,
     unit_label: str(fd, "unit_label") || null,
+    barcode: cleanBarcode(str(fd, "barcode")),
     price,
     sale_price: sale,
     stock,
@@ -52,7 +53,15 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
   const { error } = id
     ? await supabase.from("products").update(row).eq("id", id)
     : await supabase.from("products").insert(row);
-  if (error) return { error: error.code === "23505" ? "Bu bağlantı adı (slug) zaten kullanılıyor." : error.message };
+  if (error)
+    return {
+      error:
+        error.code === "23505"
+          ? error.message.includes("barcode")
+            ? "Bu barkod başka bir üründe kayıtlı."
+            : "Bu bağlantı adı (slug) zaten kullanılıyor."
+          : error.message,
+    };
 
   updateTag(CATALOG_TAG);
   redirect("/admin/urunler");
@@ -76,6 +85,65 @@ export async function quickUpdateProduct(fd: FormData) {
     await supabase.from("products").update(patch).eq("id", id);
     updateTag(CATALOG_TAG);
   }
+}
+
+// ---------------- BARKOD ----------------
+const cleanBarcode = (v: string) => {
+  const c = v.replace(/\s+/g, "").slice(0, 32);
+  return c || null;
+};
+
+export type BarcodeProduct = {
+  id: string;
+  name: string;
+  unit_label: string | null;
+  price: number;
+  sale_price: number | null;
+  stock: number;
+  image_url: string | null;
+  emoji: string | null;
+  is_active: boolean;
+  barcode: string;
+};
+
+export async function findByBarcode(code: string): Promise<BarcodeProduct | null> {
+  const { supabase } = await requireAdmin();
+  const c = cleanBarcode(code);
+  if (!c) return null;
+  const { data } = await supabase
+    .from("products")
+    .select("id,name,unit_label,price,sale_price,stock,image_url,emoji,is_active,barcode")
+    .eq("barcode", c)
+    .maybeSingle();
+  if (!data) return null;
+  return { ...data, price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price) } as BarcodeProduct;
+}
+
+export async function quickPriceUpdate(input: {
+  id: string;
+  price: string;
+  sale_price: string;
+  stock: string;
+}): Promise<{ ok: true; product: BarcodeProduct } | { ok: false; error: string }> {
+  const { supabase } = await requireAdmin();
+  const n = (v: string) => (v.trim() === "" ? null : Number(v.replace(",", ".")));
+  const price = n(input.price);
+  const sale = n(input.sale_price);
+  const stock = n(input.stock);
+  if (price == null || Number.isNaN(price) || price < 0) return { ok: false, error: "Geçerli bir fiyat gir." };
+  if (sale != null && (Number.isNaN(sale) || sale < 0 || sale >= price))
+    return { ok: false, error: "İndirimli fiyat normal fiyattan düşük olmalı (indirim yoksa boş bırak)." };
+  if (stock == null || !Number.isInteger(stock) || stock < 0) return { ok: false, error: "Stok tam sayı olmalı." };
+
+  const { data, error } = await supabase
+    .from("products")
+    .update({ price, sale_price: sale, stock })
+    .eq("id", input.id)
+    .select("id,name,unit_label,price,sale_price,stock,image_url,emoji,is_active,barcode")
+    .single();
+  if (error || !data) return { ok: false, error: "Kaydedilemedi: " + (error?.message ?? "ürün bulunamadı") };
+  updateTag(CATALOG_TAG);
+  return { ok: true, product: { ...data, price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price) } as BarcodeProduct };
 }
 
 // ---------------- KATEGORİLER ----------------

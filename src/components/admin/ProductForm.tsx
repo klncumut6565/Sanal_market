@@ -1,17 +1,20 @@
 "use client";
 import Link from "next/link";
 import { useActionState, useState } from "react";
-import { ImagePlus, Loader2, X } from "lucide-react";
+import { ImagePlus, Loader2, ScanBarcode, X } from "lucide-react";
+import { BarcodeScanner } from "./BarcodeScanner";
 import { createClient } from "@/lib/supabase/client";
 import { saveProduct, type ActionState } from "@/app/admin/actions";
 import type { Category, Product } from "@/lib/types";
 import { ProductImage } from "@/components/shop/ProductImage";
 
-export function ProductForm({ product, categories }: { product?: Product; categories: Category[] }) {
+export function ProductForm({ product, categories, initialBarcode }: { product?: Product; categories: Category[]; initialBarcode?: string }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveProduct, {});
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [barcode, setBarcode] = useState(product?.barcode ?? initialBarcode ?? "");
+  const [scanning, setScanning] = useState(false);
 
   async function upload(file: File) {
     setUploadError(null);
@@ -28,6 +31,15 @@ export function ProductForm({ product, categories }: { product?: Product; catego
 
   return (
     <form action={action} className="space-y-4">
+      {scanning && (
+        <BarcodeScanner
+          onResult={(code) => {
+            setBarcode(code);
+            setScanning(false);
+          }}
+          onClose={() => setScanning(false)}
+        />
+      )}
       {product && <input type="hidden" name="id" value={product.id} />}
       <input type="hidden" name="image_url" value={imageUrl} />
 
@@ -56,6 +68,14 @@ export function ProductForm({ product, categories }: { product?: Product; catego
           <F label="Birim (ör. 1 kg, 500 g, 1 L)"><input name="unit_label" defaultValue={product?.unit_label ?? ""} className="input" /></F>
           <F label="Emoji (görsel yoksa)"><input name="emoji" defaultValue={product?.emoji ?? ""} maxLength={4} className="input" /></F>
           <F label="Bağlantı adı (slug)"><input name="slug" defaultValue={product?.slug ?? ""} placeholder="Boşsa addan üretilir" className="input" /></F>
+          <F label="Barkod" className="sm:col-span-2">
+            <div className="flex gap-2">
+              <input name="barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" placeholder="Ör. 8690504012345" className="input font-mono" />
+              <button type="button" onClick={() => setScanning(true)} className="btn-ghost shrink-0 px-3" aria-label="Kamerayla barkod okut">
+                <ScanBarcode size={20} /> Okut
+              </button>
+            </div>
+          </F>
         </div>
       </section>
 

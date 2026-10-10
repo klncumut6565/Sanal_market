@@ -41,3 +41,10 @@
 - Çözüm: src/lib/supabase/env.ts içine proje URL + publishable key yedek değer olarak eklendi (herkese açık değerler).
 - Giriş/üyelik hataları Türkçeleştirildi (lib/auth-errors.ts), Türkçe hata sayfaları (app/error.tsx, global-error.tsx).
 - Açık: Supabase Auth → "Confirm email" kapatılmalı (varsayılan SMTP müşterilere e-posta göndermez); Site URL = https://sanalmarket.vercel.app; admin rolü ataması.
+
+## 2026-10-10 — Barkod, ayarlar
+- Admin: klncumut65@gmail.com (Umut Kılınç) → role=admin.
+- Ayarlar (Supabase'e yazıldı): whatsapp_phone=+905416735863 (DENEME, gerçek numarayla değişecek), delivery_fee=130 TL.
+- products.barcode (unique) eklendi. /admin/barkod: kamerayla (zxing, iOS Safari dahil) veya el okuyucuyla barkod → fiyat/indirim/stok hızlı güncelle; bulunamazsa "Yeni ürün olarak ekle" (barkod dolu gelir). Ürün formunda barkod alanı + "Okut" butonu; ürün listesinde barkodla arama.
+- Kamera okuma sahte kamera ile test edildi (EAN-13 doğru okundu). Gerçek telefonla test kullanıcıda.
+- Telefon alanı: +90 sabit önek, 541 673 58 63 biçimi (components/PhoneInput.tsx, lib/phone.ts), +905xxxxxxxxx olarak saklanır.
