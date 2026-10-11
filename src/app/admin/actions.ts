@@ -288,9 +288,7 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
     .filter(Boolean);
   if (slots.length === 0) return { error: "En az bir teslimat saati girin." };
 
-  const { error } = await supabase
-    .from("store_settings")
-    .update({
+  const row = {
       store_name: str(fd, "store_name") || "Sanal Market",
       phone: str(fd, "phone") || null,
       address: str(fd, "address") || null,
@@ -310,8 +308,14 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
       sla_accept_min: sla[0],
       sla_prepare_min: sla[1],
       sla_delivery_min: sla[2],
-    })
-    .eq("id", 1);
+  };
+  let { error } = await supabase.from("store_settings").update(row).eq("id", 1);
+  // Sesli asistan sütunları veritabanına henüz eklenmediyse diğer ayarları yine de kaydet
+  if (error && /voice_/.test(error.message)) {
+    const { voice_enabled: _a, voice_daily_limit: _b, voice_hourly_per_user: _c, ...rest } = row;
+    void _a; void _b; void _c;
+    ({ error } = await supabase.from("store_settings").update(rest).eq("id", 1));
+  }
   if (error) return { error: error.message };
   updateTag(SETTINGS_TAG);
   return { ok: "Ayarlar kaydedildi" };
