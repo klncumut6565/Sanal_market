@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
-import { createMarketToolRunner } from "./marketToolRunner";
+import { createMarketToolRunner, type CartProposal } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture } from "./audioStream";
 import { hataTurkce } from "./hatalar";
@@ -42,6 +42,8 @@ export function useMarketVoice(settings: VoiceSettings) {
   const lastSpeech = useRef(0);
   const timers = useRef<ReturnType<typeof setInterval>[]>([]);
   const actionId = useRef(0);
+  const proposalRef = useRef<CartProposal | null>(null);
+  const userTurn = useRef(0);
   const settingsRef = useRef(settings);
   useEffect(() => {
     settingsRef.current = settings;
@@ -66,7 +68,18 @@ export function useMarketVoice(settings: VoiceSettings) {
   // ------------------------------ Araçlar ------------------------------
   const runTool = useCallback(
     (name: string, args: Record<string, unknown>) =>
-      createMarketToolRunner({ getSettings: () => settingsRef.current, navigate: (p) => router.push(p), log })(name, args),
+      createMarketToolRunner({
+        getSettings: () => settingsRef.current,
+        navigate: (p) => router.push(p),
+        log,
+        gate: {
+          get: () => proposalRef.current,
+          set: (p) => {
+            proposalRef.current = p;
+          },
+          currentTurn: () => userTurn.current,
+        },
+      })(name, args),
     [router, log],
   );
 
@@ -98,6 +111,7 @@ export function useMarketVoice(settings: VoiceSettings) {
     setActions([]);
     userBuf.current = "";
     asstBuf.current = "";
+    proposalRef.current = null;
     set("connecting");
 
     const provider = new GeminiLiveProvider(MARKET_TOOLS, MARKET_VOICE_INSTRUCTION);
@@ -115,10 +129,13 @@ export function useMarketVoice(settings: VoiceSettings) {
         if (e.type !== "partial") return;
         if (e.speaker === "user") {
           if (!userBuf.current) {
+            userTurn.current += 1;
             asstBuf.current = "";
             setAssistantText("");
           }
           userBuf.current += e.text;
+          const pend = proposalRef.current;
+          if (pend && userTurn.current > pend.turnSeq) pend.reply += e.text;
           setUserText(userBuf.current);
           go("user_speaking");
         } else {

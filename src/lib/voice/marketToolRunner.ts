@@ -6,6 +6,35 @@ import { hoursState } from "@/lib/hours";
 import type { Product } from "@/lib/types";
 import type { VoiceSettings, VoiceAction } from "./useMarketVoice";
 
+/** Sepet onayı: öneri bekletilir, müşterinin SONRAKİ konuşmasında açık "evet" aranır. */
+export type CartProposal = {
+  items: { product: Product; qty: number }[];
+  /** Öneri anındaki kullanıcı konuşma sırası; yalnızca daha sonraki konuşmalar onay sayılır. */
+  turnSeq: number;
+  /** Öneriden sonra müşterinin söyledikleri (transkript). */
+  reply: string;
+};
+export type CartGate = {
+  get: () => CartProposal | null;
+  set: (p: CartProposal | null) => void;
+  currentTurn: () => number;
+};
+
+const trNorm = (t: string) => t.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, " ").trim();
+// JS \b Türkçe harflerle çalışmadığı için kelime listesiyle kontrol.
+const RED_KOK = ["bekle", "dur", "hayır", "hayir", "istemiyorum", "istemem", "vazgeç", "vazgec", "iptal", "düşün", "dusun", "şimdilik", "simdilik", "sonra", "olmasın", "olmasin", "ekleme", "yok", "değil", "degil"];
+const ONAY_KELIME = new Set(["evet", "ekle", "ekleyin", "ekleyebilirsin", "eklensin", "eklesene", "olur", "tamam", "tamamdır", "onaylıyorum", "onay", "tabi", "tabii", "tabiki", "aynen", "kesinlikle", "lütfen", "he", "hıhı", "peki", "yes", "ok", "okey"]);
+export function replyIntent(text: string): "red" | "onay" | "belirsiz" {
+  const w = trNorm(text).split(" ").filter(Boolean);
+  if (w.some((x) => RED_KOK.some((k) => x.startsWith(k)))) return "red";
+  if (w.some((x) => ONAY_KELIME.has(x))) return "onay";
+  return "belirsiz";
+}
+
+function cartLabel(p: Product, qty: number) {
+  return `${qty} × ${p.name}${p.unit_label ? ` (${p.unit_label})` : ""}`;
+}
+
 const PRODUCT_COLS = "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,emoji,is_active,is_featured,sort_order";
 const num = (p: Product): Product => ({ ...p, price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price) });
 
@@ -13,8 +42,9 @@ export function createMarketToolRunner(deps: {
   getSettings: () => VoiceSettings;
   navigate: (path: string) => void;
   log: (text: string, kind: VoiceAction["kind"]) => void;
+  gate: CartGate;
 }) {
-  const { getSettings, navigate, log } = deps;
+  const { getSettings, navigate, log, gate } = deps;
   return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
     const sb = createClient();
     const cart = useCart.getState();
@@ -88,37 +118,86 @@ export function createMarketToolRunner(deps: {
       };
     }
 
-    if (name === "add_to_cart") {
-      if (args.customer_confirmed !== true) {
-        return {
-          ok: false,
-          added: 0,
-          error: "EKLENMEDİ: müşteri henüz onaylamadı. Müşteriye 'sepete ekleyeyim mi?' diye sor ve cevabını bekle. 'Eklendi' DEME.",
-        };
+    if (name === "propose_cart_items") {
+      const raw = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
+      const want = new Map<string, number>();
+      for (const it of raw.slice(0, 15)) {
+        const id = String(it?.product_id ?? "");
+        if (!/^[0-9a-f-]{36}$/i.test(id)) continue;
+        const q = Math.max(1, Math.min(50, Math.trunc(Number(it?.quantity) || 1)));
+        want.set(id, (want.get(id) ?? 0) + q);
       }
-      const id = String(args.product_id ?? "");
-      const qty = Math.max(1, Math.min(50, Math.trunc(Number(args.quantity) || 1)));
-      if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Geçersiz ürün. Önce search_products ile ara." };
-      const { data } = await sb.from("products").select(PRODUCT_COLS).eq("id", id).eq("is_active", true).maybeSingle();
-      if (!data) return { error: "Ürün bulunamadı veya satışta değil." };
-      const p = num(data as Product);
-      const max = Math.min(p.stock, p.max_per_order);
-      if (max < 1) return { error: `${p.name} şu an stokta yok.`, available: false };
-      const cur = cart.lines.find((l) => l.id === p.id)?.qty ?? 0;
-      const target = Math.min(cur + qty, max);
-      if (cur === 0) cart.add(p);
-      useCart.getState().setQty(p.id, target);
-      const added = target - cur;
-      if (added > 0) log(`🛒 ${added} × ${p.name}${p.unit_label ? ` (${p.unit_label})` : ""} eklendi`, "add");
+      if (!want.size) return { ok: false, error: "Geçerli ürün yok. Önce search_products ile ara." };
+      const { data } = await sb.from("products").select(PRODUCT_COLS).in("id", [...want.keys()]).eq("is_active", true);
+      const items: CartProposal["items"] = [];
+      const problems: string[] = [];
+      for (const row of (data ?? []) as Product[]) {
+        const p = num(row);
+        const cur = cart.lines.find((l) => l.id === p.id)?.qty ?? 0;
+        const room = Math.min(p.stock, p.max_per_order) - cur;
+        const req = want.get(p.id) ?? 1;
+        if (room < 1) {
+          problems.push(p.stock < 1 ? `${p.name} stokta yok` : `${p.name} için sınır dolu`);
+          continue;
+        }
+        if (req > room) problems.push(`${p.name}: en fazla ${room} eklenebilir`);
+        items.push({ product: p, qty: Math.min(req, room) });
+      }
+      if (want.size > (data ?? []).length) problems.push("bazı ürünler bulunamadı");
+      if (!items.length) {
+        gate.set(null);
+        return { ok: false, error: "Önerilecek uygun ürün yok.", problems };
+      }
+      gate.set({ items, turnSeq: gate.currentTurn(), reply: "" });
+      log(`❓ Onay bekleniyor: ${items.map((i) => cartLabel(i.product, i.qty)).join(", ")}`, "info");
+      const total = items.reduce((t, i) => t + (i.product.sale_price ?? i.product.price) * i.qty, 0);
       return {
-        ok: added > 0,
-        product: p.name,
-        unit: p.unit_label,
-        requested: qty,
+        ok: true,
+        status: "ONAY_BEKLENIYOR — henüz EKLENMEDİ",
+        proposed: items.map((i) => ({ name: i.product.name, unit: i.product.unit_label, quantity: i.qty, unit_price: i.product.sale_price ?? i.product.price })),
+        total: +total.toFixed(2),
+        problems: problems.length ? problems : undefined,
+        next: "Müşteriye bu ürünleri miktarıyla söyle ve 'Sepete eklensin mi?' diye sor. Cevabı bekle.",
+      };
+    }
+
+    if (name === "confirm_cart_items") {
+      const pend = gate.get();
+      if (!pend) return { ok: false, added: [], error: "Bekleyen öneri yok. Önce propose_cart_items çağır ve müşteriye sor." };
+      const reply = trNorm(pend.reply);
+      if (!reply) {
+        return { ok: false, added: [], error: "EKLENMEDİ: müşteri henüz cevap vermedi. 'Sepete eklensin mi?' diye sor ve bekle." };
+      }
+      const intent = replyIntent(reply);
+      if (intent === "red") {
+        gate.set(null);
+        return { ok: false, added: [], error: `EKLENMEDİ: müşteri onay vermedi ("${pend.reply.trim()}"). 'Tamam, bekliyorum' de.` };
+      }
+      if (intent !== "onay") {
+        return { ok: false, added: [], error: `EKLENMEDİ: müşterinin cevabı açık bir onay değil ("${pend.reply.trim()}"). 'Sepete eklensin mi?' diye tekrar sor.` };
+      }
+      const added: { name: string; unit: string | null; quantity: number }[] = [];
+      const limited: string[] = [];
+      for (const { product: p, qty } of pend.items) {
+        const st = useCart.getState();
+        const cur = st.lines.find((l) => l.id === p.id)?.qty ?? 0;
+        const target = Math.min(cur + qty, Math.min(p.stock, p.max_per_order));
+        if (target <= cur) {
+          limited.push(p.name);
+          continue;
+        }
+        if (cur === 0) st.add(p);
+        useCart.getState().setQty(p.id, target);
+        added.push({ name: p.name, unit: p.unit_label, quantity: target - cur });
+        if (target - cur < qty) limited.push(p.name);
+      }
+      gate.set(null);
+      if (added.length) log(`🛒 Eklendi: ${added.map((a) => `${a.quantity} × ${a.name}`).join(", ")}`, "add");
+      return {
+        ok: added.length > 0,
         added,
-        in_cart: target,
-        unit_price: p.sale_price ?? p.price,
-        limited_by: added < qty ? (p.stock <= p.max_per_order ? `stok (${p.stock})` : `sipariş başına en fazla ${p.max_per_order}`) : undefined,
+        limited: limited.length ? limited : undefined,
+        say: added.length ? "Müşteriye 'Sepete şu ürünler eklendi: …' diyerek added listesini miktarlarıyla söyle." : "Hiçbir ürün eklenemedi; nedenini söyle.",
       };
     }
 
