@@ -92,3 +92,7 @@
 - Sesli asistan ilk kullanımda açık rıza ekranı (yurt dışı aktarım + Google) gösterir; onay localStorage "sanal-market-ses-onay-v1". Onaysız mikrofon/oturum açılmaz (test edildi).
 - KVKK bağlantıları: footer, ödeme onay kutusu, üye ol formu, asistan paneli.
 - Not: veri sorumlusunun resmi unvanı/MERSİS/e-posta henüz yok; metin hukukçuya gözden geçirtilmeli.
+
+## 2026-10-11 — Admin yavaşlığı
+- Teşhis (Supabase edge loglarından): Vercel fonksiyonları iad1 (ABD/Ashburn), veritabanı eu-central-1 (Frankfurt) → her istek 100–320 ms (DB işi 2–22 ms). Her admin geçişinde getUser + profiles iki kez (layout Gate + sayfa), 6–18 istek.
+- Çözüm: vercel.json regions ["fra1"]; getSessionUser/requireAdmin React cache() ile istek başına bir kez; getUser yerine getClaims (ES256 → yerel doğrulama, Auth'a ağ isteği yok); app/admin/loading.tsx iskelet ekranı.
