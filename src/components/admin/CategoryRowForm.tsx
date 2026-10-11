@@ -4,7 +4,7 @@ import { CATEGORY_EMOJIS } from "@/lib/categoryEmoji";
 import { deleteCategory, saveCategory, type ActionState } from "@/app/admin/actions";
 import type { Category } from "@/lib/types";
 
-export function CategoryRowForm({ category, productCount }: { category?: Category; productCount?: number }) {
+export function CategoryRowForm({ category, productCount, total }: { category?: Category; productCount?: number; total?: number }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCategory, {});
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const [pick, setPick] = useState(false);
@@ -23,7 +23,25 @@ export function CategoryRowForm({ category, productCount }: { category?: Categor
           {emoji || <span className="text-xs text-muted">simge</span>}
         </button>
         <input name="name" required defaultValue={category?.name} placeholder="Kategori adı" className="input min-w-40 flex-1" />
-        <input name="sort_order" type="number" defaultValue={category?.sort_order ?? 0} title="Sıra" className="input w-20" />
+        {category ? (
+          <label className="flex items-center gap-1.5 text-sm font-semibold" title="Diziliş sırası">
+            Sıra
+            <input name="sort_order" type="number" min={1} defaultValue={category.sort_order} className="input w-20" />
+          </label>
+        ) : (
+          <label className="flex w-full items-center gap-2 text-sm font-semibold">
+            Diziliş sırası
+            <input
+              name="sort_order"
+              type="number"
+              min={1}
+              max={(total ?? 0) + 1}
+              defaultValue={(total ?? 0) + 1}
+              className="input w-24"
+            />
+            <span className="text-xs font-normal text-muted">Yazdığın sıradaki ve sonraki kategoriler bir sıra aşağı kayar.</span>
+          </label>
+        )}
         <label className="flex items-center gap-1.5 text-sm font-semibold">
           <input type="checkbox" name="is_active" defaultChecked={category?.is_active ?? true} className="h-4 w-4 accent-brand" /> Aktif
         </label>

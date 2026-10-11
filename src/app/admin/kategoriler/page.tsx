@@ -18,7 +18,7 @@ export default async function CategoriesAdmin() {
       <h1 className="text-2xl font-black">Kategoriler</h1>
       <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Yeni kategori</h2>
-        <CategoryRowForm />
+        <CategoryRowForm total={(cats ?? []).length} />
       </div>
       <div className="space-y-2">
         {((cats ?? []) as Category[]).map((c) => (

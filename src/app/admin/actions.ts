@@ -288,18 +288,21 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
   const id = str(fd, "id");
   const name = str(fd, "name");
   if (name.length < 2) return { error: "Kategori adı girin." };
+  const pos = Math.trunc(numOrNull(fd, "sort_order") ?? 0);
   const row = {
     name,
     slug: slugify(str(fd, "slug") || name),
     emoji: str(fd, "emoji") || guessCategoryEmoji(name),
-    sort_order: Math.trunc(numOrNull(fd, "sort_order") ?? 0),
     is_active: fd.get("is_active") === "on",
   };
-  const { error } = id
-    ? await supabase.from("categories").update(row).eq("id", id)
-    : await supabase.from("categories").insert(row);
-  if (error) return { error: error.code === "23505" ? "Bu kategori zaten var." : error.message };
+  const res = id
+    ? await supabase.from("categories").update(row).eq("id", id).select("id").single()
+    : await supabase.from("categories").insert({ ...row, sort_order: 9999 }).select("id").single();
+  if (res.error) return { error: res.error.code === "23505" ? "Bu kategori zaten var." : res.error.message };
+  // İstenen sıraya yerleştir; o sıradaki ve sonrakiler bir kayar (boşsa en sona)
+  const { error: posErr } = await supabase.rpc("admin_place_category", { p_id: res.data.id, p_pos: pos > 0 ? pos : null });
   updateTag(CATALOG_TAG);
+  if (posErr) return { error: "Kaydedildi ama sıra ayarlanamadı: " + posErr.message };
   return { ok: id ? "Güncellendi" : "Eklendi" };
 }
 
