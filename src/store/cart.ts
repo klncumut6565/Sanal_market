@@ -96,12 +96,14 @@ export function useCartHydrated() {
 export const lineUnit = (l: Pick<CartLine, "price" | "sale_price">) => Number(l.sale_price ?? l.price);
 
 export function cartTotals(lines: CartLine[], fee: number, freeThreshold: number) {
-  const count = lines.reduce((a, l) => a + l.qty, 0);
+  // Rozetlerde ürün ÇEŞİDİ sayısı gösterilir (2 × domates = 1 ürün), toplam adet ayrı
+  const count = lines.length;
+  const units = lines.reduce((a, l) => a + l.qty, 0);
   const subtotal = lines.reduce((a, l) => a + lineUnit(l) * l.qty, 0);
   const savings = lines.reduce(
     (a, l) => a + (l.sale_price != null ? (l.price - l.sale_price) * l.qty : 0),
     0,
   );
   const delivery = count === 0 || subtotal >= freeThreshold ? 0 : fee;
-  return { count, subtotal, savings, delivery, total: subtotal + delivery };
+  return { count, units, subtotal, savings, delivery, total: subtotal + delivery };
 }

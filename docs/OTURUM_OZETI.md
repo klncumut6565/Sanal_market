@@ -108,3 +108,4 @@
   - PGlite ile test edildi (çift gönderim tek sipariş/tek stok düşümü, geçişler, limit).
   - Yapılmayanlar (gereksiz/düşük öncelik): konuşmacı ayrımı, ses oturumu yeniden bağlanma, kapsamlı test altyapısı.
 - Onay tekrar sorma hatası: müşterinin "eklensin" sözünün yazıya dökümü araç çağrısından sonra geliyordu → confirm_cart_items 3 sn'ye kadar transkripti bekler; "ekle…" ile başlayan (ekleme… hariç) ve "evet…" kelimeleri onay sayılır.
+- Sepet rozeti artık ürün ÇEŞİDİ sayısını gösterir (2 × 1 kg domates = 1); toplam adet cartTotals().units.
