@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Loader2, Mic, MicOff, X } from "lucide-react";
@@ -18,6 +18,7 @@ const STATUS: Record<string, string> = {
   error: "",
 };
 
+export const OPEN_EVENT = "sesli-asistan:ac";
 const CONSENT_KEY = "sanal-market-ses-onay-v1";
 const hasConsent = () => {
   try {
@@ -33,12 +34,28 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   const [open, setOpen] = useState(false);
   const [needConsent, setNeedConsent] = useState(false);
   const v = useMarketVoice(settings);
+  const vStart = v.start;
   const ready = useCartHydrated();
   const hasCart = useCart((s) => s.lines.length > 0);
   const active = v.state !== "idle" && v.state !== "error";
   const path = usePathname();
   // Sepet/ödeme sayfalarında alttaki sabit butonla çakışmasın
   const hideButton = path.startsWith("/odeme") || path.startsWith("/sepet") || path.startsWith("/kvkk");
+
+  // Sayfadaki diğer "Sesli sipariş" butonları (ör. ana sayfa bandı) bu olayla asistanı açar.
+  const openAssistant = useCallback(() => {
+    setOpen(true);
+    if (!hasConsent()) {
+      setNeedConsent(true);
+      return;
+    }
+    void vStart(); // dokunuş içinde başlat (mikrofon + ses izni için şart)
+  }, [vStart]);
+  useEffect(() => {
+    const h = () => openAssistant();
+    window.addEventListener(OPEN_EVENT, h);
+    return () => window.removeEventListener(OPEN_EVENT, h);
+  }, [openAssistant]);
 
   const close = () => {
     void v.stop();
@@ -49,14 +66,7 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
     <>
       {!open && !hideButton && (
         <button
-          onClick={() => {
-            setOpen(true);
-            if (!hasConsent()) {
-              setNeedConsent(true);
-              return;
-            }
-            void v.start(); // dokunuş içinde başlat (mikrofon + ses izni için şart)
-          }}
+          onClick={openAssistant}
           aria-label="Sesli sipariş asistanı"
           className={`fixed right-4 z-30 flex items-center gap-2 rounded-full bg-ink py-3 pl-3 pr-4 text-sm font-bold text-white shadow-xl ring-4 ring-white transition hover:scale-105 lg:bottom-6 ${
             ready && hasCart ? "bottom-24" : "bottom-6"
@@ -83,7 +93,7 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
               <div className="space-y-3 text-sm">
                 <p className="leading-relaxed opacity-90">
                   Sesli asistan, konuşmanı anlamak için sesini <b>Google</b>&apos;ın Gemini yapay zekâ hizmetine iletir; bu hizmetin sunucuları <b>yurt dışında</b>{" "}
-                  olabilir. Ses kayıtların bizim sistemlerimizde saklanmaz. Asistana adres, telefon veya ödeme bilgisi söyleme.
+                  olabilir. Ses kayıtların bizim sistemlerimizde saklanmaz.
                 </p>
                 <Link href="/kvkk#sesli-asistan" onClick={() => setOpen(false)} className="inline-block font-bold text-brand underline underline-offset-2">
                   KVKK Aydınlatma Metni → Sesli asistan

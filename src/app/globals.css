@@ -54,3 +54,8 @@ body {
 .btn-ghost {
   @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-white px-4 py-2.5 font-medium transition hover:border-brand hover:text-brand;
 }
+
+@keyframes fadein {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}

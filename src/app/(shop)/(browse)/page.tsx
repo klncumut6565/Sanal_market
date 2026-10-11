@@ -4,6 +4,7 @@ import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { getCategories, getProducts, getStoreSettings } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
+import { VoicePromo } from "@/components/shop/VoicePromo";
 
 export default async function HomePage() {
   const [categories, products, s] = await Promise.all([getCategories(), getProducts(), getStoreSettings()]);
@@ -12,6 +13,7 @@ export default async function HomePage() {
 
   return (
     <div className="space-y-7">
+      {s.voice_enabled !== false && <VoicePromo />}
       <section className="relative overflow-hidden rounded-3xl bg-ink p-5 text-white sm:p-7">
         <div aria-hidden className="absolute -right-24 -top-28 h-72 w-72 rounded-full border-[14px] border-brand/35 sm:-right-16 sm:-top-20 sm:border-brand/70" />
         <div className="relative z-10 flex items-center gap-4">
