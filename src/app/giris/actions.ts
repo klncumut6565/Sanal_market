@@ -1,5 +1,6 @@
 "use server";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { authErrorTR } from "@/lib/auth-errors";
 import { normalizeTrMobile } from "@/lib/phone";
@@ -62,6 +63,58 @@ export async function signUp(_: AuthState, fd: FormData): Promise<AuthState> {
     return { error: "Kayıt şu an yapılamıyor. Lütfen biraz sonra tekrar dene." };
   }
   redirect(safeNext(fd.get("next")));
+}
+
+async function siteOrigin() {
+  const env = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (env) return env;
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "sanalmarket.vercel.app";
+  const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
+/** "Şifremi unuttum": e-postaya şifre yenileme bağlantısı gönderir.
+ *  Hesap olup olmadığını belli etmemek için her durumda aynı mesaj gösterilir. */
+export async function requestPasswordReset(_: AuthState, fd: FormData): Promise<AuthState> {
+  const email = String(fd.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Geçerli bir e-posta adresi gir." };
+  try {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${await siteOrigin()}/auth/confirm?next=/sifre-yenile`,
+    });
+    if (error) {
+      const msg = authErrorTR(error);
+      if (msg.startsWith("Çok fazla")) return { error: msg };
+      console.error("[giris] reset:", error.code, error.message);
+    }
+  } catch (e) {
+    console.error("[giris] reset:", e);
+    return { error: "Şu an e-posta gönderilemiyor. Lütfen biraz sonra tekrar dene." };
+  }
+  return {
+    info: "Bu e-postaya kayıtlı bir hesap varsa şifre yenileme bağlantısı gönderdik. Gelen kutunu (gereksiz/spam dahil) kontrol et; bağlantı 1 saat geçerli.",
+  };
+}
+
+/** Yenileme bağlantısıyla açılan oturumda yeni şifreyi kaydeder. */
+export async function updatePassword(_: AuthState, fd: FormData): Promise<AuthState> {
+  const password = String(fd.get("password") ?? "");
+  const again = String(fd.get("password2") ?? "");
+  if (password.length < 8) return { error: "Şifre en az 8 karakter olmalı." };
+  if (password !== again) return { error: "Şifreler aynı değil." };
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) return { error: "Şifre yenileme bağlantısının süresi dolmuş. Lütfen yeniden bağlantı iste." };
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { error: authErrorTR(error) };
+  } catch (e) {
+    console.error("[giris] updatePassword:", e);
+    return { error: "Şifre şu an değiştirilemiyor. Lütfen biraz sonra tekrar dene." };
+  }
+  redirect("/siparislerim?sifre=yenilendi");
 }
 
 export async function signOut() {

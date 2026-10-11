@@ -10,15 +10,22 @@ import { DeviceOrders } from "./DeviceOrders";
 
 export const metadata = { title: "Siparişlerim" };
 
-export default function MyOrdersPage() {
+export default function MyOrdersPage({ searchParams }: { searchParams: Promise<{ sifre?: string }> }) {
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
       <h1 className="text-2xl font-black">Siparişlerim</h1>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white" />}>
+        <PasswordNotice searchParams={searchParams} />
         <AccountOrders />
       </Suspense>
     </div>
   );
+}
+
+async function PasswordNotice({ searchParams }: { searchParams: Promise<{ sifre?: string }> }) {
+  const { sifre } = await searchParams;
+  if (sifre !== "yenilendi") return null;
+  return <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">✓ Şifren yenilendi ve giriş yaptın.</p>;
 }
 
 async function AccountOrders() {

@@ -15,6 +15,10 @@ export function authErrorTR(err: { code?: string; message?: string; status?: num
     return "Geçerli bir e-posta adresi gir.";
   if (code.startsWith("over_") || err?.status === 429 || msg.includes("rate limit"))
     return "Çok fazla deneme yapıldı. Lütfen birkaç dakika sonra tekrar dene.";
+  if (code === "same_password" || msg.includes("should be different"))
+    return "Yeni şifre eskisiyle aynı olamaz.";
+  if (code === "session_not_found" || code === "session_expired" || msg.includes("auth session missing"))
+    return "Şifre yenileme bağlantısının süresi dolmuş. Lütfen yeniden bağlantı iste.";
   if (code === "signup_disabled") return "Yeni üyelik şu an kapalı.";
   if (code === "user_banned") return "Bu hesap kullanıma kapatılmış.";
   if (code === "email_address_not_authorized")
