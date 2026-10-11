@@ -16,13 +16,13 @@ export function CartPageClient({ settings }: { settings: StoreSettings }) {
     );
   const blocked = s.belowMin || s.closed;
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4 pb-44 lg:pb-28">
       <div className="rounded-2xl bg-white px-4 ring-1 ring-line"><CartLines /></div>
       <FreeDeliveryBar subtotal={s.subtotal} threshold={settings.free_delivery_threshold} />
       <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
         <Totals subtotal={s.subtotal} delivery={s.delivery} savings={s.savings} total={s.total} />
       </div>
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+      <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] lg:bottom-0 z-30 border-t border-line bg-white p-3">
         <div className="mx-auto max-w-2xl">
           {s.belowMin && (
             <p className="mb-2 text-center text-xs font-semibold text-muted">

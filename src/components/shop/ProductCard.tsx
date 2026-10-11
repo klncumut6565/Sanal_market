@@ -4,6 +4,7 @@ import { discountRate } from "@/lib/format";
 import { AddToCart } from "./AddToCart";
 import { Price } from "./Price";
 import { ProductImage } from "./ProductImage";
+import { FavoriteButton } from "./FavoriteButton";
 
 export function ProductCard({ product }: { product: Product }) {
   const off = discountRate(product);
@@ -18,6 +19,7 @@ export function ProductCard({ product }: { product: Product }) {
           %{off}
         </span>
       )}
+      <FavoriteButton id={product.id} name={product.name} className="absolute right-3.5 top-3.5" />
       {soldOut && (
         <span className="absolute left-1/2 top-[38%] -translate-x-1/2 rounded-full bg-ink/80 px-3 py-1 text-xs font-bold text-white">
           Tükendi

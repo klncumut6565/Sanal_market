@@ -4,6 +4,7 @@ import { Header } from "@/components/shop/Header";
 import { getStoreSettings } from "@/lib/data/catalog";
 import { Brand } from "@/components/Brand";
 import { VoiceAssistant } from "@/components/shop/VoiceAssistant";
+import { BottomNav } from "@/components/shop/BottomNav";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,9 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <Footer />
       <Suspense fallback={null}>
         <Voice />
+      </Suspense>
+      <Suspense fallback={null}>
+        <BottomNav />
       </Suspense>
     </>
   );
@@ -27,7 +31,7 @@ async function Voice() {
 async function Footer() {
   const s = await getStoreSettings();
   return (
-    <footer className="mt-10 border-t border-line bg-white pb-24 lg:pb-0">
+    <footer className="mt-10 border-t border-line bg-white pb-44 lg:pb-0">
       <div className="mx-auto grid max-w-[1320px] gap-2 px-4 py-6 text-sm text-muted sm:grid-cols-3">
         <div>
           <Brand size="sm" />

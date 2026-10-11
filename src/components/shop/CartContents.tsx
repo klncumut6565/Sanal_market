@@ -153,7 +153,7 @@ export function MobileCartBar({ settings }: Props) {
   const s = useCartSummary(settings);
   if (s.count === 0) return null;
   return (
-    <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-white p-3 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden">
+    <div className="fixed inset-x-0 bottom-[calc(60px+env(safe-area-inset-bottom))] lg:bottom-0 z-30 border-t border-line bg-white p-3 lg:hidden">
       <Link href="/sepet" className="btn-primary w-full justify-between">
         <span className="grid h-7 min-w-7 place-items-center rounded-lg bg-white/20 px-1.5 text-sm">{s.count}</span>
         <span>Sepete git</span>

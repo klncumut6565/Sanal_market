@@ -69,7 +69,7 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
           onClick={openAssistant}
           aria-label="Sesli sipariş asistanı"
           className={`fixed right-4 z-30 flex items-center gap-2 rounded-full bg-ink py-3 pl-3 pr-4 text-sm font-bold text-white shadow-xl ring-4 ring-white transition hover:scale-105 lg:bottom-6 ${
-            ready && hasCart ? "bottom-24" : "bottom-6"
+            ready && hasCart ? "bottom-[calc(136px+env(safe-area-inset-bottom))]" : "bottom-[calc(72px+env(safe-area-inset-bottom))]"
           }`}
         >
           <span className="grid h-8 w-8 place-items-center rounded-full bg-brand">
