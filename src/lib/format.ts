@@ -62,7 +62,7 @@ export function orderErrorMessage(raw: string): string {
     case "BOLGE_DISI":
       return "Şu an yalnızca Çorlu'ya teslimat yapıyoruz.";
     case "MAHALLE_GECERSIZ":
-      return "Lütfen geçerli bir mahalle seçin.";
+      return "Seçtiğin mahalleye şu an teslimat yapmıyoruz. Lütfen başka bir mahalle seç.";
     case "SOKAK_GECERSIZ":
       return "Lütfen cadde / sokak seçin veya yazın.";
     case "KAPI_NO_EKSIK":

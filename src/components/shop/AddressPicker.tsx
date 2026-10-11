@@ -95,7 +95,15 @@ export function AddressPicker({ areas, value, onChange }: { areas: DeliveryAreas
         group={district ? `${district.name} / Tekirdağ` : "Tekirdağ"}
         value={value.neighborhood_id}
         searchPlaceholder="Mahalle ara"
-        options={neighborhoods.map((n) => ({ value: String(n.id), label: `${n.name} Mah.` }))}
+        options={[...neighborhoods]
+          .sort((a, b) => (a.semt ?? "~").localeCompare(b.semt ?? "~", "tr") || a.name.localeCompare(b.name, "tr"))
+          .map((n) => ({
+            value: String(n.id),
+            label: `${n.name} Mah.`,
+            section: n.semt ?? undefined,
+            disabled: !n.is_active,
+            hint: n.is_active ? undefined : "teslimat yok",
+          }))}
         onSelect={(v) => v !== value.neighborhood_id && set({ neighborhood_id: v, street_id: "", street_text: "" })}
         onClose={close}
       />

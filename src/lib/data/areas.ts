@@ -6,7 +6,7 @@ export const AREAS_TAG = "areas";
 
 export type DeliveryAreas = {
   districts: { id: number; name: string; is_active: boolean }[];
-  neighborhoods: { id: number; district_id: number; name: string }[];
+  neighborhoods: { id: number; district_id: number; name: string; semt: string | null; is_active: boolean }[];
   streets: { id: number; neighborhood_id: number; name: string }[];
 };
 
@@ -18,7 +18,8 @@ export async function getDeliveryAreas(): Promise<DeliveryAreas> {
   const sb = createPublicClient();
   const [d, n] = await Promise.all([
     sb.from("delivery_districts").select("id,name,is_active").order("sort_order"),
-    sb.from("delivery_neighborhoods").select("id,district_id,name").eq("is_active", true).order("name"),
+    // Pasif mahalleler de gelir: listede "teslimat yok" diye soluk gösterilir
+    sb.from("delivery_neighborhoods").select("id,district_id,name,semt,is_active").order("name"),
   ]);
   const streets: DeliveryAreas["streets"] = [];
   for (let from = 0; from < 20000; from += 1000) {

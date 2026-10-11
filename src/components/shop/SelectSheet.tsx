@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, ChevronLeft, Search } from "lucide-react";
 
-export type SheetOption = { value: string; label: string; disabled?: boolean; hint?: string };
+export type SheetOption = { value: string; label: string; disabled?: boolean; hint?: string; /** Alt grup başlığı (ör. semt) */ section?: string };
 
 const norm = (t: string) =>
   t
@@ -135,10 +135,16 @@ export function SelectSheet({
       )}
 
       <ul className="flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
-        {list.map((o) => {
+        {list.map((o, i) => {
           const sel = o.value === value;
+          const newSection = o.section && o.section !== list[i - 1]?.section;
           return (
             <li key={o.value} className="border-b border-line/70 last:border-0">
+              {newSection && (
+                <div className="sticky top-0 z-10 border-b border-line bg-white/95 px-4 pb-2 pt-4 backdrop-blur">
+                  <span className="text-[17px] font-extrabold">{o.section}</span> <span className="text-sm text-muted">(Semt)</span>
+                </div>
+              )}
               <button
                 type="button"
                 disabled={o.disabled}
@@ -146,7 +152,7 @@ export function SelectSheet({
                   onSelect(o.value);
                   close();
                 }}
-                className="flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left text-[17px] active:bg-bg disabled:opacity-45"
+                className={`flex w-full items-center justify-between gap-3 py-3.5 pr-4 text-left text-[17px] active:bg-bg disabled:opacity-45 ${o.section ? "pl-7" : "pl-4"}`}
               >
                 <span className="min-w-0">
                   <span className={sel ? "font-bold" : ""}>{o.label}</span>

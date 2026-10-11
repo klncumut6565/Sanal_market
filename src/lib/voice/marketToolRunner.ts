@@ -360,7 +360,7 @@ export function createMarketToolRunner(deps: {
         free_delivery_over: s.free_delivery_threshold,
         min_order: s.min_order_amount,
         payment: "Kapıda nakit veya kapıda kartla (POS) ödeme",
-        delivery_area: "Tekirdağ / Çorlu",
+        delivery_area: "Tekirdağ / Çorlu (köy mahalleleri, Silahtarağa ve Yenice hariç)",
       };
     }
 

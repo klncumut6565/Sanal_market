@@ -24,7 +24,7 @@ function loadSaved(areas: DeliveryAreas) {
     let address = empty.address;
     // Kayıtlı adres hâlâ geçerliyse geri yükle
     const a = s.addr as AddressValue | undefined;
-    if (a && areas.neighborhoods.some((n) => String(n.id) === a.neighborhood_id)) {
+    if (a && areas.neighborhoods.some((n) => n.is_active && String(n.id) === a.neighborhood_id)) {
       const streetOk = a.street_id === OTHER || areas.streets.some((st) => String(st.id) === a.street_id);
       address = { ...empty.address, ...a, street_id: streetOk ? a.street_id : "", street_text: streetOk ? a.street_text : "" };
     }
