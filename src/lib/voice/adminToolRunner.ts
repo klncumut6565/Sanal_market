@@ -1,6 +1,7 @@
 "use client";
 // Yönetim paneli sesli asistanının araçları — tarayıcıda, admin oturumuyla (RLS) salt okunur sorgular.
 import { createClient } from "@/lib/supabase/client";
+import { fetchDiscounts } from "./discounts";
 import { addDays, businessDateOf, businessDateStart, hoursState, isYmd, reportRanges } from "@/lib/hours";
 
 type Sb = ReturnType<typeof createClient>;
@@ -301,6 +302,10 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         free_delivery_over: Number(s.free_delivery_threshold),
         min_order: Number(s.min_order_amount),
       };
+    }
+
+    if (name === "get_discounted_products") {
+      return fetchDiscounts(sb, { includeInactive: args.include_inactive === true, query: args.query ? String(args.query) : undefined, limit: 30 });
     }
 
     if (name === "go_to_page") {

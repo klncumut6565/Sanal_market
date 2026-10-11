@@ -5,6 +5,7 @@ import { useCart, cartTotals, lineUnit } from "@/store/cart";
 import { hoursState } from "@/lib/hours";
 import type { Product } from "@/lib/types";
 import type { VoiceSettings, VoiceAction } from "./useMarketVoice";
+import { fetchDiscounts } from "./discounts";
 import { halusinasyonMu, kisaYankiMi, yankiMi } from "./halusinasyon";
 
 /** Sepet onayı: öneri bekletilir, müşterinin SONRAKİ konuşmasında açık "evet" aranır. */
@@ -149,6 +150,26 @@ export function createMarketToolRunner(deps: {
           low_stock: p.stock > 0 && p.stock <= p.critical_stock ? p.stock : undefined,
           category: p.category_id ? catName.get(p.category_id) : undefined,
           in_cart: cart.lines.find((l) => l.id === p.id)?.qty ?? 0,
+        })),
+      };
+    }
+
+    if (name === "list_discounted_products") {
+      const r = await fetchDiscounts(sb, { query: args.query ? String(args.query) : undefined, limit: 15 });
+      if ("error" in r) return r;
+      // Müşteriye stok adedi gösterme; yalnızca var/yok
+      return {
+        ...r,
+        products: r.products.map((p) => ({
+          product_id: p.product_id,
+          name: p.name,
+          unit: p.unit,
+          category: p.category,
+          price: p.price,
+          sale_price: p.sale_price,
+          discount_pct: p.discount_pct,
+          available: p.in_stock,
+          in_cart: cart.lines.find((l) => l.id === p.product_id)?.qty ?? 0,
         })),
       };
     }

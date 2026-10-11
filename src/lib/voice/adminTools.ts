@@ -59,6 +59,19 @@ export const ADMIN_TOOLS = [
     parameters: { type: "object", properties: {} },
   },
   {
+    name: "get_discounted_products",
+    description:
+      "İndirimdeki ürünler: hangi üründe yüzde kaç indirim var, normal ve indirimli fiyat, stok durumu. En yüksek indirimden başlayarak sıralı. " +
+      "'Hangi ürünlerde indirim var', 'en büyük indirim hangisi', 'süt ürünlerinde indirim var mı' sorularında kullan.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "İsteğe bağlı: ürün veya kategori adıyla süz (ör. 'peynir', 'içecek')" },
+        include_inactive: { type: "boolean", description: "Satışa kapalı ürünler de dahil edilsin mi (varsayılan hayır)" },
+      },
+    },
+  },
+  {
     name: "go_to_page",
     description: "Yönetim panelinde bir sayfayı açar.",
     parameters: {
@@ -83,6 +96,7 @@ KESİN KURALLAR:
 - Tutarları doğal söyle: "on iki bin dört yüz elli lira". Yüzdeyi "yüzde 18 daha iyi" / "yüzde 7 daha düşük" diye söyle.
 - Karşılaştırmada araç "compare_to_date" (aynı gün sayısına göre) verdiyse onu kullan ve bunu belirt: "geçen haftanın aynı günlerine göre". İstenirse önceki dönemin tamamını da söyle.
 - Önceki dönemde hiç satış yoksa yüzde verme; "geçen hafta satış yoktu" de.
+- İndirim sorularında get_discounted_products çağır; ürün adını, yüzdeyi ve fiyatları söyle ("Beyaz peynirde yüzde 11 indirim var, 189,90'dan 169,90 liraya"). Çoksa en yüksek 5'ini say, toplam sayıyı belirt; stokta olmayan indirimli ürün varsa ayrıca uyar.
 - Stok sorularında önce tükenenleri, sonra kritik olanları ADLARIYLA say (en fazla 5; fazlası varsa "ve X ürün daha" de).
 - Veri değiştiremezsin: fiyat/stok güncelleme, sipariş iptali, ürün ekleme isterse "bunu ilgili sayfadan yapabilirsin, açayım mı?" de ve isterse go_to_page çağır.
 - Sipariş alma veya sepete ekleme isteğine "bu asistan yönetim içindir; sipariş mağaza ekranından verilir" de.

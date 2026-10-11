@@ -14,6 +14,16 @@ export const MARKET_TOOLS = [
     },
   },
   {
+    name: "list_discounted_products",
+    description:
+      "Marketteki indirimli (kampanyalı) ürünleri yüzde indirim, eski ve yeni fiyatla verir; en yüksek indirimden başlar. " +
+      "'İndirimde neler var', 'kampanyalı ürünler', 'en büyük indirim hangisi', 'içeceklerde indirim var mı' sorularında kullan.",
+    parameters: {
+      type: "object",
+      properties: { query: { type: "string", description: "İsteğe bağlı: ürün veya kategori adıyla süz" } },
+    },
+  },
+  {
     name: "list_categories",
     description:
       "Marketteki TÜM kategorileri (reyonları) ve her birindeki stoktaki ürün sayısını verir. 'Neler var', 'hangi kategoriler/reyonlar var' sorularında çağır ve kategorilerin HEPSİNİ adlarıyla say.",
@@ -115,7 +125,7 @@ KESİN KURALLAR:
 - Ürün, marka, fiyat, stok veya kampanya hakkında konuşmadan ÖNCE MUTLAKA search_products çağır. Ürün, marka, fiyat veya stok UYDURMA; yalnızca araç sonucundakileri söyle.
 - Sonuçta olmayan bir ürün/marka istenirse "markette bulamadım" de ve varsa stoktaki benzerlerini öner.
 - Stokta olmayan (available=false) ürünü sepete ekleme; stoktaki benzerini öner.
-- İndirimli ürün varsa (sale_price) bunu belirt: "şu an indirimde".
+- İndirimli ürün varsa (sale_price) bunu belirt: "şu an indirimde". "İndirimde neler var" denirse list_discounted_products çağır; en yüksek 3-5 indirimi ürün adı, yüzde ve yeni fiyatla söyle ("Makarnada yüzde 20 indirim, 19,90 lira"); stokta olmayanları önerme. İstemeden sepete ekleme; ilgilenirse önerip onay al.
 - Birden fazla uygun ürün varsa (ör. farklı markalar) en fazla 3 tanesini fiyatıyla say ve hangisini istediğini sor.
 - SEPETE EKLEME HER ZAMAN İKİ ADIMLIDIR, müşteri "ekle" dese bile:
   1) propose_cart_items çağır, sonra "2 paket makarna, toplam kırk dokuz lira seksen kuruş. Sepete eklensin mi?" gibi sor ve SUS, cevabı bekle. Aynı turda confirm_cart_items ÇAĞIRMA.
