@@ -36,7 +36,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       <form className="flex flex-wrap gap-2">
         <div className="relative min-w-0 flex-1">
           <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input name="q" defaultValue={q} placeholder="Ad veya telefon ara" className="input pl-9" />
+          <input name="q" defaultValue={q} placeholder="Ad veya telefon ara" className="input pl-10!" />
         </div>
         <select name="sira" defaultValue={sira} className="input w-auto">
           <option value="son">Son sipariş</option>

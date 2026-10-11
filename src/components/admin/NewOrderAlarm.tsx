@@ -8,8 +8,12 @@ import { RINGTONES, ringtoneUrl, type RingtoneId } from "@/lib/ringtones";
 const RING_MS = 20_000;
 const POLL_MS = 8_000;
 const PREF_KEY = "sanal-market-zil";
+/** Kilit açmak için çok kısa SESSİZ ses — gerçek zil sesi bu sırada asla duyulmaz. */
+const SILENT = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
+/** Sayfa açıldıktan sonra verilen siparişlere çal (eski siparişlere asla). */
+const FRESH_MS = 10 * 60_000;
 
-type Latest = { id: string; order_no: number; customer_name: string; total: number };
+type Latest = { id: string; order_no: number; customer_name: string; total: number; created_at: string };
 type Prefs = { tone: RingtoneId; volume: number };
 
 function loadPrefs(): Prefs {
@@ -31,6 +35,7 @@ export function NewOrderAlarm() {
   const [panel, setPanel] = useState(false);
   const [testing, setTesting] = useState(false);
   const [ringing, setRinging] = useState<Latest | null>(null);
+  const ringingRef = useRef(false);
   const prefsRef = useRef(prefs);
   useEffect(() => {
     prefsRef.current = prefs;
@@ -53,19 +58,31 @@ export function NewOrderAlarm() {
     return audioRef.current;
   };
 
-  /** Dokunuşla sesi aç (tarayıcı kuralı). iPhone'da sessiz modda da çalsın diye medya oturumu. */
-  const unlock = useCallback(async () => {
+  /** Sesi tamamen bırak: iPhone kilit ekranındaki "şimdi çalınan" kaydı da kalkar,
+   *  böylece kulaklık/kilit ekranı oynat tuşu zili kendiliğinden başlatamaz. */
+  const release = (a: HTMLAudioElement) => {
+    a.pause();
+    a.loop = false;
+    a.removeAttribute("src");
+    a.load();
     try {
       const nav = navigator as Navigator & { audioSession?: { type: string } };
-      if (nav.audioSession) nav.audioSession.type = "playback";
+      if (nav.audioSession) nav.audioSession.type = "auto";
+    } catch {}
+  };
+
+  /** Dokunuşla sesi aç (tarayıcı kuralı). SESSİZ dosyayla yapılır — iPhone'da
+   *  volume ayarı yok sayıldığı için eskiden zil sesi kısa da olsa duyuluyordu. */
+  const unlock = useCallback(async () => {
+    if (ringingRef.current) return;
+    try {
       const a = getAudio();
-      a.src = ringtoneUrl(prefsRef.current.tone);
-      a.volume = 0.0001;
-      a.muted = false;
+      a.muted = true;
+      a.loop = false;
+      a.src = SILENT;
       await a.play();
-      a.pause();
-      a.currentTime = 0;
-      a.volume = prefsRef.current.volume;
+      release(a);
+      a.muted = false;
       setSoundReady(true);
     } catch {
       setSoundReady(false);
@@ -83,7 +100,13 @@ export function NewOrderAlarm() {
   }, [unlock]);
 
   const startSound = useCallback((ms: number) => {
+    ringingRef.current = true;
+    try {
+      const nav = navigator as Navigator & { audioSession?: { type: string } };
+      if (nav.audioSession) nav.audioSession.type = "playback"; // sessiz modda da çalsın
+    } catch {}
     const a = getAudio();
+    a.muted = false;
     a.src = ringtoneUrl(prefsRef.current.tone);
     a.loop = true;
     a.volume = prefsRef.current.volume;
@@ -92,8 +115,8 @@ export function NewOrderAlarm() {
     if ("vibrate" in navigator) navigator.vibrate?.([300, 150, 300, 150, 300]);
     if (stopTimer.current) clearTimeout(stopTimer.current);
     stopTimer.current = setTimeout(() => {
-      a.pause();
-      a.loop = false;
+      release(a);
+      ringingRef.current = false;
       setRinging(null);
       setTesting(false);
       document.title = document.title.replace(/^🔔 YENİ SİPARİŞ · /, "");
@@ -102,10 +125,8 @@ export function NewOrderAlarm() {
 
   const stop = useCallback(() => {
     const a = audioRef.current;
-    if (a) {
-      a.pause();
-      a.loop = false;
-    }
+    if (a) release(a);
+    ringingRef.current = false;
     if (stopTimer.current) clearTimeout(stopTimer.current);
     setRinging(null);
     setTesting(false);
@@ -137,7 +158,7 @@ export function NewOrderAlarm() {
     const check = async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, order_no, customer_name, total")
+        .select("id, order_no, customer_name, total, created_at")
         .order("order_no", { ascending: false })
         .limit(1)
         .maybeSingle<Latest>();
@@ -146,7 +167,8 @@ export function NewOrderAlarm() {
       if (lastNo.current === null) lastNo.current = no;
       else if (data && no > lastNo.current) {
         lastNo.current = no;
-        ring(data);
+        // Yalnızca gerçekten yeni (son 10 dk) siparişte çal
+        if (Date.now() - new Date(data.created_at).getTime() < FRESH_MS) ring(data);
       }
     };
     check();
@@ -158,7 +180,7 @@ export function NewOrderAlarm() {
       clearInterval(t);
       document.removeEventListener("visibilitychange", onVisible);
       if (stopTimer.current) clearTimeout(stopTimer.current);
-      audioRef.current?.pause();
+      if (audioRef.current) release(audioRef.current);
     };
   }, [ring]);
 
