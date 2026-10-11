@@ -34,6 +34,11 @@ export function AuthForm({ next }: { next: string }) {
         <button disabled={pending} className="btn-primary w-full">{mode === "in" ? "Giriş yap" : "Üye ol"}</button>
       </form>
       <p className="mt-3 text-center text-xs text-muted">Üye olmadan da sipariş verebilirsin.</p>
+      {mode === "up" && (
+        <p className="mt-1 text-center text-xs text-muted">
+          Üye olarak <a href="/kvkk" target="_blank" className="font-semibold text-brand underline">KVKK Aydınlatma Metni</a>&apos;ni okuduğunu kabul edersin.
+        </p>
+      )}
     </div>
   );
 }

@@ -86,3 +86,9 @@
 - Migration Supabase'e iki parça hâlinde uygulandı (voice_assistant_part1/part2); fonksiyondaki eski kayıt temizleme satırı onay penceresine takıldığı için çıkarıldı (tablo çok küçük kalır).
 - AÇIK: Vercel'e GEMINI_API_KEY eklenmeli (yoksa asistan "henüz etkinleştirilmedi" der). Gerçek sesli konuşma bu ortamdan test edilemedi (Google'a erişim yok); araçlar ve sınırlar test edildi.
 - Not: ürünlerde ayrı marka alanı yok; "hangi markalar" sorusu için marka ürün adında olmalı (ör. "Pınar Beyaz Peynir 500 g").
+
+## 2026-10-11 — KVKK
+- /kvkk Aydınlatma Metni (veri sorumlusu = store_settings.store_name + adres/telefon; veriler, amaçlar, hukuki sebepler, #sesli-asistan bölümü, aktarım: kurye, Vercel/Supabase, Google LLC; saklama; m.11 hakları).
+- Sesli asistan ilk kullanımda açık rıza ekranı (yurt dışı aktarım + Google) gösterir; onay localStorage "sanal-market-ses-onay-v1". Onaysız mikrofon/oturum açılmaz (test edildi).
+- KVKK bağlantıları: footer, ödeme onay kutusu, üye ol formu, asistan paneli.
+- Not: veri sorumlusunun resmi unvanı/MERSİS/e-posta henüz yok; metin hukukçuya gözden geçirtilmeli.

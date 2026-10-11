@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { Loader2, Mic, MicOff, X } from "lucide-react";
 import { useMarketVoice, type VoiceSettings } from "@/lib/voice/useMarketVoice";
 import { useCart, useCartHydrated } from "@/store/cart";
@@ -17,17 +18,27 @@ const STATUS: Record<string, string> = {
   error: "",
 };
 
+const CONSENT_KEY = "sanal-market-ses-onay-v1";
+const hasConsent = () => {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+
 const EXAMPLES = ["Domatesten 2 kilo ekle", "Beyaz peynir hangi markalar var?", "Kahvaltı için ne önerirsin?", "Sepetimde ne var?"];
 
 export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   const [open, setOpen] = useState(false);
+  const [needConsent, setNeedConsent] = useState(false);
   const v = useMarketVoice(settings);
   const ready = useCartHydrated();
   const hasCart = useCart((s) => s.lines.length > 0);
   const active = v.state !== "idle" && v.state !== "error";
   const path = usePathname();
   // Sepet/ödeme sayfalarında alttaki sabit butonla çakışmasın
-  const hideButton = path.startsWith("/odeme") || path.startsWith("/sepet");
+  const hideButton = path.startsWith("/odeme") || path.startsWith("/sepet") || path.startsWith("/kvkk");
 
   const close = () => {
     void v.stop();
@@ -40,6 +51,10 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
         <button
           onClick={() => {
             setOpen(true);
+            if (!hasConsent()) {
+              setNeedConsent(true);
+              return;
+            }
             void v.start(); // dokunuş içinde başlat (mikrofon + ses izni için şart)
           }}
           aria-label="Sesli sipariş asistanı"
@@ -64,6 +79,33 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
               </button>
             </div>
 
+            {needConsent ? (
+              <div className="space-y-3 text-sm">
+                <p className="leading-relaxed opacity-90">
+                  Sesli asistan, konuşmanı anlamak için sesini <b>Google</b>&apos;ın Gemini yapay zekâ hizmetine iletir; bu hizmetin sunucuları <b>yurt dışında</b>{" "}
+                  olabilir. Ses kayıtların bizim sistemlerimizde saklanmaz. Asistana adres, telefon veya ödeme bilgisi söyleme.
+                </p>
+                <Link href="/kvkk#sesli-asistan" onClick={() => setOpen(false)} className="inline-block font-bold text-brand underline underline-offset-2">
+                  KVKK Aydınlatma Metni → Sesli asistan
+                </Link>
+                <button
+                  onClick={() => {
+                    try {
+                      localStorage.setItem(CONSENT_KEY, "1");
+                    } catch {}
+                    setNeedConsent(false);
+                    void v.start();
+                  }}
+                  className="btn-primary w-full py-3"
+                >
+                  <Mic size={16} /> Okudum, açık rıza veriyorum — başlat
+                </button>
+                <button onClick={close} className="w-full rounded-xl bg-white/10 py-2.5 font-bold">
+                  Vazgeç
+                </button>
+              </div>
+            ) : (
+            <>
             <div className="flex items-center gap-3">
               <div className="relative grid h-14 w-14 shrink-0 place-items-center">
                 {active && (
@@ -123,7 +165,14 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
                 </button>
               )}
             </div>
-            <p className="text-center text-[11px] opacity-50">Sesin yalnızca konuşma sırasında işlenir; uygulamamızda kaydedilmez.</p>
+            <p className="text-center text-[11px] opacity-60">
+              Sesin yalnızca konuşma sırasında işlenir; uygulamamızda kaydedilmez.{" "}
+              <Link href="/kvkk#sesli-asistan" className="underline">
+                KVKK
+              </Link>
+            </p>
+            </>
+            )}
           </div>
         </div>
       )}

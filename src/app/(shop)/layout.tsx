@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { Header } from "@/components/shop/Header";
 import { getStoreSettings } from "@/lib/data/catalog";
 import { Brand } from "@/components/Brand";
@@ -31,6 +32,7 @@ async function Footer() {
         <div>
           <Brand size="sm" />
           <p className="mt-1 text-xs font-semibold tracking-wide">İhtiyacın Kapında!</p>
+          <Link href="/kvkk" className="mt-2 inline-block text-xs font-semibold underline underline-offset-2 hover:text-brand">KVKK Aydınlatma Metni</Link>
         </div>
         <p>{s.address ?? "Adres bilgisi ayarlardan girilecek"}</p>
         <p>
