@@ -147,6 +147,32 @@ export async function quickPriceUpdate(input: {
   return { ok: true, product: { ...data, price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price) } as BarcodeProduct };
 }
 
+// ---------------- SİPARİŞTE OLMAYAN ÜRÜN ----------------
+const ITEM_ERR: Record<string, string> = {
+  SIPARIS_KILITLI: "Yola çıkmış veya kapanmış siparişte ürün değiştirilemez.",
+  SIPARIS_BOS: "Siparişte başka ürün kalmıyor. Bunun yerine siparişi iptal et.",
+  STOK_YETERSIZ: "Seçilen yeni üründen yeterli stok yok.",
+  GECERSIZ_ADET: "Geçerli bir adet gir.",
+  KALEM_YOK: "Bu ürün zaten siparişten çıkarılmış.",
+};
+
+export async function orderItemOut(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const orderId = str(fd, "order_id");
+  const replacement = str(fd, "replacement");
+  const qty = Math.trunc(Number(str(fd, "qty") || "1"));
+  const { error } = await supabase.rpc("admin_order_item_out", {
+    p_item_id: str(fd, "item_id"),
+    p_replacement: replacement || null,
+    p_qty: replacement ? qty : null,
+    p_mark_out: fd.get("mark_out") === "on",
+  });
+  updateTag(CATALOG_TAG);
+  const code = error?.message?.split(":")[0] ?? "";
+  const q = error ? `?hata=${encodeURIComponent(ITEM_ERR[code] ?? "İşlem yapılamadı: " + error.message)}` : "?guncellendi=1";
+  redirect(`/admin/siparisler/${orderId}${q}`);
+}
+
 // ---------------- TESLİMAT BÖLGELERİ ----------------
 const nbBack = (id: number | string) => `/admin/bolgeler/${id}`;
 

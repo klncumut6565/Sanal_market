@@ -1,18 +1,35 @@
 "use client";
 import { useState } from "react";
 import { MessageCircle, Send } from "lucide-react";
-import type { Order } from "@/lib/types";
+import type { Order, OrderItem } from "@/lib/types";
+import { formatTL } from "@/lib/format";
 import { waLink } from "@/lib/whatsapp";
 
-type Props = { order: Pick<Order, "order_no" | "customer_name" | "phone" | "total" | "delivery_slot">; storeName: string };
+type Props = { order: Pick<Order, "order_no" | "customer_name" | "phone" | "total" | "delivery_slot">; storeName: string; items?: OrderItem[] };
 
-export function WhatsAppActions({ order, storeName }: Props) {
+export function WhatsAppActions({ order, storeName, items = [] }: Props) {
   const name = order.customer_name.split(" ")[0];
   const total = Number(order.total).toFixed(2).replace(".", ",") + " ₺";
   const templates = [
     { label: "Sipariş alındı", text: `Merhaba ${name}, ${storeName} 🧡 #${order.order_no} numaralı siparişiniz alındı, hemen hazırlamaya başlıyoruz. Tutar: ${total}.` },
     { label: "Yola çıktı", text: `Merhaba ${name}, #${order.order_no} numaralı siparişiniz motokuryemizle yola çıktı 🛵 Kısa süre içinde kapınızda olacak. Ödeme kapıda: ${total}.` },
-    { label: "Ürün yok / alternatif", text: `Merhaba ${name}, #${order.order_no} numaralı siparişinizdeki bir ürün stokta kalmadı. Benzer bir ürünle değiştirmemizi ister misiniz, yoksa çıkaralım mı?` },
+    ...(items.some((i) => i.removed)
+      ? [
+          {
+            label: "Sipariş güncellendi",
+            text:
+              `Merhaba ${name}, #${order.order_no} numaralı siparişinizi güncelledik:\n` +
+              items
+                .filter((i) => i.removed)
+                .map((r) => {
+                  const rep = items.find((x) => !x.removed && x.replaced_from === r.product_name);
+                  return rep ? `• ${r.product_name} yerine ${rep.quantity} × ${rep.product_name}` : `• ${r.product_name} stokta olmadığı için çıkarıldı`;
+                })
+                .join("\n") +
+              `\nYeni tutar: ${formatTL(order.total)} (kapıda ödeme). Anlayışınız için teşekkür ederiz 🧡`,
+          },
+        ]
+      : []),
     { label: "Adres teyidi", text: `Merhaba ${name}, #${order.order_no} numaralı siparişiniz için adresinizi teyit edebilir miyiz? Kuryemiz bulmakta zorlanıyor.` },
     { label: "Gecikme", text: `Merhaba ${name}, #${order.order_no} numaralı siparişiniz yoğunluk nedeniyle birkaç dakika gecikecek, anlayışınız için teşekkür ederiz 🙏` },
   ];

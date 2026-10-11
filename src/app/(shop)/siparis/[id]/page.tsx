@@ -82,15 +82,25 @@ async function OrderContent({ params, searchParams }: Props) {
         )}
       </section>
 
+      {items.some((i) => i.removed) && (
+        <div className="rounded-2xl bg-amber-50 p-4 text-sm ring-1 ring-amber-200">
+          <p className="font-bold">Siparişin güncellendi</p>
+          <p className="text-muted">Bazı ürünler stokta olmadığı için değiştirildi veya çıkarıldı. Güncel tutar aşağıda.</p>
+        </div>
+      )}
       <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Ürünler</h2>
         <ul className="divide-y divide-line text-sm">
-          {items.map((it) => (
-            <li key={it.id} className="flex justify-between gap-3 py-2">
+          {[...items.filter((i) => !i.removed), ...items.filter((i) => i.removed)].map((it) => (
+            <li key={it.id} className={`flex justify-between gap-3 py-2 ${it.removed ? "text-muted" : ""}`}>
               <span>
-                <b>{it.quantity}×</b> {it.product_name} <span className="text-muted">{it.unit_label}</span>
+                <span className={it.removed ? "line-through" : ""}>
+                  <b>{it.quantity}×</b> {it.product_name} <span className="text-muted">{it.unit_label}</span>
+                </span>
+                {it.replaced_from && <span className="block text-xs font-semibold text-sky-700">↻ {it.replaced_from} yerine</span>}
+                {it.removed && <span className="block text-xs font-bold text-brand">Stokta yoktu · siparişten çıkarıldı</span>}
               </span>
-              <span className="font-semibold">{formatTL(it.line_total)}</span>
+              <span className={`font-semibold ${it.removed ? "line-through" : ""}`}>{formatTL(it.line_total)}</span>
             </li>
           ))}
         </ul>

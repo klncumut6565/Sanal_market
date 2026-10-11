@@ -82,4 +82,7 @@ export type OrderItem = {
   unit_price: number;
   quantity: number;
   line_total: number;
+  removed?: boolean;
+  removed_reason?: string | null;
+  replaced_from?: string | null;
 };

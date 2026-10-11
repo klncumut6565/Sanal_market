@@ -68,3 +68,9 @@
 - lib/hours.ts: İstanbul saatiyle (UTC+3) açık/kapalı, kapanışa/açılışa kalan süre, iş günü penceresi (10:00 → ertesi 01:00; 01:00–10:00 arası önceki iş günü).
 - Site: header altında canlı şerit (kapalı → "10:00'da açılıyor (X sonra)"; son 10 dk → geri sayım), sepet/ödeme butonları kapalıyken kilitli, ödemede büyük geri sayım kutusu, geçmiş teslimat aralıkları gizlenir.
 - Admin genel bakış: "İş günü siparişi / cirosu" iş günü penceresine göre; üstte Açık/Kapalı + iş günü aralığı.
+
+## 2026-10-11 — Rafta olmayan ürün akışı
+- order_items.removed / removed_reason / replaced_from; admin_order_item_out(item, replacement?, qty?, mark_out) RPC: kalemi çıkarır veya benzer ürünle değiştirir, tutarı yeniden hesaplar (teslimat ücreti artmaz), isteğe bağlı ürünü stok 0 yapar; son kalem çıkarılamaz (iptal edilmeli). İptal stok iadesi çıkarılan kalemleri hariç tutar.
+- Admin sipariş detayı: her kalemde "Yok" → ürün adı + aynı kategoriden stokta olan en yakın fiyatlı benzerleri yazan WhatsApp mesajı, "Değiştir" / "Siparişten çıkar".
+- WhatsApp şablonlarından genel "Ürün yok" kaldırıldı; güncelleme olunca "Sipariş güncellendi" şablonu (çıkan/değişen ürünler + yeni tutar).
+- Müşteri takip sayfası: çıkarılan ürün üstü çizili "Stokta yoktu", değişen "X yerine", sarı "Siparişin güncellendi" kutusu.
