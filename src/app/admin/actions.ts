@@ -1,6 +1,7 @@
 "use server";
 import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
+import { sendEmail, sendWhatsApp } from "@/lib/notify";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -409,4 +410,43 @@ export async function removeFromBlacklist(fd: FormData) {
   const phone = normalizeTrMobile(raw) ?? raw;
   await supabase.from("customer_blacklist").delete().in("phone", Array.from(new Set([raw, phone])));
   redirect(`/admin/musteriler/${encodeURIComponent(raw)}?kara=cikarildi`);
+}
+
+// ---------------- SİPARİŞ BİLDİRİMLERİ ----------------
+export async function saveNotifySettings(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const email = str(fd, "email").toLowerCase();
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "Geçerli bir e-posta adresi gir." };
+  const rawPhone = str(fd, "whatsapp_phone");
+  const phone = rawPhone ? normalizeTrMobile(rawPhone) : null;
+  if (rawPhone && !phone) return { error: "Geçerli bir cep telefonu gir (ör. +90 541 673 58 63)." };
+  const { error } = await supabase
+    .from("notify_settings")
+    .update({
+      email: email || null,
+      whatsapp_phone: phone,
+      callmebot_apikey: str(fd, "callmebot_apikey") || null,
+      email_enabled: fd.get("email_enabled") === "on",
+      whatsapp_enabled: fd.get("whatsapp_enabled") === "on",
+      only_when_away: fd.get("only_when_away") === "on",
+    })
+    .eq("id", 1);
+  if (error) return { error: error.message };
+  return { ok: "Kaydedildi" };
+}
+
+export async function testNotify(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const { data: n } = await supabase.from("notify_settings").select("*").eq("id", 1).single();
+  if (!n) return { error: "Ayar bulunamadı." };
+  const which = str(fd, "kanal");
+  const text = "✅ Sanal Market test bildirimi — yeni siparişler buraya böyle gelecek.";
+  if (which === "email") {
+    if (!n.email) return { error: "Önce e-posta adresini kaydet." };
+    const r = await sendEmail(n.email, "Sanal Market test bildirimi", text, `<p>${text}</p>`);
+    return r.ok ? { ok: `Test e-postası ${n.email} adresine gönderildi.` } : { error: r.error };
+  }
+  if (!n.whatsapp_phone || !n.callmebot_apikey) return { error: "Önce WhatsApp numarasını ve CallMeBot anahtarını kaydet." };
+  const r = await sendWhatsApp(n.whatsapp_phone, n.callmebot_apikey, text);
+  return r.ok ? { ok: "Test WhatsApp mesajı gönderildi." } : { error: r.error };
 }

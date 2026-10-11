@@ -1,5 +1,8 @@
 "use server";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
+import { notifyNewOrder } from "@/lib/notify";
 import { orderErrorMessage } from "@/lib/format";
 import { normalizeTrMobile } from "@/lib/phone";
 import type { PaymentMethod } from "@/lib/types";
@@ -86,5 +89,14 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (error) return { ok: false, error: orderErrorMessage(error.message) };
   const row = (Array.isArray(data) ? data[0] : data) as { order_id: string; access_token: string; order_no: number } | undefined;
   if (!row) return { ok: false, error: orderErrorMessage("") };
+  // Yönetim paneli kapalıysa işletmeye e-posta + WhatsApp (yanıtı geciktirmeden)
+  after(async () => {
+    try {
+      const { data: payload } = await createPublicClient().rpc("claim_order_notification", { p_order_id: row.order_id, p_token: row.access_token });
+      if (payload) await notifyNewOrder(payload);
+    } catch (e) {
+      console.error("[bildirim]", e);
+    }
+  });
   return { ok: true, id: row.order_id, token: row.access_token, orderNo: Number(row.order_no) };
 }

@@ -173,11 +173,21 @@ export function NewOrderAlarm() {
     };
     check();
     const t = setInterval(check, POLL_MS);
-    const onVisible = () => document.visibilityState === "visible" && check();
+    // Panel açık sinyali: açıkken sipariş bildirimi e-posta/WhatsApp'a gönderilmez
+    const beat = () => document.visibilityState === "visible" && supabase.rpc("admin_heartbeat").then(() => {}, () => {});
+    beat();
+    const hb = setInterval(beat, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        check();
+        beat();
+      }
+    };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
       clearInterval(t);
+      clearInterval(hb);
       document.removeEventListener("visibilitychange", onVisible);
       if (stopTimer.current) clearTimeout(stopTimer.current);
       if (audioRef.current) release(audioRef.current);

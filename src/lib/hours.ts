@@ -106,3 +106,8 @@ export function reportRanges(openHM: string) {
     prevMonthEnd: addDays(monthStart, -1),
   };
 }
+
+/** Verilen zaman (ISO) son `ms` milisaniye içinde mi? */
+export function isRecent(iso: string | null | undefined, ms: number) {
+  return !!iso && Date.now() - Date.parse(iso) < ms;
+}
