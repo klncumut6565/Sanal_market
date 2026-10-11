@@ -96,3 +96,4 @@
 ## 2026-10-11 — Admin yavaşlığı
 - Teşhis (Supabase edge loglarından): Vercel fonksiyonları iad1 (ABD/Ashburn), veritabanı eu-central-1 (Frankfurt) → her istek 100–320 ms (DB işi 2–22 ms). Her admin geçişinde getUser + profiles iki kez (layout Gate + sayfa), 6–18 istek.
 - Çözüm: vercel.json regions ["fra1"]; getSessionUser/requireAdmin React cache() ile istek başına bir kez; getUser yerine getClaims (ES256 → yerel doğrulama, Auth'a ağ isteği yok); app/admin/loading.tsx iskelet ekranı.
+- Sesli asistan düzeltmeleri: yeni araç list_category_products (kategorideki ürünleri adı/fiyatıyla sayar); list_categories tüm adları saydırır; add_to_cart artık customer_confirmed=true zorunlu (değilse "EKLENMEDİ" döner); talimat: "bekle/dur/hayır" → ekleme yok, "eklendi" yalnızca ok=true ise.

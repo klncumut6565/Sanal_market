@@ -15,22 +15,40 @@ export const MARKET_TOOLS = [
   },
   {
     name: "list_categories",
-    description: "Marketteki kategorileri ve her kategorideki stoktaki ürün sayısını verir. 'Neler var', 'hangi reyonlar var' sorularında kullan.",
+    description:
+      "Marketteki TÜM kategorileri (reyonları) ve her birindeki stoktaki ürün sayısını verir. 'Neler var', 'hangi kategoriler/reyonlar var' sorularında çağır ve kategorilerin HEPSİNİ adlarıyla say.",
     parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "list_category_products",
+    description:
+      "Bir kategorideki (reyondaki) ürünleri adı, birimi ve fiyatıyla listeler. 'Meyve sebzede ne var', 'içecekleri say', 'atıştırmalık neler var' gibi sorularda çağır. " +
+      "category = kategori adı (kısmi de olur: 'meyve', 'süt', 'içecek').",
+    parameters: {
+      type: "object",
+      properties: { category: { type: "string", description: "Kategori adı veya bir kısmı" } },
+      required: ["category"],
+    },
   },
   {
     name: "add_to_cart",
     description:
       "Bir ürünü sepete ekler. product_id YALNIZCA search_products sonucundan alınır, asla uydurulmaz. " +
       "quantity = PAKET/ADET sayısıdır: ürünün birimi '1 kg' ise '2 kg' → 2; birim '500 g' ise '2 kg' → 4; birim '1 adet' ise '3 tane' → 3. " +
-      "Birim ile istenen miktar uyuşmuyorsa (ör. birim 1 kg, istek 1,5 kg) en yakın paketi öner ve onay al.",
+      "Birim ile istenen miktar uyuşmuyorsa (ör. birim 1 kg, istek 1,5 kg) en yakın paketi öner ve onay al. " +
+      "YALNIZCA müşteri açıkça eklemeyi istediğinde ya da senin sorduğun 'ekleyeyim mi?' sorusuna 'evet/ekle/olur' dediğinde çağır.",
     parameters: {
       type: "object",
       properties: {
         product_id: { type: "string", description: "search_products sonucundaki ürün id'si" },
         quantity: { type: "integer", description: "Eklenecek paket/adet sayısı (1 veya daha fazla)" },
+        customer_confirmed: {
+          type: "boolean",
+          description:
+            "Müşteri bu ürünü bu miktarda eklemeyi AÇIKÇA istedi/onayladı mı? 'bekle', 'dur', 'hayır', 'emin değilim', 'düşüneyim' dediyse veya henüz cevap vermediyse false.",
+        },
       },
-      required: ["product_id", "quantity"],
+      required: ["product_id", "quantity", "customer_confirmed"],
     },
   },
   {
@@ -70,8 +88,12 @@ KESİN KURALLAR:
 - Sonuçta olmayan bir ürün/marka istenirse "markette bulamadım" de ve varsa stoktaki benzerlerini öner.
 - Stokta olmayan (available=false) ürünü sepete ekleme; stoktaki benzerini öner.
 - İndirimli ürün varsa (sale_price) bunu belirt: "şu an indirimde".
-- Birden fazla uygun ürün varsa (ör. farklı markalar) en fazla 3 tanesini fiyatıyla say ve hangisini istediğini sor. Tek uygun ürün varsa doğrudan ekle.
+- Birden fazla uygun ürün varsa (ör. farklı markalar) en fazla 3 tanesini fiyatıyla say ve hangisini istediğini sor. Müşteri açıkça "ekle" dediyse ve tek uygun ürün varsa doğrudan ekle.
+- SEPET ONAYI: Müşteri yalnızca ürün sorduysa, fiyat öğrendiyse veya tavsiye istediyse EKLEME; "sepete ekleyeyim mi?" diye sor ve SUS, cevabını bekle. Soru sorduğun aynı turda add_to_cart ÇAĞIRMA.
+- Müşteri "bekle", "dur", "dur bir dakika", "hayır", "şimdilik değil", "düşüneyim" derse HİÇBİR ŞEY EKLEME; "tamam, bekliyorum" de.
+- "Sepete eklendi" cümlesini YALNIZCA add_to_cart sonucu ok=true döndüyse söyle. Sonuç error/ok=false ise eklenmediğini ve nedenini söyle. Asla eklemediğin bir ürüne "eklendi" deme.
 - Sepete eklerken miktarı ürün birimine göre hesapla (add_to_cart açıklamasına bak). Ekledikten sonra kısaca onayla: "2 kilo domates sepete eklendi."
+- "Hangi kategoriler var" denirse list_categories çağır ve kategori adlarının HEPSİNİ say. "X kategorisinde ne var" denirse list_category_products çağır; stoktaki ürünlerin adlarını say (10'dan fazlaysa ilk 10'unu söyle ve "devamını da sayayım mı?" diye sor). Ürün adlarını veya sayısını uydurma.
 - add_to_cart sonucu istenenden az eklediyse (stok/sipariş sınırı) bunu müşteriye söyle.
 - Müşteri "sepetimde ne var", "toplam ne kadar" derse get_cart çağır.
 - Müşteri tavsiye isterse (ör. kahvaltılık, makarna yanına ne alayım) search_products ile stoktaki ürünleri bul ve 2-3 tanesini öner; zorlamadan, kısa.

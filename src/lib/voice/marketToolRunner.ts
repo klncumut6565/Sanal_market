@@ -49,10 +49,53 @@ export function createMarketToolRunner(deps: {
         sb.from("categories").select("id,name").eq("is_active", true).order("sort_order"),
         sb.from("products").select("category_id").eq("is_active", true).gt("stock", 0),
       ]);
-      return { categories: (cats ?? []).map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length })) };
+      const categories = (cats ?? []).map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
+      return { count: categories.length, categories, note: "Kategorilerin hepsini adlarıyla say." };
+    }
+
+    if (name === "list_category_products") {
+      const norm = (t: string) => t.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, " ").trim();
+      const q = norm(String(args.category ?? ""));
+      if (q.length < 2) return { error: "Kategori adı söylenmedi." };
+      const { data: cats } = await sb.from("categories").select("id,name").eq("is_active", true).order("sort_order");
+      const all = cats ?? [];
+      const words = q.split(" ").filter((w) => w.length >= 3);
+      const cat =
+        all.find((c) => norm(c.name) === q) ??
+        all.find((c) => norm(c.name).includes(q) || q.includes(norm(c.name))) ??
+        all.find((c) => words.some((w) => norm(c.name).includes(w.slice(0, Math.max(3, w.length - 2)))));
+      if (!cat) return { error: "Bu adla kategori bulunamadı.", categories: all.map((c) => c.name) };
+      const { data: prods } = await sb
+        .from("products")
+        .select("id,name,unit_label,price,sale_price,stock")
+        .eq("is_active", true)
+        .eq("category_id", cat.id)
+        .order("sort_order")
+        .order("name")
+        .limit(60);
+      const list = (prods ?? []).map((p) => ({
+        product_id: p.id,
+        name: p.name,
+        unit: p.unit_label,
+        price: Number(p.price),
+        sale_price: p.sale_price == null ? null : Number(p.sale_price),
+        available: p.stock > 0,
+      }));
+      return {
+        category: cat.name,
+        products_in_stock: list.filter((p) => p.available).length,
+        products: list.sort((a, b) => Number(b.available) - Number(a.available)),
+      };
     }
 
     if (name === "add_to_cart") {
+      if (args.customer_confirmed !== true) {
+        return {
+          ok: false,
+          added: 0,
+          error: "EKLENMEDİ: müşteri henüz onaylamadı. Müşteriye 'sepete ekleyeyim mi?' diye sor ve cevabını bekle. 'Eklendi' DEME.",
+        };
+      }
       const id = String(args.product_id ?? "");
       const qty = Math.max(1, Math.min(50, Math.trunc(Number(args.quantity) || 1)));
       if (!/^[0-9a-f-]{36}$/i.test(id)) return { error: "Geçersiz ürün. Önce search_products ile ara." };
