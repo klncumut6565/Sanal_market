@@ -1,5 +1,7 @@
 "use client";
+import { useState } from "react";
 import type { DeliveryAreas } from "@/lib/data/areas";
+import { SelectSheet, SheetField } from "./SelectSheet";
 
 export type AddressValue = {
   district_id: string;
@@ -41,52 +43,24 @@ export function AddressPicker({ areas, value, onChange }: { areas: DeliveryAreas
   const noStreetList = !!value.neighborhood_id && streets.length === 0;
   const typing = value.street_id === OTHER || noStreetList;
 
+  const [sheet, setSheet] = useState<null | "ilce" | "mahalle" | "sokak">(null);
+  const close = () => setSheet(null);
+  const district = areas.districts.find((d) => String(d.id) === value.district_id);
+  const nb = neighborhoods.find((n) => String(n.id) === value.neighborhood_id);
+  const street = streets.find((x) => String(x.id) === value.street_id);
+  const streetLabel = value.street_id === OTHER ? (value.street_text ? `${value.street_text} (elle yazıldı)` : "Listede yok — aşağıya yaz") : street?.name;
+
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <label className="block space-y-1">
-        <Lbl>İl</Lbl>
-        <select disabled className="input bg-bg font-semibold text-ink opacity-100" value="tekirdag">
-          <option value="tekirdag">Tekirdağ</option>
-        </select>
-      </label>
+      <SheetField label="İl" placeholder="Tekirdağ" valueLabel="Tekirdağ" disabled onOpen={() => {}} />
 
-      <label className="block space-y-1">
-        <Lbl req>İlçe</Lbl>
-        <select
-          required
-          className="input"
-          value={value.district_id}
-          onChange={(e) => set({ district_id: e.target.value, neighborhood_id: "", street_id: "", street_text: "" })}
-        >
-          {areas.districts.map((d) => (
-            <option key={d.id} value={d.id} disabled={!d.is_active}>
-              {d.name}
-              {d.is_active ? "" : " — yakında"}
-            </option>
-          ))}
-        </select>
-      </label>
+      <SheetField label="İlçe" required placeholder="İlçe seç" valueLabel={district?.name} onOpen={() => setSheet("ilce")} />
 
-      <label className="block space-y-1">
-        <Lbl req>Mahalle</Lbl>
-        <select
-          required
-          className="input"
-          value={value.neighborhood_id}
-          onChange={(e) => set({ neighborhood_id: e.target.value, street_id: "", street_text: "" })}
-        >
-          <option value="">Mahalle seç</option>
-          {neighborhoods.map((n) => (
-            <option key={n.id} value={n.id}>
-              {n.name} Mah.
-            </option>
-          ))}
-        </select>
-      </label>
+      <SheetField label="Mahalle" required placeholder="Mahalle seç" valueLabel={nb ? `${nb.name} Mah.` : undefined} onOpen={() => setSheet("mahalle")} />
 
-      <label className="block space-y-1">
-        <Lbl req>Cadde / Sokak</Lbl>
-        {noStreetList ? (
+      {noStreetList ? (
+        <label className="block space-y-1">
+          <Lbl req>Cadde / Sokak</Lbl>
           <input
             required
             className="input"
@@ -94,24 +68,51 @@ export function AddressPicker({ areas, value, onChange }: { areas: DeliveryAreas
             value={value.street_text}
             onChange={(e) => set({ street_id: OTHER, street_text: e.target.value })}
           />
-        ) : (
-          <select
-            required
-            disabled={!value.neighborhood_id}
-            className="input disabled:opacity-50"
-            value={value.street_id}
-            onChange={(e) => set({ street_id: e.target.value, street_text: "" })}
-          >
-            <option value="">{value.neighborhood_id ? "Cadde / sokak seç" : "Önce mahalle seç"}</option>
-            {streets.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-            {value.neighborhood_id && <option value={OTHER}>✏️ Listede yok, kendim yazacağım</option>}
-          </select>
-        )}
-      </label>
+        </label>
+      ) : (
+        <SheetField
+          label="Cadde / Sokak"
+          required
+          placeholder={value.neighborhood_id ? "Cadde / sokak seç" : "Önce mahalle seç"}
+          valueLabel={streetLabel}
+          disabled={!value.neighborhood_id}
+          onOpen={() => setSheet("sokak")}
+        />
+      )}
+
+      <SelectSheet
+        open={sheet === "ilce"}
+        title="İlçe"
+        group="Tekirdağ"
+        value={value.district_id}
+        options={areas.districts.map((d) => ({ value: String(d.id), label: d.name, disabled: !d.is_active, hint: d.is_active ? undefined : "yakında" }))}
+        onSelect={(v) => v !== value.district_id && set({ district_id: v, neighborhood_id: "", street_id: "", street_text: "" })}
+        onClose={close}
+      />
+      <SelectSheet
+        open={sheet === "mahalle"}
+        title="Mahalle"
+        group={district ? `${district.name} / Tekirdağ` : "Tekirdağ"}
+        value={value.neighborhood_id}
+        searchPlaceholder="Mahalle ara"
+        options={neighborhoods.map((n) => ({ value: String(n.id), label: `${n.name} Mah.` }))}
+        onSelect={(v) => v !== value.neighborhood_id && set({ neighborhood_id: v, street_id: "", street_text: "" })}
+        onClose={close}
+      />
+      <SelectSheet
+        open={sheet === "sokak"}
+        title="Cadde / Sokak"
+        group={nb ? `${nb.name} Mah.` : undefined}
+        value={value.street_id}
+        searchPlaceholder="Cadde / sokak ara"
+        options={[
+          ...streets.map((x) => ({ value: String(x.id), label: x.name })),
+          { value: OTHER, label: "✏️ Listede yok, kendim yazacağım" },
+        ]}
+        onSelect={(v) => set({ street_id: v, street_text: v === OTHER ? value.street_text : "" })}
+        freeText={{ label: (q) => `"${q}" olarak kullan`, onUse: (q) => set({ street_id: OTHER, street_text: q }) }}
+        onClose={close}
+      />
 
       {typing && !noStreetList && (
         <label className="block space-y-1 sm:col-span-2">
