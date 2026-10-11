@@ -1,5 +1,6 @@
 "use server";
 import { streetKey } from "@/lib/streetSuggest";
+import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/data/auth";
@@ -290,7 +291,7 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
   const row = {
     name,
     slug: slugify(str(fd, "slug") || name),
-    emoji: str(fd, "emoji") || null,
+    emoji: str(fd, "emoji") || guessCategoryEmoji(name),
     sort_order: Math.trunc(numOrNull(fd, "sort_order") ?? 0),
     is_active: fd.get("is_active") === "on",
   };
