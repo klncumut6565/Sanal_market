@@ -78,3 +78,10 @@
 ## 2026-10-11 — Ciro raporu
 - Genel bakışa "Ciro" bölümü (components/admin/RevenueReport.tsx): Bugün / Dün / Bu hafta (Pzt'den) / Bu ay / Geçen ay kartları + tarih aralığı seçici (?bas=&bit=, en fazla 366 gün) → toplam ciro, sipariş, ortalama sepet, iptal + gün gün döküm.
 - Hepsi iş gününe göre (lib/hours: businessDateOf, businessDateStart, reportRanges). Ciro = teslimat dahil toplam, iptaller hariç.
+
+## 2026-10-11 — Sesli sipariş asistanı (TMGD Asistan motorundan)
+- TMGD'den taşınanlar: lib/voice/{audioStream, hatalar, types, providers/geminiLive} (Gemini Live WebSocket, 16k mikrofon / 24k çalma, Türkçe hata metinleri). geminiLive artık araç listesi + talimatı constructor'dan alıyor.
+- Yeni: /api/voice/session (GEMINI_API_KEY env ile kısa ömürlü token; voice_session_allow RPC ile cihaz başına saatlik + günlük toplam sınır), lib/voice/marketTools.ts (search_products, list_categories, add_to_cart, remove_from_cart, get_cart, get_store_info, go_to_checkout + Türkçe talimat), marketToolRunner.ts (tarayıcıda çalışır), useMarketVoice.ts (10 dk oturum, 90 sn sessizlikte kapanır), components/shop/VoiceAssistant.tsx ("Sesli sipariş" butonu + panel).
+- store_settings.voice_enabled / voice_daily_limit (300) / voice_hourly_per_user (8) — Admin → Ayarlar.
+- AÇIK: Vercel'e GEMINI_API_KEY eklenmeli (yoksa asistan "henüz etkinleştirilmedi" der). Gerçek sesli konuşma bu ortamdan test edilemedi (Google'a erişim yok); araçlar ve sınırlar test edildi.
+- Not: ürünlerde ayrı marka alanı yok; "hangi markalar" sorusu için marka ürün adında olmalı (ör. "Pınar Beyaz Peynir 500 g").

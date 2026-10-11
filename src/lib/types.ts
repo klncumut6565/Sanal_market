@@ -40,6 +40,9 @@ export type StoreSettings = {
   working_hours: string | null;
   open_time: string;
   close_time: string;
+  voice_enabled?: boolean;
+  voice_daily_limit?: number;
+  voice_hourly_per_user?: number;
   whatsapp_phone: string | null;
   sla_accept_min: number;
   sla_prepare_min: number;

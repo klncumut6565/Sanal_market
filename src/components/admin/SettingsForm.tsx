@@ -28,6 +28,16 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
         <F label="Ücretsiz teslimat eşiği (₺)"><input name="free_delivery_threshold" inputMode="decimal" defaultValue={s.free_delivery_threshold} className="input" /></F>
         <F label="Minimum sipariş (₺)"><input name="min_order_amount" inputMode="decimal" defaultValue={s.min_order_amount} className="input" /></F>
       </section>
+      <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+        <label className="flex items-center gap-2 font-bold">
+          <input type="checkbox" name="voice_enabled" defaultChecked={s.voice_enabled ?? true} className="h-5 w-5 accent-brand" /> 🎙️ Sesli sipariş asistanı açık
+        </label>
+        <div className="grid grid-cols-2 gap-3">
+          <F label="Günlük toplam oturum sınırı"><input name="voice_daily_limit" type="number" min={0} max={10000} defaultValue={s.voice_daily_limit ?? 300} className="input" /></F>
+          <F label="Cihaz başına saatlik sınır"><input name="voice_hourly_per_user" type="number" min={0} max={100} defaultValue={s.voice_hourly_per_user ?? 8} className="input" /></F>
+        </div>
+        <p className="text-xs text-muted">Sınırlar Gemini kullanım maliyetini kontrol altında tutar. Bir oturum en fazla 10 dakika sürer.</p>
+      </section>
       <section className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-line">
         <p className="font-bold">Sipariş hedef süreleri (dakika)</p>
         <p className="text-xs text-muted">Siparişler panosundaki gösterge çubuğu bu sürelere göre yeşilden kırmızıya döner.</p>

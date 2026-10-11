@@ -1,6 +1,8 @@
+import { Suspense } from "react";
 import { Header } from "@/components/shop/Header";
 import { getStoreSettings } from "@/lib/data/catalog";
 import { Brand } from "@/components/Brand";
+import { VoiceAssistant } from "@/components/shop/VoiceAssistant";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,8 +10,17 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <Header />
       {children}
       <Footer />
+      <Suspense fallback={null}>
+        <Voice />
+      </Suspense>
     </>
   );
+}
+
+async function Voice() {
+  const s = await getStoreSettings();
+  if (s.voice_enabled === false) return null;
+  return <VoiceAssistant settings={s} />;
 }
 
 async function Footer() {
