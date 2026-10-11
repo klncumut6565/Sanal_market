@@ -99,3 +99,11 @@
 - Sesli asistan düzeltmeleri: yeni araç list_category_products (kategorideki ürünleri adı/fiyatıyla sayar); list_categories tüm adları saydırır; add_to_cart artık customer_confirmed=true zorunlu (değilse "EKLENMEDİ" döner); talimat: "bekle/dur/hayır" → ekleme yok, "eklendi" yalnızca ok=true ise.
 - Sepete ekleme artık 2 adımlı ve KODLA zorunlu: propose_cart_items (öneri, eklemez) → müşteri sonraki konuşmasında "evet/ekle/olur/tamam" → confirm_cart_items ekler ve "Sepete şu ürünler eklendi: …" der. "bekle/dur/hayır/düşüneyim/şimdilik" → eklenmez. Onay kontrolü müşterinin transkriptiyle (replyIntent) yapılır; add_to_cart kaldırıldı. Panelde "❓ Onay bekleniyor" satırı görünür.
 - Sesli asistan kapalı saat bildirimi: closedNote() — oturum başında talimata "ŞU ANKİ DURUM" eklenir, asistan ilk cevabında "market kapalı, siparişler 10:00'da; sepeti şimdiden hazırlayabilirim" der. propose/confirm/get_cart/get_store_info sonuçlarında store_closed; go_to_checkout kapalıyken engellenir (sepet kalır).
+- ChatGPT kod incelemesi düzeltmeleri (migration 20261011060000_review_fixes, Supabase'e uygulandı):
+  - Sipariş idempotency: orders.client_order_id (unique) — CheckoutForm ilk gönderimde UUID üretir, tekrar gönderimde aynı sipariş döner.
+  - Sözleşme onayı: orders.terms_accepted_at + terms_version (actions.ts TERMS_VERSION="2026-10-11"); RPC accepted_terms olmadan reddeder (SOZLESME_ONAYI).
+  - admin_set_order_status: yalnızca bir sonraki aşamaya veya iptale geçiş (GECERSIZ_GECIS); aynı duruma tekrar istek sessiz no-op (çift tık).
+  - admin_order_item_out: yeni ürün max_per_order kontrolü (LIMIT_ASILDI).
+  - voice_session_allow: advisory lock ile atomik.
+  - PGlite ile test edildi (çift gönderim tek sipariş/tek stok düşümü, geçişler, limit).
+  - Yapılmayanlar (gereksiz/düşük öncelik): konuşmacı ayrımı, ses oturumu yeniden bağlanma, kapsamlı test altyapısı.

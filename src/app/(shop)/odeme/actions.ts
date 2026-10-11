@@ -22,7 +22,12 @@ export type PlaceOrderInput = {
   payment_method: PaymentMethod;
   note?: string;
   accepted_terms: boolean;
+  /** Ödeme ekranı başına bir kez üretilir; tekrar gönderimde aynı sipariş döner. */
+  client_order_id: string;
 };
+
+/** Sözleşme / aydınlatma metni değiştiğinde güncelle (siparişe kaydedilir). */
+const TERMS_VERSION = "2026-10-11";
 
 export type PlaceOrderResult =
   | { ok: true; id: string; token: string; orderNo: number }
@@ -32,6 +37,8 @@ export type PlaceOrderResult =
 export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResult> {
   const phone = normalizeTrMobile(input.phone ?? "");
   if (!input.accepted_terms) return { ok: false, error: "Devam etmek için sözleşmeyi onaylayın." };
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!UUID.test(input.client_order_id ?? "")) return { ok: false, error: "Sayfayı yenileyip tekrar dene." };
   if (!phone) return { ok: false, error: "Geçerli bir cep telefonu girin (ör. +90 541 673 58 63)." };
   if (input.name.trim().length < 3) return { ok: false, error: "Ad soyad girin." };
   const a = input.address;
@@ -66,6 +73,9 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       delivery_slot: input.delivery_slot,
       payment_method: input.payment_method,
       note: input.note?.trim().slice(0, 300) ?? "",
+      accepted_terms: true,
+      terms_version: TERMS_VERSION,
+      client_order_id: input.client_order_id,
     },
   }));
   } catch (e) {

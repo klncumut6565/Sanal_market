@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 import { Banknote, CreditCard, Lock, MapPin, Clock, Loader2 } from "lucide-react";
 import { useCart } from "@/store/cart";
 import { CartLines, FreeDeliveryBar, Totals, useCartSummary } from "@/components/shop/CartContents";
@@ -40,6 +40,9 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
   const clear = useCart((st) => st.clear);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Tek sipariş kimliği: bağlantı koparsa veya tekrar basılırsa çift sipariş oluşmaz
+  // (ilk gönderimde üretilir; prerender sırasında rastgele değer kullanılmaz)
+  const clientOrderId = useRef<string | null>(null);
   const [form, setForm] = useState(() => ({
     ...loadSaved(areas),
     note: "",
@@ -63,7 +66,8 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
     e.preventDefault();
     setError(null);
     start(async () => {
-      const res = await placeOrder({ ...form, delivery_slot: slots.includes(form.delivery_slot) ? form.delivery_slot : (slots[0] ?? form.delivery_slot), items: s.lines.map((l) => ({ product_id: l.id, quantity: l.qty })) });
+      clientOrderId.current ??= crypto.randomUUID();
+      const res = await placeOrder({ ...form, client_order_id: clientOrderId.current, delivery_slot: slots.includes(form.delivery_slot) ? form.delivery_slot : (slots[0] ?? form.delivery_slot), items: s.lines.map((l) => ({ product_id: l.id, quantity: l.qty })) });
       if (!res.ok) {
         setError(res.error);
         return;

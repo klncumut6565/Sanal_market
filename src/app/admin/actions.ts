@@ -154,6 +154,7 @@ const ITEM_ERR: Record<string, string> = {
   STOK_YETERSIZ: "Seçilen yeni üründen yeterli stok yok.",
   GECERSIZ_ADET: "Geçerli bir adet gir.",
   KALEM_YOK: "Bu ürün zaten siparişten çıkarılmış.",
+  LIMIT_ASILDI: "Yeni ürün için sipariş başına adet sınırı aşıldı.",
 };
 
 export async function orderItemOut(fd: FormData) {
@@ -266,7 +267,12 @@ export async function setOrderStatus(fd: FormData) {
   if (status === "iptal" && !error) updateTag(CATALOG_TAG); // stok iade edildi
   const back = str(fd, "back");
   const target = back.startsWith("/admin") && !back.startsWith("//") ? back : `/admin/siparisler/${id}`;
-  redirect(`${target}${error ? (target.includes("?") ? "&" : "?") + "hata=1" : ""}`);
+  const msg = error?.message?.startsWith("GECERSIZ_GECIS")
+    ? "Sipariş aşamaları sırayla ilerler (Alındı → Hazırlanıyor → Yolda → Teslim). Sayfayı yenile."
+    : error?.message?.startsWith("SIPARIS_KAPALI")
+      ? "Bu sipariş zaten kapanmış (teslim edildi veya iptal)."
+      : "1";
+  redirect(`${target}${error ? (target.includes("?") ? "&" : "?") + "hata=" + encodeURIComponent(msg) : ""}`);
 }
 
 // ---------------- AYARLAR ----------------
