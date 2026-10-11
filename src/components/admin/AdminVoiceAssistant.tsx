@@ -41,15 +41,20 @@ export function AdminVoiceAssistant() {
   return (
     <>
       {!open && (
+        // Kullanılmazken: köşede küçük, yarı saydam simge (TMGD asistanı gibi);
+        // üzerine gelince / odaklanınca etiketle genişler. Formların "Kaydet" butonunu kapatmaz.
         <button
           onClick={openIt}
+          title="Sesli rapor"
           aria-label="Yönetim sesli asistanı"
-          className="fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full bg-ink py-3 pl-3 pr-4 text-sm font-bold text-white shadow-xl ring-4 ring-white transition hover:scale-105 lg:left-[246px]"
+          className="group fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full bg-ink p-2 text-white opacity-45 shadow-lg transition-all duration-300 hover:pr-4 hover:opacity-100 focus:pr-4 focus:opacity-100 lg:left-[246px]"
         >
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-brand">
-            <Mic size={18} />
+          <span className="grid h-7 w-7 place-items-center rounded-full bg-brand">
+            <Mic size={16} />
           </span>
-          Sesli rapor
+          <span className="max-w-0 overflow-hidden whitespace-nowrap text-sm font-bold opacity-0 transition-all duration-300 group-hover:max-w-[160px] group-hover:opacity-100 group-focus:max-w-[160px] group-focus:opacity-100">
+            Sesli rapor
+          </span>
         </button>
       )}
 

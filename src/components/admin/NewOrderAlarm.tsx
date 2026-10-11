@@ -192,13 +192,21 @@ export function NewOrderAlarm() {
           unlock();
           setPanel(true);
         }}
-        className={`fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full px-4 py-3 text-sm font-bold shadow-lg ${
-          soundReady ? "bg-white text-ink ring-1 ring-line" : "bg-ink text-white"
+        title={soundReady ? "Zil açık — ayarlar" : "Sipariş zilini aç"}
+        className={`group fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-full p-3 text-sm font-bold shadow-lg transition-all duration-300 hover:px-4 hover:opacity-100 focus:px-4 focus:opacity-100 ${
+          soundReady ? "bg-white text-ink opacity-50 ring-1 ring-line" : "bg-ink text-white"
         }`}
       >
-        {soundReady ? <Volume2 size={18} className="text-emerald-600" /> : <Volume2 size={18} className="text-brand" />}
-        {soundReady ? "Zil açık" : "Sipariş zilini aç"}
-        <Settings2 size={16} className="opacity-60" />
+        <Volume2 size={18} className={soundReady ? "text-emerald-600" : "text-brand"} />
+        {/* Zil açıkken yalnızca simge (yarı saydam); kapalıyken uyarı metni görünür kalsın */}
+        <span
+          className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
+            soundReady ? "max-w-0 opacity-0 group-hover:max-w-[140px] group-hover:opacity-100 group-focus:max-w-[140px] group-focus:opacity-100" : "max-w-[160px]"
+          }`}
+        >
+          {soundReady ? "Zil açık" : "Sipariş zilini aç"}
+        </span>
+        <Settings2 size={16} className={`opacity-60 ${soundReady ? "hidden group-hover:block group-focus:block" : ""}`} />
       </button>
 
       {panel && (

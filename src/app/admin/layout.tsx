@@ -22,7 +22,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
         <AdminNav />
       </aside>
-      <main className="min-w-0 p-4 lg:p-8">
+      <main className="min-w-0 p-4 pb-24 lg:p-8 lg:pb-24">
         <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-white" />}>
           <Gate>{children}</Gate>
         </Suspense>
