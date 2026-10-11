@@ -22,6 +22,9 @@ export function hataTurkce(e: unknown): string {
   if (ad === "NotAllowedError" || ad === "PermissionDeniedError" || kucuk.includes("not allowed by the user agent") || kucuk.includes("permission denied")) {
     return MIKROFON_IZNI;
   }
+  if (kucuk.includes("audiosession")) {
+    return "Mikrofon başka bir ses tarafından kullanılıyor. Sayfayı yenileyip tekrar dene; telefon görüşmesi veya müzik açıksa kapat.";
+  }
   if (ad === "NotFoundError" || ad === "DevicesNotFoundError" || kucuk.includes("requested device not found")) {
     return "Mikrofon bulunamadı. Bir mikrofonun takılı ve açık olduğundan emin ol.";
   }

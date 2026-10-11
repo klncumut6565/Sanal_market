@@ -113,10 +113,42 @@ export type MicCapture = {
  * parçaları hâlinde `onChunk`'a iletir. Mikrofon izni burada istenir —
  * kullanıcı reddederse Promise reddedilir.
  */
+/**
+ * iPhone Safari: `navigator.audioSession.type` "playback" kalmışsa (ör. admin
+ * sipariş zili ayarladıysa) mikrofon açılmaz → "AudioSession category is not
+ * compatible with audio capture". Yakalamadan önce kayıt+çalma moduna al.
+ */
+function prepareAudioSessionForCapture() {
+  try {
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession && nav.audioSession.type !== "play-and-record") {
+      nav.audioSession.type = "play-and-record";
+    }
+  } catch {
+    /* desteklenmiyor */
+  }
+}
+
 export async function startMicCapture(onChunk: (pcm: ArrayBuffer) => void): Promise<MicCapture> {
-  const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-  });
+  prepareAudioSessionForCapture();
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  } catch (e) {
+    // Bazı iOS sürümlerinde "auto" daha uyumlu — bir kez daha dene.
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (!nav.audioSession) throw e;
+    try {
+      nav.audioSession.type = "auto";
+    } catch {
+      throw e;
+    }
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+  }
 
   const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
   const audioContext = new AudioCtx();
