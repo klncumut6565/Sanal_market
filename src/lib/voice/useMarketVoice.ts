@@ -46,6 +46,7 @@ export function useMarketVoice(settings: VoiceSettings) {
   const actionId = useRef(0);
   const proposalRef = useRef<CartProposal | null>(null);
   const userTurn = useRef(0);
+  const lastAsst = useRef("");
   const settingsRef = useRef(settings);
   useEffect(() => {
     settingsRef.current = settings;
@@ -80,6 +81,7 @@ export function useMarketVoice(settings: VoiceSettings) {
             proposalRef.current = p;
           },
           currentTurn: () => userTurn.current,
+          lastAssistant: () => lastAsst.current,
         },
       })(name, args),
     [router, log],
@@ -143,6 +145,7 @@ export function useMarketVoice(settings: VoiceSettings) {
         } else {
           if (userBuf.current) userBuf.current = "";
           asstBuf.current += e.text;
+          lastAsst.current = asstBuf.current;
           setAssistantText(asstBuf.current);
         }
       });

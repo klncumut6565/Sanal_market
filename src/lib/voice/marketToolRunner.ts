@@ -5,6 +5,7 @@ import { useCart, cartTotals, lineUnit } from "@/store/cart";
 import { hoursState } from "@/lib/hours";
 import type { Product } from "@/lib/types";
 import type { VoiceSettings, VoiceAction } from "./useMarketVoice";
+import { halusinasyonMu, kisaYankiMi, yankiMi } from "./halusinasyon";
 
 /** Sepet onayı: öneri bekletilir, müşterinin SONRAKİ konuşmasında açık "evet" aranır. */
 export type CartProposal = {
@@ -18,6 +19,8 @@ export type CartGate = {
   get: () => CartProposal | null;
   set: (p: CartProposal | null) => void;
   currentTurn: () => number;
+  /** Asistanın en son seslendirdiği cümle (yankı tespiti için). */
+  lastAssistant: () => string;
 };
 
 const trNorm = (t: string) => t.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, " ").trim();
@@ -267,6 +270,20 @@ export function createMarketToolRunner(deps: {
           if (pend.reply === last) break;
           last = pend.reply;
         }
+      }
+      // Halüsinasyon / yankı filtresi (TMGD Asistan'daki önlemler): uydurma kalıplar
+      // ("izlediğiniz için teşekkürler"), anlamsız tekrar veya asistanın kendi
+      // sesinin mikrofona sızması ("sepete eklensin mi") müşteri cevabı SAYILMAZ.
+      const asst = gate.lastAssistant();
+      const sahte = halusinasyonMu(pend.reply) || yankiMi(pend.reply, asst) || kisaYankiMi(pend.reply, asst);
+      if (sahte && trNorm(pend.reply)) {
+        const duyulan = pend.reply.trim();
+        pend.reply = "";
+        return {
+          ok: false,
+          added: [],
+          error: `EKLENMEDİ: duyulan ses ("${duyulan}") müşterinin cevabı gibi değil (gürültü/yankı olabilir). 'Sepete eklensin mi, evet mi hayır mı?' diye net bir cevap iste.`,
+        };
       }
       const reply = trNorm(pend.reply);
       if (!reply) {
