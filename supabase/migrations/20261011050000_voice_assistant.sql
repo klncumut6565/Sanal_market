@@ -34,7 +34,6 @@ begin
   select count(*) into v_all from public.voice_sessions where created_at > now() - interval '1 day';
   if v_all >= s.voice_daily_limit then return 'gunluk'; end if;
   insert into public.voice_sessions (client_key) values (p_client_key);
-  delete from public.voice_sessions where created_at < now() - interval '7 days';
   return 'ok';
 end;
 $$;

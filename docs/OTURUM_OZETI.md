@@ -83,5 +83,6 @@
 - TMGD'den taşınanlar: lib/voice/{audioStream, hatalar, types, providers/geminiLive} (Gemini Live WebSocket, 16k mikrofon / 24k çalma, Türkçe hata metinleri). geminiLive artık araç listesi + talimatı constructor'dan alıyor.
 - Yeni: /api/voice/session (GEMINI_API_KEY env ile kısa ömürlü token; voice_session_allow RPC ile cihaz başına saatlik + günlük toplam sınır), lib/voice/marketTools.ts (search_products, list_categories, add_to_cart, remove_from_cart, get_cart, get_store_info, go_to_checkout + Türkçe talimat), marketToolRunner.ts (tarayıcıda çalışır), useMarketVoice.ts (10 dk oturum, 90 sn sessizlikte kapanır), components/shop/VoiceAssistant.tsx ("Sesli sipariş" butonu + panel).
 - store_settings.voice_enabled / voice_daily_limit (300) / voice_hourly_per_user (8) — Admin → Ayarlar.
+- Migration Supabase'e iki parça hâlinde uygulandı (voice_assistant_part1/part2); fonksiyondaki eski kayıt temizleme satırı onay penceresine takıldığı için çıkarıldı (tablo çok küçük kalır).
 - AÇIK: Vercel'e GEMINI_API_KEY eklenmeli (yoksa asistan "henüz etkinleştirilmedi" der). Gerçek sesli konuşma bu ortamdan test edilemedi (Google'a erişim yok); araçlar ve sınırlar test edildi.
 - Not: ürünlerde ayrı marka alanı yok; "hangi markalar" sorusu için marka ürün adında olmalı (ör. "Pınar Beyaz Peynir 500 g").
