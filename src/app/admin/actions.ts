@@ -1,4 +1,5 @@
 "use server";
+import { streetKey } from "@/lib/streetSuggest";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/data/auth";
@@ -221,14 +222,63 @@ export async function deleteStreet(fd: FormData) {
   redirect(nbBack(str(fd, "neighborhood_id")));
 }
 
+const likeEsc = (t: string) => t.replace(/[\\%_]/g, (c) => "\\" + c);
+
+/** Elle yazılmış sokağı taşıyan Çorlu siparişlerini listedeki sokağa bağla (raporlar/kurye için). */
+async function linkTypedOrders(
+  supabase: Awaited<ReturnType<typeof requireAdmin>>["supabase"],
+  nbId: number,
+  typed: string,
+  street: { id: number; name: string },
+) {
+  const { data: nb } = await supabase.from("delivery_neighborhoods").select("name").eq("id", nbId).maybeSingle();
+  if (!nb || !typed) return;
+  await supabase
+    .from("orders")
+    .update({ addr_street_id: street.id, addr_street: street.name })
+    .is("addr_street_id", null)
+    .eq("addr_district", "Çorlu")
+    .eq("addr_neighborhood", nb.name)
+    .ilike("addr_street", likeEsc(typed));
+}
+
+const regionsBack = (fd: FormData) => (str(fd, "back").startsWith("/admin") ? str(fd, "back") : "/admin/bolgeler");
+
+/** Önerilen (müşterinin yazdığı) sokağı — gerekirse düzeltilmiş adıyla — listeye ekle. */
 export async function addSuggestedStreet(fd: FormData) {
   const { supabase } = await requireAdmin();
   const nbId = Number(str(fd, "neighborhood_id"));
   const name = str(fd, "name").replace(/\s+/g, " ").slice(0, 120);
-  if (nbId && name.length >= 2)
+  const typed = str(fd, "typed") || name;
+  if (nbId && name.length >= 2) {
     await supabase.from("delivery_streets").upsert({ neighborhood_id: nbId, name }, { onConflict: "neighborhood_id,name", ignoreDuplicates: true });
+    const { data: st } = await supabase.from("delivery_streets").select("id,name").eq("neighborhood_id", nbId).eq("name", name).maybeSingle();
+    if (st) await linkTypedOrders(supabase, nbId, typed, st);
+  }
   updateTag(AREAS_TAG);
-  redirect(str(fd, "back").startsWith("/admin") ? str(fd, "back") : "/admin/bolgeler");
+  redirect(regionsBack(fd));
+}
+
+/** Yazılan ad aslında listedeki bir sokak (yazım hatası): siparişleri ona bağla, öneriyi gizle. */
+export async function mapSuggestedStreet(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const nbId = Number(str(fd, "neighborhood_id"));
+  const typed = str(fd, "typed");
+  const { data: st } = await supabase.from("delivery_streets").select("id,name").eq("id", Number(str(fd, "street_id"))).maybeSingle();
+  if (nbId && st) {
+    await linkTypedOrders(supabase, nbId, typed, st);
+    await supabase.from("delivery_street_ignored").upsert({ neighborhood_id: nbId, name_key: streetKey(typed) }, { ignoreDuplicates: true });
+  }
+  redirect(regionsBack(fd));
+}
+
+/** Öneriyi yoksay (yanlış/anlamsız yazım). */
+export async function ignoreSuggestedStreet(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const nbId = Number(str(fd, "neighborhood_id"));
+  const typed = str(fd, "typed");
+  if (nbId && typed) await supabase.from("delivery_street_ignored").upsert({ neighborhood_id: nbId, name_key: streetKey(typed) }, { ignoreDuplicates: true });
+  redirect(regionsBack(fd));
 }
 
 // ---------------- KATEGORİLER ----------------
