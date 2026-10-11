@@ -94,6 +94,10 @@ export default async function KvkkPage() {
             saklanır; bu sunucular yurt dışında bulunabilir.
           </li>
           <li>Sesli asistan kullanılırsa ses veriniz yukarıda açıklandığı şekilde Google LLC&apos;ye aktarılır.</li>
+          <li>
+            Yönetim panelindeki sesli raporlama asistanı kullanıldığında, istenen rapora göre sipariş özetleri (tutar, ürün, müşteri adı) yanıt üretilmesi
+            amacıyla aynı şekilde Google LLC&apos;ye iletilebilir; telefon ve adres bilgileri bu amaçla iletilmez.
+          </li>
           <li>Kanunen yetkili kamu kurum ve kuruluşlarına, talep hâlinde ve mevzuatın gerektirdiği ölçüde aktarılabilir.</li>
         </ul>
       </Section>

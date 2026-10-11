@@ -4,6 +4,7 @@ import { Brand } from "@/components/Brand";
 import { requireAdmin } from "@/lib/data/auth";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { NewOrderAlarm } from "@/components/admin/NewOrderAlarm";
+import { AdminVoiceAssistant } from "@/components/admin/AdminVoiceAssistant";
 
 export const metadata = { title: { default: "Yönetim", template: "%s · Yönetim" } };
 export const instant = false;
@@ -35,6 +36,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
   return (
     <>
       <NewOrderAlarm />
+      <AdminVoiceAssistant />
       {children}
     </>
   );

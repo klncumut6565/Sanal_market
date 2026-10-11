@@ -4,6 +4,7 @@
 //  ek olarak cihaz başına saatlik ve günlük toplam oturum sınırı uygulanır.)
 import { connection, type NextRequest } from "next/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { getSessionUser } from "@/lib/data/auth";
 
 const TOKEN_DK = 15;
 
@@ -19,13 +20,20 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) return json({ error: "Sesli asistan henüz etkinleştirilmedi." }, 503);
 
-  const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || req.headers.get("x-real-ip") || "bilinmiyor";
-  const clientKey = await sha256(`sanal-market:${ip}`);
-  const { data: izin, error: izinHata } = await createPublicClient().rpc("voice_session_allow", { p_client_key: clientKey });
-  if (izinHata) return json({ error: "Sesli asistan şu an kullanılamıyor." }, 503);
-  if (izin === "kapali") return json({ error: "Sesli asistan şu an kapalı." }, 403);
-  if (izin === "saatlik") return json({ error: "Kısa sürede çok fazla sesli oturum açıldı. Biraz sonra tekrar dene." }, 429);
-  if (izin === "gunluk") return json({ error: "Sesli asistan bugünlük yoğun. Ürünleri arama kutusundan bulabilirsin." }, 429);
+  // Yönetim paneli asistanı: yalnızca admin; müşteri sınırları ve aç/kapa ayarı uygulanmaz
+  const adminMode = req.nextUrl.searchParams.get("mod") === "admin";
+  if (adminMode) {
+    const user = await getSessionUser();
+    if (user?.role !== "admin") return json({ error: "Bu asistan yalnızca yöneticiler içindir." }, 403);
+  } else {
+    const ip = (req.headers.get("x-forwarded-for") ?? "").split(",")[0].trim() || req.headers.get("x-real-ip") || "bilinmiyor";
+    const clientKey = await sha256(`sanal-market:${ip}`);
+    const { data: izin, error: izinHata } = await createPublicClient().rpc("voice_session_allow", { p_client_key: clientKey });
+    if (izinHata) return json({ error: "Sesli asistan şu an kullanılamıyor." }, 503);
+    if (izin === "kapali") return json({ error: "Sesli asistan şu an kapalı." }, 403);
+    if (izin === "saatlik") return json({ error: "Kısa sürede çok fazla sesli oturum açıldı. Biraz sonra tekrar dene." }, 429);
+    if (izin === "gunluk") return json({ error: "Sesli asistan bugünlük yoğun. Ürünleri arama kutusundan bulabilirsin." }, 429);
+  }
 
   const expireTime = new Date(Date.now() + TOKEN_DK * 60_000).toISOString().replace(/\.\d{3}Z$/, "Z");
   const govde = JSON.stringify({ uses: 1, expireTime });
