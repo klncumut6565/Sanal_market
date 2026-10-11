@@ -31,6 +31,19 @@ export function replyIntent(text: string): "red" | "onay" | "belirsiz" {
   return "belirsiz";
 }
 
+/** Market kapalıysa müşteriye söylenecek not (sipariş verilemez, sepet hazırlanabilir). */
+export function closedNote(s: VoiceSettings): string | undefined {
+  const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open);
+  if (h.open) return undefined;
+  if (!s.is_open || h.secondsToOpen == null) {
+    return "Market şu an sipariş almıyor. Ürünleri sepete ekleyebilirsin, sipariş market açıldığında verilebilir.";
+  }
+  const hh = Math.floor(h.secondsToOpen / 3600);
+  const mm = Math.floor((h.secondsToOpen % 3600) / 60);
+  const kalan = hh ? `${hh} saat ${mm} dakika` : `${mm} dakika`;
+  return `Market şu an kapalı; siparişler saat ${s.open_time}'da açılıyor (yaklaşık ${kalan} sonra). Şimdi sepete ürün eklenebilir ama sipariş ancak açılışta verilebilir.`;
+}
+
 function cartLabel(p: Product, qty: number) {
   return `${qty} × ${p.name}${p.unit_label ? ` (${p.unit_label})` : ""}`;
 }
@@ -157,6 +170,7 @@ export function createMarketToolRunner(deps: {
         proposed: items.map((i) => ({ name: i.product.name, unit: i.product.unit_label, quantity: i.qty, unit_price: i.product.sale_price ?? i.product.price })),
         total: +total.toFixed(2),
         problems: problems.length ? problems : undefined,
+        store_closed: closedNote(s),
         next: "Müşteriye bu ürünleri miktarıyla söyle ve 'Sepete eklensin mi?' diye sor. Cevabı bekle.",
       };
     }
@@ -197,6 +211,7 @@ export function createMarketToolRunner(deps: {
         ok: added.length > 0,
         added,
         limited: limited.length ? limited : undefined,
+        store_closed: closedNote(s),
         say: added.length ? "Müşteriye 'Sepete şu ürünler eklendi: …' diyerek added listesini miktarlarıyla söyle." : "Hiçbir ürün eklenemedi; nedenini söyle.",
       };
     }
@@ -222,6 +237,7 @@ export function createMarketToolRunner(deps: {
         total: +t.total.toFixed(2),
         remaining_for_free_delivery: Math.max(0, +(s.free_delivery_threshold - t.subtotal).toFixed(2)),
         remaining_for_min_order: Math.max(0, +(s.min_order_amount - t.subtotal).toFixed(2)),
+        store_closed: closedNote(s),
       };
     }
 
@@ -231,6 +247,7 @@ export function createMarketToolRunner(deps: {
         store: s.store_name,
         hours: `${s.open_time} - ${s.close_time}`,
         open_now: h.open,
+        store_closed: closedNote(s),
         minutes_to_close: h.secondsToClose != null ? Math.floor(h.secondsToClose / 60) : undefined,
         delivery_fee: s.delivery_fee,
         free_delivery_over: s.free_delivery_threshold,
@@ -243,6 +260,8 @@ export function createMarketToolRunner(deps: {
     if (name === "go_to_checkout") {
       const lines = useCart.getState().lines;
       if (!lines.length) return { error: "Sepet boş." };
+      const kapali = closedNote(s);
+      if (kapali) return { ok: false, error: `Sipariş verilemez: ${kapali} Sepet kayıtlı kalır.` };
       const t = cartTotals(lines, s.delivery_fee, s.free_delivery_threshold);
       if (t.subtotal < s.min_order_amount) return { error: `Minimum sipariş tutarı ${s.min_order_amount} TL; ${(s.min_order_amount - t.subtotal).toFixed(2)} TL daha ürün eklenmeli.` };
       navigate("/odeme");

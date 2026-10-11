@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
-import { createMarketToolRunner, type CartProposal } from "./marketToolRunner";
+import { createMarketToolRunner, closedNote, type CartProposal } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture } from "./audioStream";
 import { hataTurkce } from "./hatalar";
@@ -177,7 +177,13 @@ export function useMarketVoice(settings: VoiceSettings) {
         }
       });
 
-      await provider.connect(sess, null, MARKET_VOICE_INSTRUCTION);
+      const kapali = closedNote(settingsRef.current);
+      const talimat =
+        MARKET_VOICE_INSTRUCTION +
+        (kapali
+          ? `\n\nŞU ANKİ DURUM: ${kapali} Müşteriye ilk cevabında bunu kısaca bildir ve sepet hazırlamasına yardım edebileceğini söyle.`
+          : "\n\nŞU ANKİ DURUM: Market açık, sipariş verilebilir.");
+      await provider.connect(sess, null, talimat);
       providerRef.current = provider;
       playbackRef.current = playback;
 

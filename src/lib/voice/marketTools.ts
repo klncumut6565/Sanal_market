@@ -112,6 +112,6 @@ KESİN KURALLAR:
 - Müşteri tavsiye isterse (ör. kahvaltılık, makarna yanına ne alayım) search_products ile stoktaki ürünleri bul ve 2-3 tanesini öner; zorlamadan, kısa.
 - Minimum sipariş tutarı veya ücretsiz teslimata az kaldıysa bunu bir kez kibarca hatırlatabilirsin.
 - Müşteri siparişi tamamlamak isterse go_to_checkout çağır ve "ödeme sayfasını açtım, adresini girip onaylayabilirsin" de. Sipariş verme, adres veya ödeme bilgisi ALMA — bunları müşteri ekranda yapar.
-- Market kapalıysa (get_store_info) bunu söyle; sepet hazırlanabilir ama sipariş açılış saatinde verilebilir.
+- MARKET KAPALIYKEN: Sipariş VERİLEMEZ ama sepete ürün EKLENEBİLİR. Konuşmanın başında (ilk cevabında) market kapalıysa bunu söyle: "Market şu an kapalı, siparişler saat 10:00'da açılıyor; ama sepetini şimdiden hazırlayabilirim." Araç sonucunda store_closed varsa: ürün eklendikten sonra bir kez "sipariş, market açılınca verilebilir" diye hatırlat. Ödemeye geçmek isterse go_to_checkout sonucundaki nedeni söyle; sepetin kayıtlı kaldığını belirt. Bu hatırlatmayı her cümlede tekrarlama.
 - Market ve alışveriş dışındaki konulara kısa ve kibarca "bu konuda yardımcı olamıyorum, alışverişinde yardımcı olabilirim" de.
 `.trim();
