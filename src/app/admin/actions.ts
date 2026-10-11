@@ -1,5 +1,6 @@
 "use server";
 import { streetKey } from "@/lib/streetSuggest";
+import { normalizeTrMobile } from "@/lib/phone";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -387,4 +388,25 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
   if (error) return { error: error.message };
   updateTag(SETTINGS_TAG);
   return { ok: "Ayarlar kaydedildi" };
+}
+
+// ---------------- KARA LİSTE ----------------
+export async function addToBlacklist(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const raw = str(fd, "phone");
+  const phone = normalizeTrMobile(raw) ?? raw;
+  const reason = str(fd, "reason").slice(0, 300) || null;
+  if (phone) {
+    const { data: prof } = await supabase.from("profiles").select("id").eq("phone", phone).maybeSingle();
+    await supabase.from("customer_blacklist").upsert({ phone, reason, user_id: prof?.id ?? null });
+  }
+  redirect(`/admin/musteriler/${encodeURIComponent(raw)}?kara=eklendi`);
+}
+
+export async function removeFromBlacklist(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const raw = str(fd, "phone");
+  const phone = normalizeTrMobile(raw) ?? raw;
+  await supabase.from("customer_blacklist").delete().in("phone", Array.from(new Set([raw, phone])));
+  redirect(`/admin/musteriler/${encodeURIComponent(raw)}?kara=cikarildi`);
 }

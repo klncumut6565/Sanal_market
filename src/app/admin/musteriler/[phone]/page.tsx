@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageCircle, Phone } from "lucide-react";
+import { Ban, MessageCircle, Phone } from "lucide-react";
+import { addToBlacklist, removeFromBlacklist } from "../../actions";
+import { ConfirmSubmit } from "@/components/admin/ConfirmSubmit";
 import { requireAdmin } from "@/lib/data/auth";
 import { OrderTable } from "@/components/admin/OrderTable";
 import { displayPhone, normalizeTrMobile } from "@/lib/phone";
@@ -10,14 +12,16 @@ import type { Order } from "@/lib/types";
 
 export const metadata = { title: "Müşteri" };
 
-export default async function CustomerPage({ params }: { params: Promise<{ phone: string }> }) {
+export default async function CustomerPage({ params, searchParams }: { params: Promise<{ phone: string }>; searchParams: Promise<{ kara?: string }> }) {
   const raw = decodeURIComponent((await params).phone);
+  const { kara } = await searchParams;
   const { supabase } = await requireAdmin();
   const phones = Array.from(new Set([raw, normalizeTrMobile(raw)].filter(Boolean))) as string[];
 
-  const [{ data: orders }, { data: profile }] = await Promise.all([
+  const [{ data: orders }, { data: profile }, { data: banned }] = await Promise.all([
     supabase.from("orders").select("*").in("phone", phones).order("created_at", { ascending: false }).limit(500),
     supabase.from("profiles").select("full_name, created_at").in("phone", phones).maybeSingle(),
+    supabase.from("customer_blacklist").select("reason, created_at").in("phone", phones).maybeSingle(),
   ]);
   const list = (orders ?? []) as Order[];
   if (list.length === 0 && !profile) notFound();
@@ -39,6 +43,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ phone
             <h1 className="text-2xl font-black">{name}</h1>
             <p className="font-semibold text-muted">{displayPhone(raw)}</p>
             {profile && <p className="mt-1 inline-block rounded-full bg-sky-50 px-2 py-0.5 text-xs font-bold text-sky-700">Üye · {formatDate(profile.created_at)}</p>}
+            {banned && <p className="ml-1 mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-bold text-white">⛔ Kara listede</p>}
           </div>
           <div className="flex gap-2">
             <a href={waLink(raw, `Merhaba ${name.split(" ")[0]}, `)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2 text-sm font-bold text-white">
@@ -62,6 +67,45 @@ export default async function CustomerPage({ params }: { params: Promise<{ phone
             </div>
           ))}
         </div>
+      </section>
+
+      <section className={`space-y-3 rounded-2xl p-4 ring-1 ${banned ? "bg-red-50 ring-red-200" : "bg-white ring-line"}`}>
+        <h2 className="flex items-center gap-2 font-extrabold">
+          <Ban size={18} className="text-red-600" /> Kara liste
+        </h2>
+        {kara === "eklendi" && <p className="text-sm font-semibold text-red-700">Müşteri kara listeye eklendi.</p>}
+        {kara === "cikarildi" && <p className="text-sm font-semibold text-emerald-700">Müşteri kara listeden çıkarıldı.</p>}
+        {banned ? (
+          <>
+            <p className="text-sm">
+              Bu müşteri <b>{formatDate(banned.created_at)}</b> tarihinde kara listeye alındı; bu telefonla (ve üyeliğiyle) <b>sipariş veremez</b>.
+              {banned.reason && (
+                <>
+                  <br />
+                  <span className="text-muted">Neden:</span> {banned.reason}
+                </>
+              )}
+            </p>
+            <form action={removeFromBlacklist}>
+              <input type="hidden" name="phone" value={raw} />
+              <ConfirmSubmit message="Müşteri kara listeden çıkarılsın mı? Tekrar sipariş verebilecek." className="btn-ghost py-2 text-sm">
+                Kara listeden çıkar
+              </ConfirmSubmit>
+            </form>
+          </>
+        ) : (
+          <form action={addToBlacklist} className="space-y-2">
+            <input type="hidden" name="phone" value={raw} />
+            <p className="text-sm text-muted">
+              Kara listedeki müşteri sipariş veremez; ödeme ekranında yalnızca &quot;Siparişin şu an alınamıyor, bizimle iletişime geç&quot; mesajını görür (kara listede
+              olduğu söylenmez). Mevcut siparişleri etkilenmez.
+            </p>
+            <input name="reason" maxLength={300} placeholder="Neden (ör. 3 kez kapıda teslim almadı, kuryeye saygısızlık)" className="input" />
+            <ConfirmSubmit message={`${name} kara listeye alınsın mı? Bu telefonla sipariş veremeyecek.`} className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white">
+              Kara listeye ekle
+            </ConfirmSubmit>
+          </form>
+        )}
       </section>
 
       {addresses.length > 0 && (

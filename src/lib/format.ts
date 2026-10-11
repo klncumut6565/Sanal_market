@@ -35,6 +35,8 @@ export const discountRate = (p: { price: number; sale_price: number | null }) =>
 export function orderErrorMessage(raw: string): string {
   const [code, arg] = raw.split(":");
   switch (code) {
+    case "MUSTERI_ENGELLI":
+      return "Siparişin şu an alınamıyor. Lütfen marketimizle iletişime geç.";
     case "SOZLESME_ONAYI":
       return "Devam etmek için sözleşmeyi onaylayın.";
     case "GECERSIZ_ISTEK":

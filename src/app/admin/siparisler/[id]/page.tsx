@@ -21,9 +21,10 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
   const { supabase } = await requireAdmin();
   const { data: order } = await supabase.from("orders").select("*").eq("id", id).maybeSingle<Order>();
   if (!order) notFound();
-  const [{ data: items }, settings] = await Promise.all([
+  const [{ data: items }, settings, { data: banned }] = await Promise.all([
     supabase.from("order_items").select("*").eq("order_id", id).order("product_name"),
     getStoreSettings(),
+    supabase.from("customer_blacklist").select("reason").eq("phone", order.phone).maybeSingle(),
   ]);
   const itemList = (items ?? []) as OrderItem[];
   const editable = order.status === "alindi" || order.status === "hazirlaniyor";
@@ -54,6 +55,11 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
       <Link href="/admin/siparisler" className="text-sm font-semibold text-muted hover:text-brand">← Siparişler</Link>
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-black">Sipariş #{order.order_no}</h1>
+        {banned && (
+          <p className="rounded-lg bg-red-600 px-2.5 py-1 text-xs font-bold text-white" title={banned.reason ?? undefined}>
+            ⛔ Müşteri kara listede{banned.reason ? `: ${banned.reason}` : ""}
+          </p>
+        )}
         <StatusBadge status={order.status} />
         <span className="text-sm text-muted">{formatDate(order.created_at)}</span>
       </div>

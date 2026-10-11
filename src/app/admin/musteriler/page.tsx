@@ -14,6 +14,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const { q = "", sira = "son" } = await searchParams;
   const { supabase } = await requireAdmin();
   let list = await loadCustomers(supabase);
+  const { data: bl } = await supabase.from("customer_blacklist").select("phone");
+  const banned = new Set((bl ?? []).map((b) => b.phone as string));
 
   const needle = q.trim().toLocaleLowerCase("tr");
   const digits = localDigits(q);
@@ -21,6 +23,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     list = list.filter((c) => c.name.toLocaleLowerCase("tr").includes(needle) || (digits.length >= 3 && c.phone.includes(digits)));
   if (sira === "harcama") list = [...list].sort((a, b) => b.totalSpent - a.totalSpent);
   if (sira === "siparis") list = [...list].sort((a, b) => b.orderCount - a.orderCount);
+  if (sira === "kara") list = list.filter((c) => banned.has(c.phone));
 
   const total = list.reduce((a, c) => a + c.totalSpent, 0);
 
@@ -43,6 +46,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           <option value="son">Son sipariş</option>
           <option value="harcama">En çok harcayan</option>
           <option value="siparis">En çok sipariş</option>
+          <option value="kara">⛔ Kara liste ({banned.size})</option>
         </select>
         <button className="btn-ghost">Uygula</button>
       </form>
@@ -58,6 +62,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   <p className="flex items-center gap-2 font-bold">
                     <span className="truncate">{c.name}</span>
                     {c.member && <span className="shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700">Üye</span>}
+                    {banned.has(c.phone) && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">Kara liste</span>}
                   </p>
                   <p className="text-sm text-muted">{displayPhone(c.phone)}</p>
                   {c.lastAddress && <p className="truncate text-xs text-muted">{c.lastAddress}</p>}
