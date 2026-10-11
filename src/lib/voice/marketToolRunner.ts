@@ -27,7 +27,7 @@ const ONAY_KELIME = new Set(["evet", "ekle", "ekleyin", "ekleyebilirsin", "eklen
 export function replyIntent(text: string): "red" | "onay" | "belirsiz" {
   const w = trNorm(text).split(" ").filter(Boolean);
   if (w.some((x) => RED_KOK.some((k) => x.startsWith(k)))) return "red";
-  if (w.some((x) => ONAY_KELIME.has(x))) return "onay";
+  if (w.some((x) => ONAY_KELIME.has(x) || (x.startsWith("ekle") && !x.startsWith("ekleme")) || x.startsWith("evet"))) return "onay";
   return "belirsiz";
 }
 
@@ -178,6 +178,17 @@ export function createMarketToolRunner(deps: {
     if (name === "confirm_cart_items") {
       const pend = gate.get();
       if (!pend) return { ok: false, added: [], error: "Bekleyen öneri yok. Önce propose_cart_items çağır ve müşteriye sor." };
+      // Müşterinin konuşmasının yazıya dökümü araç çağrısından SONRA gelebilir — kısa süre bekle.
+      for (let i = 0; i < 20 && !trNorm(pend.reply); i++) await new Promise((r) => setTimeout(r, 150));
+      if (trNorm(pend.reply)) {
+        // Cümlenin geri kalanı da gelsin ("evet … ama bekle" gibi)
+        let last = pend.reply;
+        for (let i = 0; i < 4; i++) {
+          await new Promise((r) => setTimeout(r, 150));
+          if (pend.reply === last) break;
+          last = pend.reply;
+        }
+      }
       const reply = trNorm(pend.reply);
       if (!reply) {
         return { ok: false, added: [], error: "EKLENMEDİ: müşteri henüz cevap vermedi. 'Sepete eklensin mi?' diye sor ve bekle." };
