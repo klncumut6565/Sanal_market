@@ -23,12 +23,14 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const fmt = (iso: string) =>
     new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date(iso));
 
-  const [today, open, lowStock, recent] = await Promise.all([
+  const [today, open, lowStock, recent, waiting] = await Promise.all([
     supabase.from("orders").select("total,status").gte("created_at", win.start).lt("created_at", win.end),
     supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["alindi", "hazirlaniyor", "yolda"]),
     supabase.from("products").select("id,name,stock,critical_stock").eq("is_active", true).order("stock").limit(50),
     supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(8),
+    supabase.from("orders").select("id", { count: "exact", head: true }).eq("status", "alindi"),
   ]);
+  const newCount = waiting.count ?? 0;
 
   const todays = (today.data ?? []).filter((o) => o.status !== "iptal");
   const revenue = todays.reduce((a, o) => a + Number(o.total), 0);
@@ -37,7 +39,12 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const stats = [
     { label: "İş günü siparişi", value: String(todays.length) },
     { label: "İş günü cirosu", value: formatTL(revenue) },
-    { label: "Bekleyen sipariş", value: String(open.count ?? 0), href: "/admin/siparisler?durum=acik" },
+    {
+      label: newCount ? `Bekleyen sipariş · ${newCount} onay bekliyor` : "Bekleyen sipariş",
+      value: String(open.count ?? 0),
+      href: "/admin/siparisler?durum=acik",
+      alarm: newCount > 0,
+    },
     { label: "Kritik stok", value: String(low.length), href: "/admin/urunler?stok=kritik" },
   ];
 
@@ -62,7 +69,13 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
             </>
           );
           return s.href ? (
-            <Link key={s.label} href={s.href} className="rounded-2xl bg-white p-4 ring-1 ring-line hover:ring-brand">{body}</Link>
+            <Link
+              key={s.label}
+              href={s.href}
+              className={`rounded-2xl p-4 ring-1 ring-line hover:ring-brand ${"alarm" in s && s.alarm ? "bekleyen-yanip-son [&_p]:text-inherit!" : "bg-white"}`}
+            >
+              {body}
+            </Link>
           ) : (
             <div key={s.label} className="rounded-2xl bg-white p-4 ring-1 ring-line">{body}</div>
           );

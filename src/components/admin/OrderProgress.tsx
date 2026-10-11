@@ -79,7 +79,7 @@ export function NextStepForm({ order, back, big = false }: { order: Order; back:
 export function OrderCard({ order, sla }: { order: Order; sla: SlaTargets }) {
   const st = order.status;
   return (
-    <article className="space-y-3 rounded-2xl bg-white p-3.5 ring-1 ring-line">
+    <article className={`space-y-3 rounded-2xl bg-white p-3.5 ${st === "alindi" ? "animate-pulse-ring ring-2 ring-brand" : "ring-1 ring-line"}`}>
       <div className="flex items-start justify-between gap-2">
         <Link href={`/admin/siparisler/${order.id}`} className="min-w-0">
           <p className="font-black text-brand">#{order.order_no}</p>
