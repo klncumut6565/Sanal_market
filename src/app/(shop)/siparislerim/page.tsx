@@ -42,7 +42,8 @@ async function AccountOrders() {
     );
   }
   const supabase = await createClient();
-  const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(50);
+  // Yalnızca kendi siparişleri (admin hesabında RLS tüm siparişleri açtığı için filtre şart)
+  const { data } = await supabase.from("orders").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
   const orders = (data ?? []) as Order[];
   return (
     <>
