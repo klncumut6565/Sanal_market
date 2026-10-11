@@ -1,13 +1,39 @@
 "use client";
 import { useActionState, useState } from "react";
-import { requestPasswordReset, signIn, signUp, type AuthState } from "./actions";
+import { createClient as createPlainClient } from "@supabase/supabase-js";
+import { signIn, signUp, type AuthState } from "./actions";
+import { SUPABASE_KEY, SUPABASE_URL } from "@/lib/supabase/env";
+import { authErrorTR } from "@/lib/auth-errors";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Şifre yenileme e-postası. "implicit" akış: bağlantı hangi tarayıcıda/uygulamada
+ *  açılırsa açılsın çalışır (PKCE'de isteğin yapıldığı tarayıcı gerekir). */
+async function sendResetMail(_: AuthState, fd: FormData): Promise<AuthState> {
+  const email = String(fd.get("email") ?? "").trim().toLowerCase();
+  if (!EMAIL_RE.test(email)) return { error: "Geçerli bir e-posta adresi gir." };
+  try {
+    const sb = createPlainClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: "implicit", persistSession: false, autoRefreshToken: false } });
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/sifre-yenile` });
+    if (error) {
+      const msg = authErrorTR(error);
+      if (msg.startsWith("Çok fazla")) return { error: "Kısa sürede çok fazla istek yapıldı. Lütfen biraz sonra tekrar dene." };
+      console.error("[giris] reset:", error);
+    }
+  } catch {
+    return { error: "Şu an e-posta gönderilemiyor. İnternet bağlantını kontrol edip tekrar dene." };
+  }
+  return {
+    info: "Bu e-postaya kayıtlı bir hesap varsa şifre yenileme bağlantısı gönderdik. Gelen kutunu (gereksiz/spam dahil) kontrol et; bağlantı 1 saat geçerli.",
+  };
+}
 import { PhoneInput } from "@/components/PhoneInput";
 
 export function AuthForm({ next }: { next: string }) {
   const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
   const [inState, inAction, inPending] = useActionState<AuthState, FormData>(signIn, {});
   const [upState, upAction, upPending] = useActionState<AuthState, FormData>(signUp, {});
-  const [fState, fAction, fPending] = useActionState<AuthState, FormData>(requestPasswordReset, {});
+  const [fState, fAction, fPending] = useActionState<AuthState, FormData>(sendResetMail, {});
 
   if (mode === "forgot")
     return (

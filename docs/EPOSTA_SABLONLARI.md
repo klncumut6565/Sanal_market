@@ -6,6 +6,8 @@
 
 ## 2. Şifre yenileme şablonu — Authentication → Emails → Reset Password
 
+> Supabase, şablon düzenlemeyi ancak **özel SMTP** (bölüm 4) kurulunca açıyor. SMTP yokken varsayılan İngilizce e-posta gider ve sistem onunla da çalışır (implicit akış: bağlantı hangi tarayıcıda açılırsa açılsın). SMTP kurulunca aşağıdaki Türkçe şablonu yapıştır; bağlantıyı **{{ .ConfirmationURL }}** olarak bırakmak da yeterli.
+
 **Subject:**
 ```
 Sanal Market şifre yenileme
@@ -18,7 +20,7 @@ Sanal Market şifre yenileme
   <p>Merhaba,</p>
   <p>Hesabın için şifre yenileme isteği aldık. Yeni şifreni belirlemek için aşağıdaki butona dokun:</p>
   <p style="text-align:center;margin:28px 0">
-    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/sifre-yenile"
+    <a href="{{ .ConfirmationURL }}"
        style="background:#e8732a;color:#fff;padding:14px 24px;border-radius:12px;text-decoration:none;font-weight:bold">
       Şifremi yenile
     </a>
@@ -27,7 +29,7 @@ Sanal Market şifre yenileme
   <p style="font-size:13px;color:#666">Sanal Market · İhtiyacın Kapında!</p>
 </div>
 ```
-(token_hash biçimi, bağlantı hangi tarayıcıda açılırsa açılsın çalışır.)
+
 
 ## 3. Üyelik doğrulama şablonu — Authentication → Emails → Confirm signup (isteğe bağlı)
 **Subject:** `Sanal Market üyeliğini doğrula`

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { NewPasswordForm } from "./NewPasswordForm";
+import { RecoveryLink } from "./RecoveryLink";
 
 export const metadata = { title: "Yeni şifre belirle" };
 
@@ -28,19 +29,7 @@ async function Body({ searchParams }: { searchParams: Promise<{ hata?: string }>
   const supabase = await createClient();
   const { data } = await supabase.auth.getUser();
 
-  if (!data.user)
-    return (
-      <div className="space-y-3 rounded-2xl bg-white p-5 text-center ring-1 ring-line">
-        <h1 className="text-lg font-extrabold">Bağlantı geçersiz</h1>
-        <p className="text-sm text-muted">
-          {hata ? "Şifre yenileme bağlantısının süresi dolmuş veya daha önce kullanılmış." : "Bu sayfa e-postadaki şifre yenileme bağlantısıyla açılır."} Yeni bir
-          bağlantı isteyebilirsin.
-        </p>
-        <Link href="/giris" className="btn-primary w-full">
-          Yeniden bağlantı iste
-        </Link>
-      </div>
-    );
+  if (!data.user) return <RecoveryLink expired={!!hata} />;
 
   return (
     <div className="rounded-2xl bg-white p-5 ring-1 ring-line">
