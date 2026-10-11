@@ -2,6 +2,7 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { requireAdmin } from "@/lib/data/auth";
 import { formatTL } from "@/lib/format";
+import { currentBusinessDay } from "@/lib/hours";
 import type { Order } from "@/lib/types";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { OrderTable } from "@/components/admin/OrderTable";
@@ -12,13 +13,16 @@ export default async function AdminHome() {
   await connection();
   const { supabase } = await requireAdmin();
 
-  // İstanbul (UTC+3) gün başlangıcı
-  const now = new Date();
-  const ist = new Date(now.getTime() + 3 * 3600_000);
-  const dayStart = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate()) - 3 * 3600_000).toISOString();
+  const { data: hours } = await supabase.from("store_settings").select("open_time,close_time,is_open").eq("id", 1).single();
+  const openT = hours?.open_time ?? "10:00";
+  const closeT = hours?.close_time ?? "01:00";
+  // İş günü: açılıştan (10:00) ertesi gün kapanışa (01:00) kadar; 01:00–10:00 arası bir önceki iş günü gösterilir
+  const { window: win, state } = currentBusinessDay(openT, closeT, hours?.is_open ?? true);
+  const fmt = (iso: string) =>
+    new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date(iso));
 
   const [today, open, lowStock, recent] = await Promise.all([
-    supabase.from("orders").select("total,status").gte("created_at", dayStart),
+    supabase.from("orders").select("total,status").gte("created_at", win.start).lt("created_at", win.end),
     supabase.from("orders").select("id", { count: "exact", head: true }).in("status", ["alindi", "hazirlaniyor", "yolda"]),
     supabase.from("products").select("id,name,stock,critical_stock").eq("is_active", true).order("stock").limit(50),
     supabase.from("orders").select("*").order("created_at", { ascending: false }).limit(8),
@@ -29,8 +33,8 @@ export default async function AdminHome() {
   const low = (lowStock.data ?? []).filter((p) => p.stock <= p.critical_stock);
 
   const stats = [
-    { label: "Bugünkü sipariş", value: String(todays.length) },
-    { label: "Bugünkü ciro", value: formatTL(revenue) },
+    { label: "İş günü siparişi", value: String(todays.length) },
+    { label: "İş günü cirosu", value: formatTL(revenue) },
     { label: "Bekleyen sipariş", value: String(open.count ?? 0), href: "/admin/siparisler?durum=acik" },
     { label: "Kritik stok", value: String(low.length), href: "/admin/urunler?stok=kritik" },
   ];
@@ -38,7 +42,15 @@ export default async function AdminHome() {
   return (
     <div className="space-y-6">
       <AutoRefresh seconds={30} />
-      <h1 className="text-2xl font-black">Genel bakış</h1>
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <h1 className="text-2xl font-black">Genel bakış</h1>
+        <p className="text-sm">
+          <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-bold ${state.open ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-600"}`}>
+            {state.open ? "Açık" : "Kapalı"}
+          </span>
+          <span className="text-muted">İş günü:</span> <b>{fmt(win.start)}</b> → <b>{fmt(win.end)}</b>
+        </p>
+      </div>
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {stats.map((s) => {
           const body = (

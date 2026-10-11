@@ -16,7 +16,10 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
           <F label="Telefon"><input name="phone" defaultValue={s.phone ?? ""} className="input" /></F>
           <F label="Teslimat bölgesi notu"><input name="delivery_area_note" defaultValue={s.delivery_area_note ?? ""} className="input" /></F>
           <F label="İşletme WhatsApp numarası (müşteriler size yazar)"><input name="whatsapp_phone" type="tel" defaultValue={s.whatsapp_phone ?? ""} placeholder="05xx xxx xx xx" className="input" /></F>
-          <F label="Çalışma saatleri (sitede görünür)"><input name="working_hours" defaultValue={s.working_hours ?? ""} placeholder="10:00 - 01:00" className="input" /></F>
+          <div className="grid grid-cols-2 gap-3">
+            <F label="Açılış saati"><input name="open_time" type="time" required defaultValue={s.open_time ?? "10:00"} className="input" /></F>
+            <F label="Kapanış saati"><input name="close_time" type="time" required defaultValue={s.close_time ?? "01:00"} className="input" /></F>
+          </div>
         </div>
         <F label="Adres"><textarea name="address" defaultValue={s.address ?? ""} className="input min-h-20" /></F>
       </section>

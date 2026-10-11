@@ -61,3 +61,10 @@
 - Ödeme: AddressPicker (İl Tekirdağ sabit, ilçe listesi Çorlu dışı pasif "yakında", mahalle → sokak, "Listede yok" ile yazma; sokağı olmayan mahallede doğrudan yazı kutusu). Son adres cihazda hatırlanır.
 - Admin → Teslimat bölgeleri: ilçe aç/kapa, mahalle aç/kapa, mahalleye toplu sokak ekleme (her satıra bir), müşterilerin yazdığı sokakları tek tıkla listeye ekleme.
 - AÇIK İŞ: Çorlu sokak listeleri (kaynak bulunamadı; kullanıcı/belediye listesi gerekli).
+
+## 2026-10-11 — Çalışma saatleri
+- store_settings.open_time/close_time (10:00 / 01:00, Admin → Ayarlar'dan saat seçiciyle), working_hours otomatik.
+- store_is_open_now(grace) SQL; place_order saat dışında SAAT_DISI ile reddeder (kapanıştan sonra 2 dk tolerans).
+- lib/hours.ts: İstanbul saatiyle (UTC+3) açık/kapalı, kapanışa/açılışa kalan süre, iş günü penceresi (10:00 → ertesi 01:00; 01:00–10:00 arası önceki iş günü).
+- Site: header altında canlı şerit (kapalı → "10:00'da açılıyor (X sonra)"; son 10 dk → geri sayım), sepet/ödeme butonları kapalıyken kilitli, ödemede büyük geri sayım kutusu, geçmiş teslimat aralıkları gizlenir.
+- Admin genel bakış: "İş günü siparişi / cirosu" iş günü penceresine göre; üstte Açık/Kapalı + iş günü aralığı.

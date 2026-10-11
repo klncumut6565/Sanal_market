@@ -37,6 +37,8 @@ export function orderErrorMessage(raw: string): string {
   switch (code) {
     case "MARKET_KAPALI":
       return "Market şu an sipariş almıyor.";
+    case "SAAT_DISI":
+      return `Çalışma saatlerimiz dışındasın. Siparişler ${arg ?? "10:00"}'da tekrar açılıyor.`;
     case "EKSIK_BILGI":
       return "Ad, telefon ve adres zorunludur.";
     case "GECERSIZ_ODEME":

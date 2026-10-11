@@ -8,6 +8,7 @@ import { CartLines, FreeDeliveryBar, Totals, useCartSummary } from "@/components
 import { formatTL } from "@/lib/format";
 import type { PaymentMethod, StoreSettings } from "@/lib/types";
 import { placeOrder } from "./actions";
+import { fmtCountdown, toMin } from "@/lib/hours";
 import { AddressPicker, addressIsComplete, emptyAddress, OTHER, type AddressValue } from "@/components/shop/AddressPicker";
 import type { DeliveryAreas } from "@/lib/data/areas";
 import { PhoneInput } from "@/components/PhoneInput";
@@ -62,7 +63,7 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
     e.preventDefault();
     setError(null);
     start(async () => {
-      const res = await placeOrder({ ...form, items: s.lines.map((l) => ({ product_id: l.id, quantity: l.qty })) });
+      const res = await placeOrder({ ...form, delivery_slot: slots.includes(form.delivery_slot) ? form.delivery_slot : (slots[0] ?? form.delivery_slot), items: s.lines.map((l) => ({ product_id: l.id, quantity: l.qty })) });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -77,9 +78,37 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
     });
   };
 
-  const blocked = s.belowMin || !settings.is_open || !addressIsComplete(form.address);
+  const blocked = s.belowMin || s.closed || !addressIsComplete(form.address);
+
+  // Bu iş gününde bitişi geçmiş teslimat aralıklarını gösterme
+  const nowOff = s.hours ? (s.hours.minuteOfDay - toMin(settings.open_time) + 1440) % 1440 : -1;
+  const slots = settings.delivery_slots.filter((slot) => {
+    const m = slot.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+    if (!m) return true; // "En kısa sürede" vb.
+    const endOff = (toMin(m[2]) - toMin(settings.open_time) + 1440) % 1440 || 1440;
+    return endOff > nowOff;
+  });
 
   return (
+    <>
+    {s.hours && !s.hours.open && (
+      <div className="mb-4 rounded-2xl bg-ink p-4 text-center text-white">
+        <p className="text-lg font-black">Şu an kapalıyız 🌙</p>
+        <p className="text-sm opacity-90">
+          Siparişler her gün <b>{settings.open_time}</b> – <b>{settings.close_time}</b> arası alınır.
+          {s.hours.secondsToOpen != null && <> Açılışa {fmtCountdown(s.hours.secondsToOpen)} kaldı.</>}
+        </p>
+      </div>
+    )}
+    {s.hours?.lastCall && s.hours.secondsToClose != null && (
+      <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl bg-brand p-4 text-white">
+        <div>
+          <p className="font-black">⏰ Siparişini hemen tamamla!</p>
+          <p className="text-sm opacity-90">{settings.close_time}&apos;da sipariş alımı kapanıyor.</p>
+        </div>
+        <span className="rounded-xl bg-white px-3 py-2 font-mono text-2xl font-black text-brand tabular-nums">{fmtCountdown(s.hours.secondsToClose)}</span>
+      </div>
+    )}
     <form onSubmit={submit} className="grid grid-cols-1 gap-5 pb-28 lg:grid-cols-[minmax(0,1fr)_360px] lg:pb-0">
       <div className="space-y-4">
         <Card icon={<MapPin size={18} />} title="Teslimat bilgileri">
@@ -94,12 +123,12 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
 
         <Card icon={<Clock size={18} />} title="Teslimat zamanı">
           <div className="flex flex-wrap gap-2">
-            {settings.delivery_slots.map((slot) => (
+            {slots.map((slot) => (
               <button
                 type="button"
                 key={slot}
                 onClick={() => set("delivery_slot", slot)}
-                className={`rounded-xl px-3.5 py-2 text-sm font-semibold ring-1 transition ${form.delivery_slot === slot ? "bg-brand-soft text-brand ring-brand" : "bg-white ring-line"}`}
+                className={`rounded-xl px-3.5 py-2 text-sm font-semibold ring-1 transition ${(slots.includes(form.delivery_slot) ? form.delivery_slot : slots[0]) === slot ? "bg-brand-soft text-brand ring-brand" : "bg-white ring-line"}`}
               >
                 {slot}
               </button>
@@ -141,6 +170,7 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
         </div>
       </div>
     </form>
+    </>
   );
 }
 

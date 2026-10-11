@@ -252,6 +252,10 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
   for (const v of [fee, free, min]) if (v == null || Number.isNaN(v) || v < 0) return { error: "Tutarları kontrol edin." };
   const sla = ["sla_accept_min", "sla_prepare_min", "sla_delivery_min"].map((k) => Math.trunc(Number(str(fd, k))));
   if (sla.some((v) => !Number.isFinite(v) || v < 1 || v > 240)) return { error: "Hedef süreler 1-240 dakika arasında olmalı." };
+  const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+  const openT = str(fd, "open_time").slice(0, 5);
+  const closeT = str(fd, "close_time").slice(0, 5);
+  if (!HM.test(openT) || !HM.test(closeT)) return { error: "Açılış ve kapanış saatini SS:DD biçiminde gir." };
   const slots = str(fd, "delivery_slots")
     .split("\n")
     .map((s) => s.trim())
@@ -265,7 +269,9 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
       phone: str(fd, "phone") || null,
       address: str(fd, "address") || null,
       delivery_area_note: str(fd, "delivery_area_note") || null,
-      working_hours: str(fd, "working_hours") || null,
+      open_time: openT,
+      close_time: closeT,
+      working_hours: `${openT} - ${closeT}`,
       whatsapp_phone: str(fd, "whatsapp_phone") || null,
       delivery_fee: fee,
       free_delivery_threshold: free,

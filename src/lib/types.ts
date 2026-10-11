@@ -38,6 +38,8 @@ export type StoreSettings = {
   min_order_amount: number;
   delivery_slots: string[];
   working_hours: string | null;
+  open_time: string;
+  close_time: string;
   whatsapp_phone: string | null;
   sla_accept_min: number;
   sla_prepare_min: number;

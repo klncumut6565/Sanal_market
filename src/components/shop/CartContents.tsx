@@ -5,8 +5,9 @@ import { useCart, useCartHydrated, cartTotals, lineUnit } from "@/store/cart";
 import { formatTL } from "@/lib/format";
 import type { StoreSettings } from "@/lib/types";
 import { ProductImage } from "./ProductImage";
+import { useStoreHours } from "./useStoreHours";
 
-type Props = { settings: Pick<StoreSettings, "delivery_fee" | "free_delivery_threshold" | "min_order_amount" | "is_open"> };
+type Props = { settings: Pick<StoreSettings, "delivery_fee" | "free_delivery_threshold" | "min_order_amount" | "is_open" | "open_time" | "close_time"> };
 
 export function useCartSummary(settings: Props["settings"]) {
   const ready = useCartHydrated();
@@ -14,7 +15,9 @@ export function useCartSummary(settings: Props["settings"]) {
   const visible = ready ? lines : [];
   const t = cartTotals(visible, settings.delivery_fee, settings.free_delivery_threshold);
   const belowMin = t.subtotal < settings.min_order_amount;
-  return { ready, lines: visible, ...t, belowMin };
+  const hours = useStoreHours(settings);
+  const closed = !hours || !hours.open;
+  return { ready, lines: visible, ...t, belowMin, closed, hours };
 }
 
 export function CartLines() {
@@ -133,10 +136,10 @@ export function CartPanel({ settings }: Props) {
             ) : null}
             <Link
               href="/odeme"
-              aria-disabled={s.belowMin || !settings.is_open}
-              className={`btn-primary w-full ${s.belowMin || !settings.is_open ? "pointer-events-none opacity-50" : ""}`}
+              aria-disabled={s.belowMin || s.closed}
+              className={`btn-primary w-full ${s.belowMin || s.closed ? "pointer-events-none opacity-50" : ""}`}
             >
-              Sepeti onayla
+              {s.hours && !s.hours.open ? `Şu an kapalıyız · ${settings.open_time}'da açılıyor` : "Sepeti onayla"}
             </Link>
           </div>
         </>

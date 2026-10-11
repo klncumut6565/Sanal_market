@@ -20,6 +20,8 @@ const DEFAULT_SETTINGS: StoreSettings = {
   min_order_amount: 150,
   delivery_slots: ["En kısa sürede"],
   working_hours: "10:00 - 01:00",
+  open_time: "10:00",
+  close_time: "01:00",
   whatsapp_phone: null,
   sla_accept_min: 2,
   sla_prepare_min: 7,

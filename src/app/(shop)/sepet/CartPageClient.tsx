@@ -14,7 +14,7 @@ export function CartPageClient({ settings }: { settings: StoreSettings }) {
         <Link href="/" className="btn-primary mx-auto mt-2 flex w-fit">Alışverişe başla</Link>
       </div>
     );
-  const blocked = s.belowMin || !settings.is_open;
+  const blocked = s.belowMin || s.closed;
   return (
     <div className="space-y-4 pb-28">
       <div className="rounded-2xl bg-white px-4 ring-1 ring-line"><CartLines /></div>
@@ -30,7 +30,7 @@ export function CartPageClient({ settings }: { settings: StoreSettings }) {
             </p>
           )}
           <Link href="/odeme" aria-disabled={blocked} className={`btn-primary w-full justify-between ${blocked ? "pointer-events-none opacity-50" : ""}`}>
-            <span>Sepeti onayla</span>
+            <span>{s.hours && !s.hours.open ? `Kapalıyız · ${settings.open_time}'da açılıyor` : "Sepeti onayla"}</span>
             <span>{formatTL(s.total)}</span>
           </Link>
         </div>

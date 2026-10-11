@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Clock, MapPin, UserRound } from "lucide-react";
 import { Brand } from "@/components/Brand";
+import { StoreStatusBar } from "./StoreStatusBar";
 import { getStoreSettings } from "@/lib/data/catalog";
 import { CartButton } from "./CartButton";
 import { SearchBox } from "./SearchBox";
@@ -35,11 +36,7 @@ export async function Header() {
           <SearchBox />
         </div>
       </div>
-      {!s.is_open && (
-        <div className="bg-warn px-4 py-1.5 text-center text-sm font-semibold text-white">
-          Market şu an kapalı — siparişler geçici olarak alınmıyor.
-        </div>
-      )}
+      <StoreStatusBar settings={s} />
     </header>
   );
 }
