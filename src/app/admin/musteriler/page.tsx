@@ -34,10 +34,11 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       </div>
 
       <form className="flex flex-wrap gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input name="q" defaultValue={q} placeholder="Ad veya telefon ara" className="input pl-10!" />
-        </div>
+        {/* Simge kutunun içinde ama ayrı sütunda — yazıyla asla çakışmaz */}
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/15">
+          <Search size={16} className="shrink-0 text-muted" />
+          <input name="q" defaultValue={q} placeholder="Ad veya telefon ara" className="w-full min-w-0 bg-transparent py-2.5 text-[15px] outline-none" />
+        </label>
         <select name="sira" defaultValue={sira} className="input w-auto">
           <option value="son">Son sipariş</option>
           <option value="harcama">En çok harcayan</option>
