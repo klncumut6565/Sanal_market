@@ -5,16 +5,20 @@ import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
 import type { Category, Product } from "@/lib/types";
 import { quickUpdateProduct } from "../actions";
+import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 
 export const metadata = { title: "Ürünler" };
 
-export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string }> }) {
+export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
-  const [{ data: products }, { data: categories }] = await Promise.all([
+  const [{ data: products }, { data: categories }, { data: costs }] = await Promise.all([
     supabase.from("products").select("*").order("name"),
     supabase.from("categories").select("*").order("sort_order"),
+    supabase.from("product_costs").select("product_id,cost_price"),
   ]);
+  const costOf = new Map((costs ?? []).map((c) => [c.product_id as string, Number(c.cost_price)]));
+  const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
   const cats = (categories ?? []) as Category[];
   const catName = new Map(cats.map((c) => [c.id, c.name]));
   const q = (sp.q ?? "").toLocaleLowerCase("tr");
@@ -22,8 +26,14 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
     (p) =>
       (!q || p.name.toLocaleLowerCase("tr").includes(q) || (p.barcode ?? "").includes(q)) &&
       (!sp.kategori || p.category_id === sp.kategori) &&
-      (sp.stok !== "kritik" || p.stock <= p.critical_stock),
+      (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
+      (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
+      (sp.marj !== "girilmemis" || !costOf.has(p.id)),
   );
+  if (sp.marj === "dusuk") list.sort((a, b) => (marginOf(a)?.marginPct ?? 0) - (marginOf(b)?.marginPct ?? 0));
+  // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
+  const withCost = ((products ?? []) as Product[]).filter((p) => p.is_active && costOf.has(p.id));
+  const avgMargin = withCost.length ? withCost.reduce((a, p) => a + (marginOf(p)?.marginPct ?? 0), 0) / withCost.length : null;
 
   return (
     <div className="space-y-4">
@@ -45,13 +55,26 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           <option value="">Tüm stoklar</option>
           <option value="kritik">Kritik stok</option>
         </select>
+        <select name="marj" defaultValue={sp.marj ?? ""} className="input max-w-52">
+          <option value="">Tüm marjlar</option>
+          <option value="dusuk">Düşük marj / zarar (%10 altı)</option>
+          <option value="girilmemis">Alış fiyatı girilmemiş</option>
+        </select>
         <button className="btn-ghost">Filtrele</button>
       </form>
+      <p className="text-sm text-muted">
+        Alış fiyatı girilmiş ürün: <b className="text-ink">{withCost.length}</b>
+        {avgMargin != null && (
+          <>
+            {" "}· Ortalama kâr marjı: <b className="text-ink">{pctTR(Math.round(avgMargin * 10) / 10)}</b>
+          </>
+        )}
+      </p>
 
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-line">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[860px] text-sm">
           <thead className="bg-bg text-left text-xs uppercase text-muted">
-            <tr><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Stok</th><th>Durum</th><th /></tr>
+            <tr><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-line">
             {list.map((p) => (
@@ -72,6 +95,22 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                   ) : (
                     <b>{formatTL(p.price)}</b>
                   )}
+                </td>
+                <td>
+                  {(() => {
+                    const m = marginOf(p);
+                    return m ? (
+                      <>
+                        <span className="text-xs text-muted">{formatTL(m.cost)}</span>
+                        <br />
+                        <b className={marginTone(m)}>
+                          {pctTR(m.marginPct)} · {formatTL(m.profit)}
+                        </b>
+                      </>
+                    ) : (
+                      <span className="text-xs text-muted">—</span>
+                    );
+                  })()}
                 </td>
                 <td>
                   <form action={quickUpdateProduct} className="flex items-center gap-1">

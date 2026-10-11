@@ -9,9 +9,10 @@ export const metadata = { title: "Ürünü düzenle" };
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { supabase } = await requireAdmin();
-  const [{ data: product }, { data: categories }] = await Promise.all([
+  const [{ data: product }, { data: categories }, { data: cost }] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle(),
     supabase.from("categories").select("*").order("sort_order"),
+    supabase.from("product_costs").select("cost_price").eq("product_id", id).maybeSingle(),
   ]);
   if (!product) notFound();
   return (
@@ -23,7 +24,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           <button className="text-sm font-bold text-muted hover:text-brand">Ürünü sil</button>
         </form>
       </div>
-      <ProductForm product={product as Product} categories={(categories ?? []) as Category[]} />
+      <ProductForm product={product as Product} categories={(categories ?? []) as Category[]} cost={cost ? Number(cost.cost_price) : null} />
     </div>
   );
 }

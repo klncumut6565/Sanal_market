@@ -2,6 +2,7 @@
 // Yönetim paneli sesli asistanının araçları — tarayıcıda, admin oturumuyla (RLS) salt okunur sorgular.
 import { createClient } from "@/lib/supabase/client";
 import { fetchDiscounts } from "./discounts";
+import { calcMargin } from "@/lib/margin";
 import { addDays, businessDateOf, businessDateStart, hoursState, isYmd, reportRanges } from "@/lib/hours";
 
 type Sb = ReturnType<typeof createClient>;
@@ -99,6 +100,37 @@ function summarize(rows: OrderRow[], rg: Range) {
   };
 }
 
+/** Brüt kâr: ürün satışları − sipariş anındaki alış fiyatı (teslimat hariç) */
+async function grossProfit(sb: Sb, rg: Range, openTime: string) {
+  const { data, error } = await sb
+    .from("order_items")
+    .select("line_total,quantity,order_item_costs(unit_cost),orders!inner(created_at,status)")
+    .eq("removed", false)
+    .neq("orders.status", "iptal")
+    .gte("orders.created_at", businessDateStart(rg.from, openTime))
+    .lt("orders.created_at", businessDateStart(addDays(rg.to, 1), openTime))
+    .limit(50000);
+  if (error) return { error: error.message };
+  let itemRev = 0;
+  let costedRev = 0;
+  let cost = 0;
+  for (const i of (data ?? []) as unknown as { line_total: number; quantity: number; order_item_costs: { unit_cost: number } | { unit_cost: number }[] | null }[]) {
+    itemRev += Number(i.line_total);
+    const c = Array.isArray(i.order_item_costs) ? i.order_item_costs[0] : i.order_item_costs;
+    if (c) {
+      costedRev += Number(i.line_total);
+      cost += Number(c.unit_cost) * i.quantity;
+    }
+  }
+  if (!costedRev) return { note: "Bu dönemde alış fiyatı kayıtlı satış yok; kâr hesaplanamıyor." };
+  return {
+    profit_tl: r2(costedRev - cost),
+    margin_pct: r2(((costedRev - cost) / costedRev) * 100),
+    coverage_pct: Math.round((costedRev / itemRev) * 100),
+    note: "Ürün satışlarından alış maliyeti düşülmüş brüt kâr; teslimat ücreti hariç. coverage_pct < 100 ise yalnızca alış fiyatı girilmiş ürünler hesaba katıldı.",
+  };
+}
+
 const pct = (cur: number, prev: number) => (prev > 0 ? r2(((cur - prev) / prev) * 100) : null);
 
 const PAGES: Record<string, string> = {
@@ -112,6 +144,18 @@ const PAGES: Record<string, string> = {
   bolgeler: "/admin/bolgeler",
   ayarlar: "/admin/ayarlar",
 };
+
+type CostJoin = { cost_price: number } | { cost_price: number }[] | null;
+function costOfJoin(j: CostJoin | undefined) {
+  const c = Array.isArray(j) ? j[0] : j;
+  return c ? Number(c.cost_price) : null;
+}
+function costInfo(p: { price: number; sale_price: number | null; product_costs?: CostJoin }) {
+  const cost = costOfJoin(p.product_costs);
+  if (cost == null) return { cost_price: null as number | null, note_cost: "alış fiyatı girilmemiş" };
+  const m = calcMargin(Number(p.sale_price ?? p.price), cost);
+  return { cost_price: cost, unit_profit_tl: m?.profit, margin_pct: m?.marginPct, markup_pct: m?.markupPct };
+}
 
 export function createAdminToolRunner(deps: { navigate: (path: string) => void; log: (text: string) => void }) {
   let settings: Settings | null = null;
@@ -169,6 +213,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         compare_previous: { ...pv, revenue_change_pct: pct(c.revenue_tl, pv.revenue_tl), orders_change_pct: pct(c.orders, pv.orders) },
         compare_to_date: td ? { ...td, revenue_change_pct: pct(c.revenue_tl, td.revenue_tl), orders_change_pct: pct(c.orders, td.orders) } : undefined,
         best_day: best && byDay.size > 1 ? { date: best[0], revenue_tl: r2(best[1]) } : undefined,
+        gross_profit: await grossProfit(sb, p.cur, s.open_time),
         note: "Ciro = iptal edilmeyen siparişlerin toplamı (teslimat ücreti dahil). Gün = iş günü (açılıştan ertesi kapanışa).",
       };
     }
@@ -217,7 +262,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
       if (q.length < 2) return { error: "Ürün adı çok kısa." };
       const { data, error } = await sb
         .from("products")
-        .select("name,unit_label,price,sale_price,stock,critical_stock,is_active,barcode")
+        .select("id,name,unit_label,price,sale_price,stock,critical_stock,is_active,barcode,product_costs(cost_price)")
         .ilike("name", `%${q.replace(/[%_\\]/g, "")}%`)
         .order("name")
         .limit(10);
@@ -232,6 +277,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
           stock: p.stock,
           critical: p.stock <= p.critical_stock,
           on_sale: p.is_active,
+          ...costInfo(p),
         })),
       };
     }
@@ -301,6 +347,29 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         delivery_fee: Number(s.delivery_fee),
         free_delivery_over: Number(s.free_delivery_threshold),
         min_order: Number(s.min_order_amount),
+      };
+    }
+
+    if (name === "get_margin_report") {
+      const { data, error } = await sb
+        .from("products")
+        .select("name,price,sale_price,is_active,product_costs(cost_price)")
+        .eq("is_active", true)
+        .limit(5000);
+      if (error) return { error: error.message };
+      const rows = (data ?? []).map((p) => ({ name: p.name, ...costInfo(p as never) }));
+      const withCost = rows.filter((r) => r.cost_price != null) as { name: string; margin_pct: number; unit_profit_tl: number; cost_price: number }[];
+      const sorted = [...withCost].sort((a, b) => a.margin_pct - b.margin_pct);
+      const q = args.query ? String(args.query).toLocaleLowerCase("tr") : "";
+      return {
+        active_products: rows.length,
+        with_cost: withCost.length,
+        missing_cost: rows.length - withCost.length,
+        avg_margin_pct: withCost.length ? r2(withCost.reduce((a, r) => a + r.margin_pct, 0) / withCost.length) : null,
+        loss_making: sorted.filter((r) => r.unit_profit_tl < 0).slice(0, 10),
+        lowest_margin: sorted.slice(0, 5),
+        highest_margin: sorted.slice(-5).reverse(),
+        matches: q ? withCost.filter((r) => r.name.toLocaleLowerCase("tr").includes(q)).slice(0, 10) : undefined,
       };
     }
 

@@ -7,8 +7,30 @@ import { createClient } from "@/lib/supabase/client";
 import { saveProduct, type ActionState } from "@/app/admin/actions";
 import type { Category, Product } from "@/lib/types";
 import { ProductImage } from "@/components/shop/ProductImage";
+import { calcMargin, marginTone, pctTR } from "@/lib/margin";
+import { formatTL } from "@/lib/format";
 
-export function ProductForm({ product, categories, initialBarcode }: { product?: Product; categories: Category[]; initialBarcode?: string }) {
+const num = (v: string) => {
+  const n = Number(v.replace(/\s/g, "").replace(",", "."));
+  return v.trim() === "" || Number.isNaN(n) ? null : n;
+};
+
+export function ProductForm({
+  product,
+  categories,
+  initialBarcode,
+  cost,
+}: {
+  product?: Product;
+  categories: Category[];
+  initialBarcode?: string;
+  cost?: number | null;
+}) {
+  const [priceS, setPriceS] = useState(product?.price != null ? String(product.price) : "");
+  const [saleS, setSaleS] = useState(product?.sale_price != null ? String(product.sale_price) : "");
+  const [costS, setCostS] = useState(cost != null ? String(cost) : "");
+  const mNormal = calcMargin(num(priceS), num(costS));
+  const mSale = num(saleS) != null ? calcMargin(num(saleS), num(costS)) : null;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveProduct, {});
   const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
@@ -80,8 +102,37 @@ export function ProductForm({ product, categories, initialBarcode }: { product?:
       </section>
 
       <section className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
-        <F label="Fiyat (₺) *"><input name="price" required inputMode="decimal" defaultValue={product?.price ?? ""} className="input" /></F>
-        <F label="İndirimli fiyat (₺)"><input name="sale_price" inputMode="decimal" defaultValue={product?.sale_price ?? ""} placeholder="Boş = indirim yok" className="input" /></F>
+        <F label="Alış fiyatı (₺)">
+          <input name="cost_price" inputMode="decimal" value={costS} onChange={(e) => setCostS(e.target.value)} placeholder="KDV dahil maliyet" className="input" />
+        </F>
+        <F label="Satış fiyatı (₺) *"><input name="price" required inputMode="decimal" value={priceS} onChange={(e) => setPriceS(e.target.value)} className="input" /></F>
+        <F label="İndirimli fiyat (₺)"><input name="sale_price" inputMode="decimal" value={saleS} onChange={(e) => setSaleS(e.target.value)} placeholder="Boş = indirim yok" className="input" /></F>
+        <div className="rounded-xl bg-bg p-3 text-sm sm:col-span-3">
+          {mNormal ? (
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span>
+                Kâr: <b className={marginTone(mNormal)}>{formatTL(mNormal.profit)}</b>
+              </span>
+              <span>
+                Kâr marjı: <b className={marginTone(mNormal)}>{pctTR(mNormal.marginPct)}</b> <span className="text-xs text-muted">(satışa göre)</span>
+              </span>
+              {mNormal.markupPct != null && (
+                <span>
+                  Kâr oranı: <b>{pctTR(mNormal.markupPct)}</b> <span className="text-xs text-muted">(alışa göre)</span>
+                </span>
+              )}
+              {mSale && (
+                <span className="w-full">
+                  İndirimli satışta: kâr <b className={marginTone(mSale)}>{formatTL(mSale.profit)}</b>, marj <b className={marginTone(mSale)}>{pctTR(mSale.marginPct)}</b>
+                  {mSale.profit < 0 && <b className="ml-2 text-red-600">⚠️ Zararına satış!</b>}
+                </span>
+              )}
+              {mNormal.profit < 0 && <b className="w-full text-red-600">⚠️ Satış fiyatı alış fiyatının altında.</b>}
+            </div>
+          ) : (
+            <span className="text-muted">Alış ve satış fiyatını girince kâr ve marj burada hesaplanır. Alış fiyatı yalnızca yönetim panelinde görünür.</span>
+          )}
+        </div>
         <F label="Sıralama"><input name="sort_order" type="number" defaultValue={product?.sort_order ?? 0} className="input" /></F>
         <F label="Stok *"><input name="stock" type="number" min={0} required defaultValue={product?.stock ?? 0} className="input" /></F>
         <F label="Kritik stok uyarısı"><input name="critical_stock" type="number" min={0} defaultValue={product?.critical_stock ?? 5} className="input" /></F>

@@ -53,9 +53,17 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
     sort_order: Math.trunc(numOrNull(fd, "sort_order") ?? 0),
   };
 
-  const { error } = id
-    ? await supabase.from("products").update(row).eq("id", id)
-    : await supabase.from("products").insert(row);
+  const cost = numOrNull(fd, "cost_price");
+  if (cost != null && (Number.isNaN(cost) || cost < 0)) return { error: "Alış fiyatını kontrol et." };
+
+  const { data: saved, error } = id
+    ? await supabase.from("products").update(row).eq("id", id).select("id").single()
+    : await supabase.from("products").insert(row).select("id").single();
+  if (!error && saved) {
+    // Alış fiyatı ayrı (yalnızca admin) tabloda
+    if (cost == null) await supabase.from("product_costs").delete().eq("product_id", saved.id);
+    else await supabase.from("product_costs").upsert({ product_id: saved.id, cost_price: cost, updated_at: new Date().toISOString() });
+  }
   if (error)
     return {
       error:

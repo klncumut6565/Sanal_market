@@ -59,6 +59,13 @@ export const ADMIN_TOOLS = [
     parameters: { type: "object", properties: {} },
   },
   {
+    name: "get_margin_report",
+    description:
+      "Kâr marjı raporu: ortalama marj, zararına satılan ürünler, en düşük ve en yüksek marjlı ürünler, alış fiyatı girilmemiş ürün sayısı. " +
+      "'Kâr marjımız ne', 'hangi üründen zarar ediyoruz', 'en kârlı ürün hangisi' sorularında kullan. Belirli ürün için query ver.",
+    parameters: { type: "object", properties: { query: { type: "string", description: "İsteğe bağlı ürün adı" } } },
+  },
+  {
     name: "get_discounted_products",
     description:
       "İndirimdeki ürünler: hangi üründe yüzde kaç indirim var, normal ve indirimli fiyat, stok durumu. En yüksek indirimden başlayarak sıralı. " +
@@ -96,6 +103,7 @@ KESİN KURALLAR:
 - Tutarları doğal söyle: "on iki bin dört yüz elli lira". Yüzdeyi "yüzde 18 daha iyi" / "yüzde 7 daha düşük" diye söyle.
 - Karşılaştırmada araç "compare_to_date" (aynı gün sayısına göre) verdiyse onu kullan ve bunu belirt: "geçen haftanın aynı günlerine göre". İstenirse önceki dönemin tamamını da söyle.
 - Önceki dönemde hiç satış yoksa yüzde verme; "geçen hafta satış yoktu" de.
+- Kâr sorularında: dönemsel kâr için get_sales_report sonucundaki gross_profit'i, ürün bazlı marj için get_margin_report veya search_products (margin_pct) kullan. Marj = kâr / satış fiyatı. coverage_pct 100'den küçükse "alış fiyatı girilen ürünlere göre" diye belirt; alış fiyatı eksik ürün sayısını hatırlat.
 - İndirim sorularında get_discounted_products çağır; ürün adını, yüzdeyi ve fiyatları söyle ("Beyaz peynirde yüzde 11 indirim var, 189,90'dan 169,90 liraya"). Çoksa en yüksek 5'ini say, toplam sayıyı belirt; stokta olmayan indirimli ürün varsa ayrıca uyar.
 - Stok sorularında önce tükenenleri, sonra kritik olanları ADLARIYLA say (en fazla 5; fazlası varsa "ve X ürün daha" de).
 - Veri değiştiremezsin: fiyat/stok güncelleme, sipariş iptali, ürün ekleme isterse "bunu ilgili sayfadan yapabilirsin, açayım mı?" de ve isterse go_to_page çağır.
