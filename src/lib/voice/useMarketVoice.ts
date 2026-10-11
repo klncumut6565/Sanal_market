@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
-import { createMarketToolRunner, closedNote, type CartProposal } from "./marketToolRunner";
+import { createMarketToolRunner, closedNote, loadCustomerContext, type CartProposal } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture } from "./audioStream";
 import { hataTurkce } from "./hatalar";
@@ -23,6 +23,8 @@ export type VoiceAction = { id: number; text: string; kind: "add" | "remove" | "
 const MAX_OTURUM_MS = 10 * 60_000; // tek oturum en fazla 10 dk
 const SESSIZLIK_MS = 90_000; // 90 sn hiç konuşulmazsa kapat
 const SES_ESIGI_RMS = 500;
+/** Ödeme ekranı sipariş tamamlanınca bu olayı yayar; açık sesli oturum teşekkür eder. */
+export const ORDER_DONE_EVENT = "sesli-asistan:siparis-tamamlandi";
 
 
 export function useMarketVoice(settings: VoiceSettings) {
@@ -177,12 +179,16 @@ export function useMarketVoice(settings: VoiceSettings) {
         }
       });
 
+      const musteri = await loadCustomerContext();
       const kapali = closedNote(settingsRef.current);
       const talimat =
         MARKET_VOICE_INSTRUCTION +
         (kapali
           ? `\n\nŞU ANKİ DURUM: ${kapali} Müşteriye ilk cevabında bunu kısaca bildir ve sepet hazırlamasına yardım edebileceğini söyle.`
-          : "\n\nŞU ANKİ DURUM: Market açık, sipariş verilebilir.");
+          : "\n\nŞU ANKİ DURUM: Market açık, sipariş verilebilir.") +
+        (musteri
+          ? `\n\nMÜŞTERİ: Giriş yapmış kayıtlı müşteri.${musteri.firstName ? ` Adı: ${musteri.firstName}.` : " Adı bilinmiyor."} ${musteri.summary ?? ""}`
+          : "\n\nMÜŞTERİ: Misafir (giriş yapmamış); adı ve geçmişi bilinmiyor. Geçmiş sipariş sorulursa üye girişi yapması gerektiğini söyle.");
       await provider.connect(sess, null, talimat);
       providerRef.current = provider;
       playbackRef.current = playback;
@@ -196,6 +202,8 @@ export function useMarketVoice(settings: VoiceSettings) {
         providerRef.current?.sendAudio(pcm);
       });
       set("listening");
+      // Asistan önce konuşsun: selamlama
+      provider.sendText("[SİSTEM] Oturum başladı. Müşteriyi selamla.");
 
       const started = Date.now();
       timers.current.push(
@@ -218,6 +226,18 @@ export function useMarketVoice(settings: VoiceSettings) {
   }, [cleanup, go, runTool, set]);
 
   useEffect(() => () => void cleanup(), [cleanup]);
+
+  // Sipariş tamamlandı → açık oturumda teşekkür
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent<{ orderNo?: number; total?: number }>).detail ?? {};
+      providerRef.current?.sendText(
+        `[SİSTEM] Sipariş tamamlandı. Sipariş no: ${d.orderNo ?? "-"}${d.total != null ? `, toplam ${d.total.toFixed(2)} TL` : ""}. Müşteriye içtenlikle teşekkür et.`,
+      );
+    };
+    window.addEventListener(ORDER_DONE_EVENT, h);
+    return () => window.removeEventListener(ORDER_DONE_EVENT, h);
+  }, []);
 
   return { state, error, userText, assistantText, actions, start, stop };
 }

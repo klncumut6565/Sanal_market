@@ -77,6 +77,7 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
         const mine = JSON.parse(localStorage.getItem("sanal-market-siparisler") ?? "[]");
         localStorage.setItem("sanal-market-siparisler", JSON.stringify([{ id: res.id, t: res.token, no: res.orderNo }, ...mine].slice(0, 20)));
       } catch {}
+      window.dispatchEvent(new CustomEvent("sesli-asistan:siparis-tamamlandi", { detail: { orderNo: res.orderNo, total: s.total } }));
       clear();
       router.replace(`/siparis/${res.id}?t=${res.token}&yeni=1`);
     });

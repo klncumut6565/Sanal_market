@@ -19,7 +19,7 @@ const STATUS: Record<string, string> = {
 };
 
 export const OPEN_EVENT = "sesli-asistan:ac";
-const CONSENT_KEY = "sanal-market-ses-onay-v1";
+const CONSENT_KEY = "sanal-market-ses-onay-v2"; // v2: üyelerde ad + sipariş geçmişi de kullanılıyor
 const hasConsent = () => {
   try {
     return localStorage.getItem(CONSENT_KEY) === "1";
@@ -93,7 +93,8 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
               <div className="space-y-3 text-sm">
                 <p className="leading-relaxed opacity-90">
                   Sesli asistan, konuşmanı anlamak için sesini <b>Google</b>&apos;ın Gemini yapay zekâ hizmetine iletir; bu hizmetin sunucuları <b>yurt dışında</b>{" "}
-                  olabilir. Ses kayıtların bizim sistemlerimizde saklanmaz.
+                  olabilir. Ses kayıtların bizim sistemlerimizde saklanmaz. Üye girişi yaptıysan, sana adınla hitap etmesi ve önceki siparişlerine göre öneri
+                  yapabilmesi için <b>adın ve geçmiş siparişlerindeki ürünler</b> de asistana iletilir.
                 </p>
                 <Link href="/kvkk#sesli-asistan" onClick={() => setOpen(false)} className="inline-block font-bold text-brand underline underline-offset-2">
                   KVKK Aydınlatma Metni → Sesli asistan

@@ -46,7 +46,7 @@ export default async function KvkkPage() {
           <li>Siparişin alınması, hazırlanması, teslim edilmesi ve ödemenin kapıda tahsil edilmesi,</li>
           <li>Sipariş durumu, stokta olmayan ürünler veya teslimat hakkında sizinle iletişime geçilmesi (telefon, WhatsApp),</li>
           <li>Üyelik hesabınızın oluşturulması ve sipariş geçmişinizin gösterilmesi,</li>
-          <li>Sesli asistan ile ürün aramanız, ürünleri sepetinize eklemeniz ve öneri almanız,</li>
+          <li>Sesli asistan ile ürün aramanız, ürünleri sepetinize eklemeniz ve (üyelerde geçmiş siparişlerinize göre kişisel) öneri almanız,</li>
           <li>Faturalandırma, muhasebe ve yasal yükümlülüklerin yerine getirilmesi,</li>
           <li>Site ve hizmet güvenliğinin sağlanması, kötüye kullanımın önlenmesi.</li>
         </ul>
@@ -74,6 +74,11 @@ export default async function KvkkPage() {
           <li>
             Ses kayıtlarınız ve konuşma metinleri <b>bizim sistemlerimizde saklanmaz</b>. Asistan yalnızca ürün aramak ve sepetinizi düzenlemek için
             kullanılır; sesiniz kimlik tespiti amacıyla kullanılmaz.
+          </li>
+          <li>
+            Üye girişi yaptıysanız, size adınızla hitap edebilmesi ve önceki alışverişlerinize göre kişisel öneri sunabilmesi için <b>adınız ve geçmiş
+            siparişlerinizdeki ürün adları, adetleri ve tarihleri</b> de asistanın oturumu süresince Google&apos;ın Gemini hizmetine iletilir. Adres,
+            telefon ve ödeme bilgileriniz asistana iletilmez. Misafir kullanıcılarda bu bilgiler kullanılmaz.
           </li>
           <li>Google&apos;ın bu verileri işleme ve saklama koşulları, Google&apos;ın Gemini API hizmet şartları ve gizlilik politikasına tabidir.</li>
           <li>Asistanı kullanırken adres, telefon, kimlik veya ödeme bilgisi gibi kişisel bilgilerinizi söylemeyiniz; bunları ödeme sayfasında ekrandan girersiniz.</li>

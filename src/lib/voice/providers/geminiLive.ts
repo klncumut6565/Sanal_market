@@ -311,6 +311,12 @@ export class GeminiLiveProvider implements RealtimeProvider {
     this.ws?.send(JSON.stringify({ toolResponse: { functionResponses: responses } }));
   }
 
+  /** Modele metin gönderir (ör. sistem bildirimi: oturum başladı, sipariş tamamlandı). */
+  sendText(text: string): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({ realtimeInput: { text } }));
+  }
+
   sendAudio(chunk: ArrayBuffer): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
     const base64 = btoa(String.fromCharCode(...new Uint8Array(chunk)));

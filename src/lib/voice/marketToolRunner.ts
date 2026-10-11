@@ -44,6 +44,69 @@ export function closedNote(s: VoiceSettings): string | undefined {
   return `Market şu an kapalı; siparişler saat ${s.open_time}'da açılıyor (yaklaşık ${kalan} sonra). Şimdi sepete ürün eklenebilir ama sipariş ancak açılışta verilebilir.`;
 }
 
+// ------------------------------ Kayıtlı müşteri ------------------------------
+type HistOrder = {
+  order_no: number;
+  created_at: string;
+  status: string;
+  total: number;
+  order_items: { product_id: string | null; product_name: string; unit_label: string | null; quantity: number; removed: boolean }[];
+};
+
+const gunFarki = (iso: string) => {
+  const g = (ms: number) => Math.floor((ms + 3 * 3600_000) / 86400_000); // İstanbul günü
+  const d = g(Date.now()) - g(new Date(iso).getTime());
+  return d <= 0 ? "bugün" : d === 1 ? "dün" : d < 7 ? `${d} gün önce` : d < 14 ? "geçen hafta" : `${Math.round(d / 7)} hafta önce`;
+};
+
+async function loadHistory(sb: ReturnType<typeof createClient>, limit: number) {
+  const { data: auth } = await sb.auth.getSession();
+  const uid = auth.session?.user.id;
+  if (!uid) return null;
+  const { data } = await sb
+    .from("orders")
+    .select("order_no,created_at,status,total,order_items(product_id,product_name,unit_label,quantity,removed)")
+    .eq("user_id", uid)
+    .neq("status", "iptal")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return { uid, orders: (data ?? []) as HistOrder[] };
+}
+
+/** Oturum başında: kayıtlı müşterinin adı ve sipariş geçmişi özeti (yalnızca giriş yapmış müşteri). */
+export async function loadCustomerContext(): Promise<{ firstName: string | null; summary: string | null } | null> {
+  try {
+    const sb = createClient();
+    const h = await loadHistory(sb, 10);
+    if (!h) return null;
+    const { data: prof } = await sb.from("profiles").select("full_name").eq("id", h.uid).maybeSingle();
+    const full = (prof?.full_name as string | null | undefined)?.trim() || "";
+    const firstName = full ? full.split(/\s+/)[0] : null;
+    if (!h.orders.length) return { firstName, summary: "Müşterinin daha önce siparişi yok (ilk alışverişi)." };
+    const last = h.orders[0];
+    const lastItems = last.order_items.filter((i) => !i.removed).map((i) => `${i.quantity} × ${i.product_name}${i.unit_label ? ` (${i.unit_label})` : ""}`);
+    const freq = new Map<string, { name: string; times: number; qty: number }>();
+    for (const o of h.orders)
+      for (const i of o.order_items) {
+        if (i.removed) continue;
+        const k = i.product_id ?? i.product_name;
+        const f = freq.get(k) ?? { name: i.product_name, times: 0, qty: 0 };
+        f.times += 1;
+        f.qty += i.quantity;
+        freq.set(k, f);
+      }
+    const often = [...freq.values()].filter((f) => f.times >= 2).sort((a, b) => b.times - a.times).slice(0, 5);
+    const lines = [
+      `Toplam ${h.orders.length}${h.orders.length >= 10 ? "+" : ""} geçmiş sipariş.`,
+      `Son sipariş ${gunFarki(last.created_at)}: ${lastItems.join(", ")}.`,
+    ];
+    if (often.length) lines.push(`Sık aldıkları: ${often.map((f) => `${f.name} (${f.times} siparişte)`).join(", ")}.`);
+    return { firstName, summary: lines.join(" ") };
+  } catch {
+    return null;
+  }
+}
+
 function cartLabel(p: Product, qty: number) {
   return `${qty} × ${p.name}${p.unit_label ? ` (${p.unit_label})` : ""}`;
 }
@@ -94,6 +157,22 @@ export function createMarketToolRunner(deps: {
       ]);
       const categories = (cats ?? []).map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
       return { count: categories.length, categories, note: "Kategorilerin hepsini adlarıyla say." };
+    }
+
+    if (name === "get_order_history") {
+      const h = await loadHistory(sb, 10);
+      if (!h) return { error: "Müşteri giriş yapmamış; geçmiş siparişler yalnızca üye girişiyle görülebilir." };
+      if (!h.orders.length) return { orders: [], note: "Daha önce sipariş yok." };
+      return {
+        orders: h.orders.map((o) => ({
+          order_no: o.order_no,
+          when: gunFarki(o.created_at),
+          status: o.status,
+          total: Number(o.total),
+          items: o.order_items.filter((i) => !i.removed).map((i) => ({ product_id: i.product_id, name: i.product_name, unit: i.unit_label, quantity: i.quantity })),
+        })),
+        note: "Bir ürünü tekrar önermeden önce search_products ile güncel fiyat ve stoğu kontrol et.",
+      };
     }
 
     if (name === "list_category_products") {
