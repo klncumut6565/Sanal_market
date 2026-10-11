@@ -6,6 +6,8 @@ import { formatTL } from "@/lib/format";
 import type { Category, Product } from "@/lib/types";
 import { quickUpdateProduct } from "../actions";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
+import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
+import { Suspense } from "react";
 
 export const metadata = { title: "Ürünler" };
 
@@ -21,7 +23,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
   const cats = (categories ?? []) as Category[];
   const catName = new Map(cats.map((c) => [c.id, c.name]));
-  const q = (sp.q ?? "").toLocaleLowerCase("tr");
+  const q = (sp.q ?? "").trim().toLocaleLowerCase("tr");
   const list = ((products ?? []) as Product[]).filter(
     (p) =>
       (!q || p.name.toLocaleLowerCase("tr").includes(q) || (p.barcode ?? "").includes(q)) &&
@@ -30,6 +32,17 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
       (sp.marj !== "girilmemis" || !costOf.has(p.id)),
   );
+  if (q) {
+    // Ada göre en iyi eşleşme en üstte: tam eşleşme > başlıyor > kelime başı > içeriyor
+    const rank = (p: Product) => {
+      const n = p.name.toLocaleLowerCase("tr");
+      if (n === q || p.barcode === q) return 0;
+      if (n.startsWith(q)) return 1;
+      if (n.split(/\s+/).some((w) => w.startsWith(q))) return 2;
+      return 3;
+    };
+    list.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, "tr"));
+  }
   if (sp.marj === "dusuk") list.sort((a, b) => (marginOf(a)?.marginPct ?? 0) - (marginOf(b)?.marginPct ?? 0));
   // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
   const withCost = ((products ?? []) as Product[]).filter((p) => p.is_active && costOf.has(p.id));
@@ -46,7 +59,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       </div>
 
       <form className="flex flex-wrap gap-2">
-        <input name="q" defaultValue={sp.q} placeholder="Ürün adı veya barkod" className="input max-w-xs" />
+        <Suspense fallback={<input name="q" defaultValue={sp.q} placeholder="Ürün adı veya barkod" className="input max-w-xs" />}>
+          <LiveSearchInput placeholder="Ürün adı veya barkod — yazdıkça arar" className="w-full sm:max-w-xs" />
+        </Suspense>
         <select name="kategori" defaultValue={sp.kategori ?? ""} className="input max-w-52">
           <option value="">Tüm kategoriler</option>
           {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

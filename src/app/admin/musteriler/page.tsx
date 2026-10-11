@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { ChevronRight, MessageCircle, Phone, Search } from "lucide-react";
+import { ChevronRight, MessageCircle, Phone } from "lucide-react";
+import { Suspense } from "react";
+import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { requireAdmin } from "@/lib/data/auth";
 import { loadCustomers } from "@/lib/data/customers";
 import { displayPhone, localDigits } from "@/lib/phone";
@@ -34,11 +36,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       </div>
 
       <form className="flex flex-wrap gap-2">
-        {/* Simge kutunun içinde ama ayrı sütunda — yazıyla asla çakışmaz */}
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-white px-3 focus-within:border-brand focus-within:ring-2 focus-within:ring-brand/15">
-          <Search size={16} className="shrink-0 text-muted" />
-          <input name="q" defaultValue={q} placeholder="Ad veya telefon ara" className="w-full min-w-0 bg-transparent py-2.5 text-[15px] outline-none" />
-        </label>
+        <Suspense fallback={<input name="q" defaultValue={q} placeholder="Ad veya telefon ara" className="input min-w-0 flex-1" />}>
+          <LiveSearchInput placeholder="Ad veya telefon — yazdıkça arar" className="flex-1" />
+        </Suspense>
         <select name="sira" defaultValue={sira} className="input w-auto">
           <option value="son">Son sipariş</option>
           <option value="harcama">En çok harcayan</option>
