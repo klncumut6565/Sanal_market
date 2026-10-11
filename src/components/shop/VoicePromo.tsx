@@ -43,7 +43,7 @@ export function VoicePromo() {
         <span className="mb-1 inline-flex items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider">
           <Sparkles size={12} /> Yeni
         </span>
-        <span className="block text-lg font-black leading-tight sm:text-xl">Konuşarak sipariş ver!</span>
+        <span className="block text-lg font-black leading-tight sm:text-xl">Yapay zekâ ile konuşarak sipariş ver!</span>
         <span className="mt-0.5 block min-h-[2.5rem] text-sm font-semibold leading-snug opacity-95 sm:min-h-0">
           “<span key={i} className="inline-block animate-[fadein_.4s_ease]">{ORNEKLER[i]}</span>” de, sepetine eklensin.
         </span>
