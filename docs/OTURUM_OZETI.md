@@ -74,3 +74,7 @@
 - Admin sipariş detayı: her kalemde "Yok" → ürün adı + aynı kategoriden stokta olan en yakın fiyatlı benzerleri yazan WhatsApp mesajı, "Değiştir" / "Siparişten çıkar".
 - WhatsApp şablonlarından genel "Ürün yok" kaldırıldı; güncelleme olunca "Sipariş güncellendi" şablonu (çıkan/değişen ürünler + yeni tutar).
 - Müşteri takip sayfası: çıkarılan ürün üstü çizili "Stokta yoktu", değişen "X yerine", sarı "Siparişin güncellendi" kutusu.
+
+## 2026-10-11 — Ciro raporu
+- Genel bakışa "Ciro" bölümü (components/admin/RevenueReport.tsx): Bugün / Dün / Bu hafta (Pzt'den) / Bu ay / Geçen ay kartları + tarih aralığı seçici (?bas=&bit=, en fazla 366 gün) → toplam ciro, sipariş, ortalama sepet, iptal + gün gün döküm.
+- Hepsi iş gününe göre (lib/hours: businessDateOf, businessDateStart, reportRanges). Ciro = teslimat dahil toplam, iptaller hariç.

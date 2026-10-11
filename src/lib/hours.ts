@@ -67,3 +67,42 @@ export function currentBusinessDay(openHM: string, closeHM: string, manualOpen =
   const now = Date.now();
   return { window: businessDayWindow(now, openHM, closeHM), state: hoursState(now, openHM, closeHM, manualOpen) };
 }
+
+// ---------- İş günü tarihleri (YYYY-MM-DD) ----------
+const pad = (n: number) => String(n).padStart(2, "0");
+const ymd = (d: Date) => `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+
+/** Bir anın ait olduğu iş günü (açılış saatinden önceki saatler önceki güne yazılır). */
+export function businessDateOf(ms: number, openHM: string) {
+  return ymd(new Date(ms + TR_OFFSET_MS - toMin(openHM) * 60_000));
+}
+
+/** İş gününün başladığı an (o tarihte açılış saati, İstanbul) — ISO */
+export function businessDateStart(date: string, openHM: string) {
+  const [y, m, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d) - TR_OFFSET_MS + toMin(openHM) * 60_000).toISOString();
+}
+
+export function addDays(date: string, n: number) {
+  const [y, m, d] = date.split("-").map(Number);
+  return ymd(new Date(Date.UTC(y, m - 1, d + n)));
+}
+
+export const isYmd = (s: string | undefined): s is string => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
+
+/** Şu anki iş günü tarihi ve hazır aralıklar */
+export function reportRanges(openHM: string) {
+  const today = businessDateOf(Date.now(), openHM);
+  const [y, m, d] = today.split("-").map(Number);
+  const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; // Pazartesi = 0
+  const monthStart = `${y}-${pad(m)}-01`;
+  const prevMonthStart = ymd(new Date(Date.UTC(y, m - 2, 1)));
+  return {
+    today,
+    yesterday: addDays(today, -1),
+    weekStart: addDays(today, -dow),
+    monthStart,
+    prevMonthStart,
+    prevMonthEnd: addDays(monthStart, -1),
+  };
+}

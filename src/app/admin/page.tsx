@@ -6,10 +6,12 @@ import { currentBusinessDay } from "@/lib/hours";
 import type { Order } from "@/lib/types";
 import { AutoRefresh } from "@/components/AutoRefresh";
 import { OrderTable } from "@/components/admin/OrderTable";
+import { RevenueReport } from "@/components/admin/RevenueReport";
 
 export const metadata = { title: "Genel bakış" };
 
-export default async function AdminHome() {
+export default async function AdminHome({ searchParams }: { searchParams: Promise<{ bas?: string; bit?: string }> }) {
+  const { bas, bit } = await searchParams;
   await connection();
   const { supabase } = await requireAdmin();
 
@@ -66,6 +68,8 @@ export default async function AdminHome() {
           );
         })}
       </div>
+
+      <RevenueReport supabase={supabase} openTime={openT} from={bas} to={bit} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
