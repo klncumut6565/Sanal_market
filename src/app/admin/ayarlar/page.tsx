@@ -18,7 +18,7 @@ export default async function SettingsPage() {
     <div className="max-w-2xl space-y-4">
       <h1 className="text-2xl font-black">Market ayarları</h1>
       <SettingsForm settings={data as StoreSettings} />
-      {notify && <NotifySettingsForm n={notify} hasResendKey={!!process.env.RESEND_API_KEY?.trim()} panelOpen={isRecent(notify.admin_last_seen, 120_000)} />}
+      {notify && <NotifySettingsForm n={notify} hasResendKey={!!process.env.RESEND_API_KEY?.trim()} panelOpen={isRecent(notify.admin_last_seen, 120_000)} cloud={!!(process.env.WHATSAPP_TOKEN?.trim() && process.env.WHATSAPP_PHONE_NUMBER_ID?.trim())} />}
     </div>
   );
 }

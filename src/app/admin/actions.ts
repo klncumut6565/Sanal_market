@@ -1,7 +1,7 @@
 "use server";
 import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
-import { sendEmail, sendWhatsApp } from "@/lib/notify";
+import { cloudTestParams, hasWhatsAppCloud, sendEmail, sendWhatsApp, sendWhatsAppCloud } from "@/lib/notify";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -488,6 +488,10 @@ export async function testNotify(_: ActionState, fd: FormData): Promise<ActionSt
     if (!n.email) return { error: "Önce e-posta adresini kaydet." };
     const r = await sendEmail(n.email, "Sanal Market test bildirimi", text, `<p>${text}</p>`);
     return r.ok ? { ok: `Test e-postası ${n.email} adresine gönderildi.` } : { error: r.error };
+  }
+  if (n.whatsapp_phone && hasWhatsAppCloud()) {
+    const r = await sendWhatsAppCloud(n.whatsapp_phone, cloudTestParams());
+    return r.ok ? { ok: "Test mesajı Meta WhatsApp API ile gönderildi (anlık gelmeli)." } : { error: r.error };
   }
   if (!n.whatsapp_phone || !n.callmebot_apikey) return { error: "Önce WhatsApp numarasını ve CallMeBot anahtarını kaydet." };
   const r = await sendWhatsApp(n.whatsapp_phone, n.callmebot_apikey, text);

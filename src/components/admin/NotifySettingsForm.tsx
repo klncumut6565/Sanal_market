@@ -16,7 +16,7 @@ type N = {
   last_result_at?: string | null;
 };
 
-export function NotifySettingsForm({ n, hasResendKey, panelOpen }: { n: N; hasResendKey: boolean; panelOpen: boolean }) {
+export function NotifySettingsForm({ n, hasResendKey, panelOpen, cloud = false }: { n: N; hasResendKey: boolean; panelOpen: boolean; cloud?: boolean }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveNotifySettings, {});
   const [tState, tAction, tPending] = useActionState<ActionState, FormData>(testNotify, {});
   return (
@@ -34,6 +34,11 @@ export function NotifySettingsForm({ n, hasResendKey, panelOpen }: { n: N; hasRe
         <label className="block space-y-1">
           <span className="flex items-center gap-1.5 text-sm font-semibold"><MessageCircle size={15} /> Bildirim WhatsApp numarası</span>
           <input name="whatsapp_phone" type="tel" defaultValue={n.whatsapp_phone ? displayPhone(n.whatsapp_phone) : ""} placeholder="+90 5xx xxx xx xx" className="input" />
+          {cloud ? (
+            <span className="block rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700">✅ Meta WhatsApp API aktif — bildirimler anlık gider (CallMeBot kullanılmaz).</span>
+          ) : (
+            <span className="block rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-800">CallMeBot kullanılıyor (ücretsiz, birkaç dakika gecikebilir). Anlık bildirim için Meta WhatsApp API kurulumu: docs/WHATSAPP_CLOUD_API.md</span>
+          )}
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-semibold">CallMeBot WhatsApp anahtarı (apikey)</span>
