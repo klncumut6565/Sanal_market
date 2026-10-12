@@ -92,8 +92,11 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   // Yönetim paneli kapalıysa işletmeye e-posta + WhatsApp (yanıtı geciktirmeden)
   after(async () => {
     try {
-      const { data: payload } = await createPublicClient().rpc("claim_order_notification", { p_order_id: row.order_id, p_token: row.access_token });
-      if (payload) await notifyNewOrder(payload);
+      const sb = createPublicClient();
+      const { data: payload, error: claimErr } = await sb.rpc("claim_order_notification", { p_order_id: row.order_id, p_token: row.access_token });
+      if (claimErr) console.error("[bildirim] claim:", claimErr.message);
+      const summary = payload ? await notifyNewOrder(payload) : null;
+      if (summary) await sb.rpc("record_notification_result", { p_order_id: row.order_id, p_token: row.access_token, p_result: summary });
     } catch (e) {
       console.error("[bildirim]", e);
     }

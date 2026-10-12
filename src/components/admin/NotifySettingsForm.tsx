@@ -12,6 +12,8 @@ type N = {
   whatsapp_enabled: boolean;
   only_when_away: boolean;
   admin_last_seen: string | null;
+  last_result?: string | null;
+  last_result_at?: string | null;
 };
 
 export function NotifySettingsForm({ n, hasResendKey, panelOpen }: { n: N; hasResendKey: boolean; panelOpen: boolean }) {
@@ -70,6 +72,12 @@ export function NotifySettingsForm({ n, hasResendKey, panelOpen }: { n: N; hasRe
         <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-800">
           E-posta için Vercel&apos;e <b>RESEND_API_KEY</b> ortam değişkeni eklenmeli (resend.com, ücretsiz). Alan adı doğrulamadan yalnızca Resend hesabını açtığın e-posta
           adresine gönderilebilir — işyeri adresiyle hesap açman yeterli.
+        </p>
+      )}
+      {n.last_result && (
+        <p className="rounded-lg bg-bg p-2.5 text-xs">
+          <b>Son otomatik bildirim</b>
+          {n.last_result_at && ` (${new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" }).format(new Date(n.last_result_at))})`}: {n.last_result}
         </p>
       )}
       <p className="text-xs text-muted">
