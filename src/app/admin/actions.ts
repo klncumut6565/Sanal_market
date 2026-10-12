@@ -403,6 +403,34 @@ export async function toggleVerified(fd: FormData) {
   revalidatePath("/admin/musteriler", "layout");
 }
 
+// ---------------- YÖNETİCİ YETKİSİ (yalnızca kurucu hesap) ----------------
+const ROLE_ERR: Record<string, string> = {
+  YALNIZCA_KURUCU: "Yönetici yetkisini yalnızca market sahibi (kurucu hesap) verebilir.",
+  KURUCU_KORUNUR: "Kurucu hesabın yetkisi kaldırılamaz.",
+  KULLANICI_YOK: "Kullanıcı bulunamadı.",
+};
+const roleMsg = (m?: string) => (m ? (ROLE_ERR[m.split(":")[0]] ?? m) : "");
+
+export async function ownerSetAdmin(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.rpc("owner_set_admin", { p_user_id: str(fd, "user_id"), p_admin: fd.get("admin") === "1" });
+  redirect(`/admin/yoneticiler?${error ? "hata=" + encodeURIComponent(roleMsg(error.message)) : "ok=" + (fd.get("admin") === "1" ? "verildi" : "kaldirildi")}`);
+}
+
+export async function ownerGrantByEmail(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const email = str(fd, "email").toLowerCase();
+  const { data: uid, error: findErr } = await supabase.rpc("owner_find_user", { p_email: email });
+  let msg = "";
+  if (findErr) msg = roleMsg(findErr.message);
+  else if (!uid) msg = "Bu e-postayla kayıtlı üye yok. Kişi önce siteye üye olmalı.";
+  else {
+    const { error } = await supabase.rpc("owner_set_admin", { p_user_id: uid, p_admin: true });
+    if (error) msg = roleMsg(error.message);
+  }
+  redirect(`/admin/yoneticiler?${msg ? "hata=" + encodeURIComponent(msg) : "ok=verildi"}`);
+}
+
 // ---------------- KARA LİSTE ----------------
 export async function addToBlacklist(fd: FormData) {
   const { supabase } = await requireAdmin();

@@ -27,9 +27,11 @@ async function sendResetMail(_: AuthState, fd: FormData): Promise<AuthState> {
     info: "Bu e-postaya kayıtlı bir hesap varsa şifre yenileme bağlantısı gönderdik. Gelen kutunu (gereksiz/spam dahil) kontrol et; bağlantı 1 saat geçerli.",
   };
 }
+import Link from "next/link";
+import { ShieldCheck } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 
-export function AuthForm({ next }: { next: string }) {
+export function AuthForm({ next, admin = false }: { next: string; admin?: boolean }) {
   const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
   const [inState, inAction, inPending] = useActionState<AuthState, FormData>(signIn, {});
   const [upState, upAction, upPending] = useActionState<AuthState, FormData>(signUp, {});
@@ -54,6 +56,28 @@ export function AuthForm({ next }: { next: string }) {
 
   const state = mode === "in" ? inState : upState;
   const pending = mode === "in" ? inPending : upPending;
+
+  if (admin)
+    return (
+      <div className="rounded-2xl bg-ink p-5 text-white">
+        <h1 className="flex items-center gap-2 text-lg font-extrabold">
+          <ShieldCheck size={20} className="text-brand" /> Yönetici girişi
+        </h1>
+        <p className="mb-3 mt-1 text-sm opacity-75">Yönetim paneline yalnızca yetkili hesaplar girebilir. Yetkin yoksa giriş yaptığında talebin market sahibine iletilir.</p>
+        <form action={inAction} className="space-y-3">
+          <input type="hidden" name="next" value="/admin" />
+          <input type="hidden" name="admin" value="1" />
+          <input name="email" type="email" required placeholder="E-posta" autoComplete="email" className="input text-ink" />
+          <input name="password" type="password" required placeholder="Şifre" autoComplete="current-password" className="input text-ink" />
+          {inState.error && <p className="rounded-lg bg-red-500/20 p-2.5 text-sm font-semibold text-red-100">{inState.error}</p>}
+          {inState.info && <p className="rounded-lg bg-white/10 p-2.5 text-sm font-semibold text-amber-200">{inState.info}</p>}
+          <button disabled={inPending} className="btn-primary w-full">{inPending ? "Kontrol ediliyor…" : "Yönetim paneline gir"}</button>
+        </form>
+        <Link href="/giris" className="mt-3 block text-center text-sm font-semibold text-white/70 hover:text-white">
+          ← Müşteri girişi
+        </Link>
+      </div>
+    );
 
   return (
     <div className="rounded-2xl bg-white p-5 ring-1 ring-line">
@@ -84,6 +108,11 @@ export function AuthForm({ next }: { next: string }) {
         </button>
       )}
       <p className="mt-3 text-center text-xs text-muted">Üye olmadan da sipariş verebilirsin.</p>
+      {mode === "in" && (
+        <Link href="/giris?yonetici=1" className="mt-3 flex items-center justify-center gap-1.5 border-t border-line pt-3 text-xs font-bold text-muted hover:text-ink">
+          <ShieldCheck size={14} /> Yönetici girişi
+        </Link>
+      )}
       {mode === "up" && (
         <p className="mt-1 text-center text-xs text-muted">
           Üye olarak <a href="/kvkk" target="_blank" className="font-semibold text-brand underline">KVKK Aydınlatma Metni</a>&apos;ni okuduğunu kabul edersin.

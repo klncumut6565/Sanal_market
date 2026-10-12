@@ -3,7 +3,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutDashboard, MapPin, Package, ReceiptText, ScanBarcode, Settings, Tags, Users } from "lucide-react";
+import { LayoutDashboard, MapPin, Package, ReceiptText, ScanBarcode, Settings, ShieldCheck, Tags, Users } from "lucide-react";
 
 const items = [
   { href: "/admin", label: "Genel bakış", icon: LayoutDashboard },
@@ -14,6 +14,7 @@ const items = [
   { href: "/admin/kategoriler", label: "Kategoriler", icon: Tags },
   { href: "/admin/bolgeler", label: "Teslimat bölgeleri", icon: MapPin },
   { href: "/admin/ayarlar", label: "Ayarlar", icon: Settings },
+  { href: "/admin/yoneticiler", label: "Yöneticiler", icon: ShieldCheck },
 ];
 
 /** Onay bekleyen ("Alındı" aşamasındaki) sipariş sayısı — 10 sn'de bir yenilenir. */

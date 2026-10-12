@@ -20,15 +20,27 @@ export async function signIn(_: AuthState, fd: FormData): Promise<AuthState> {
   if (!EMAIL_RE.test(email)) return { error: "Geçerli bir e-posta adresi gir." };
   if (!password) return { error: "Şifreni gir." };
 
+  const adminLogin = fd.get("admin") === "1";
   try {
     const supabase = await createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: authErrorTR(error) };
+    if (adminLogin) {
+      // Yönetici girişi: yetkisi yoksa talep oluştur, kurucu onaylayınca panel açılır
+      const { data: prof } = await supabase.from("profiles").select("role").eq("id", data.user.id).maybeSingle();
+      if (prof?.role !== "admin") {
+        const { error: reqErr } = await supabase.rpc("request_admin_access");
+        if (reqErr) console.error("[giris] admin talebi:", reqErr.message);
+        return {
+          info: "Bu hesabın yönetici yetkisi yok. Yetki talebin market sahibine iletildi; onaylandığında bu ekrandan giriş yapıp yönetim paneline geçebilirsin.",
+        };
+      }
+    }
   } catch (e) {
     console.error("[giris] signIn:", e);
     return { error: "Giriş şu an yapılamıyor. Lütfen biraz sonra tekrar dene." };
   }
-  redirect(safeNext(fd.get("next")));
+  redirect(adminLogin ? "/admin" : safeNext(fd.get("next")));
 }
 
 export async function signUp(_: AuthState, fd: FormData): Promise<AuthState> {
