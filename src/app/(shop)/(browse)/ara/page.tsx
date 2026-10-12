@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { ProductGrid } from "@/components/shop/ProductCard";
 import { GridSkeleton } from "@/components/shop/Skeletons";
-import { searchProducts } from "@/lib/data/catalog";
+import { searchProductsForViewer } from "@/lib/data/catalog";
 
 export const metadata = { title: "Arama" };
 
@@ -17,7 +17,7 @@ export default function SearchPage({ searchParams }: Props) {
 
 async function Results({ searchParams }: Props) {
   const q = ((await searchParams).q ?? "").slice(0, 60);
-  const results = await searchProducts(q);
+  const results = await searchProductsForViewer(q);
   return (
     <div>
       <h1 className="mb-3 text-xl font-black">

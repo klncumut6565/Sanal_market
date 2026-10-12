@@ -2,7 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
-import { getCategories, getProducts, getStoreSettings } from "@/lib/data/catalog";
+import { Suspense } from "react";
+import { getCategories, getMemberCatalog, getProducts, getStoreSettings } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
 import { VoicePromo } from "@/components/shop/VoicePromo";
 
@@ -49,6 +50,10 @@ export default async function HomePage() {
         </section>
       )}
 
+      <Suspense fallback={null}>
+        <MemberSections />
+      </Suspense>
+
       {deals.length > 0 && <Section title="Fırsat ürünleri 🔥" products={deals} />}
       {featured.length > 0 && <Section title="Çok satanlar" products={featured} />}
 
@@ -65,6 +70,31 @@ export default async function HomePage() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Üyeye / onaylı üyeye özel kategoriler (yalnızca yetkisi olan oturumda görünür). */
+async function MemberSections() {
+  const { categories, products } = await getMemberCatalog();
+  if (!categories.length) return null;
+  return (
+    <>
+      <section>
+        <h2 className="mb-3 text-lg font-extrabold">Üyelerimize özel</h2>
+        <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
+          {categories.map((c) => (
+            <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-brand/40 transition hover:ring-brand">
+              <span className="grid aspect-square w-full place-items-center rounded-xl bg-brand-soft text-3xl">{c.emoji ?? "🛒"}</span>
+              <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
+            </Link>
+          ))}
+        </div>
+      </section>
+      {categories.map((c) => {
+        const list = products.filter((p) => p.category_id === c.id).slice(0, 10);
+        return list.length ? <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} /> : null;
+      })}
+    </>
   );
 }
 

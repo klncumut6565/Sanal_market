@@ -1,6 +1,9 @@
 import "server-only";
+import { cache } from "react";
+import { cookies } from "next/headers";
 import { cacheLife, cacheTag } from "next/cache";
 import { createPublicClient } from "@/lib/supabase/public";
+import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/supabase/env";
 import type { Category, Product, StoreSettings } from "@/lib/types";
 
@@ -92,4 +95,52 @@ export async function getStoreSettings(): Promise<StoreSettings> {
     free_delivery_threshold: Number(data.free_delivery_threshold),
     min_order_amount: Number(data.min_order_amount),
   };
+}
+
+// ---------------------------------------------------------------------
+// Üyelere özel katalog (visibility = uye / onayli). Vitrin önbelleği anonim
+// olduğu için bu kategoriler orada yer almaz; oturumlu istemciyle istek anında
+// (Suspense içinde) getirilir. Hangi kategorinin görüneceğine RLS karar verir.
+// ---------------------------------------------------------------------
+async function hasAuthCookie() {
+  const store = await cookies();
+  return store.getAll().some((c) => c.name.startsWith("sb-") && c.name.includes("-auth-token"));
+}
+
+export const getMemberCatalog = cache(async (): Promise<{ categories: Category[]; products: Product[] }> => {
+  const empty = { categories: [], products: [] };
+  if (!hasSupabase || !(await hasAuthCookie())) return empty;
+  const sb = await createClient();
+  const { data: cats } = await sb
+    .from("categories")
+    .select("*")
+    .eq("is_active", true)
+    .in("visibility", ["uye", "onayli"])
+    .order("sort_order")
+    .order("name");
+  if (!cats?.length) return empty;
+  const { data: prods } = await sb
+    .from("products")
+    .select(PRODUCT_COLS)
+    .eq("is_active", true)
+    .in("category_id", cats.map((c) => c.id))
+    .order("sort_order")
+    .order("name");
+  return { categories: cats, products: (prods ?? []).map(num) };
+});
+
+/** Herkese açık + üyeye özel kategoriler, diziliş sırasına göre. */
+export function mergeCategories(pub: Category[], extra: Category[]): Category[] {
+  if (!extra.length) return pub;
+  const seen = new Set(pub.map((c) => c.id));
+  return [...pub, ...extra.filter((c) => !seen.has(c.id))].sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name, "tr"));
+}
+
+/** Arama: üye oturumu varsa kendi yetkisiyle (üyeye özel ürünler dahil), yoksa önbellekli anonim arama. */
+export async function searchProductsForViewer(q: string): Promise<Product[]> {
+  if (!hasSupabase || q.trim().length < 2) return [];
+  if (!(await hasAuthCookie())) return searchProducts(q);
+  const sb = await createClient();
+  const { data } = await sb.rpc("search_products", { q: q.trim() });
+  return ((data ?? []) as Product[]).map(num);
 }

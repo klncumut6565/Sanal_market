@@ -7,7 +7,7 @@ import { AddToCart } from "@/components/shop/AddToCart";
 import { Price } from "@/components/shop/Price";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { ProductRow } from "@/components/shop/ProductCard";
-import { getCategories, getProductBySlug, getProducts } from "@/lib/data/catalog";
+import { getCategories, getMemberCatalog, getProductBySlug, getProducts } from "@/lib/data/catalog";
 import { discountRate } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -31,9 +31,15 @@ export default function ProductPage({ params }: Props) {
 }
 
 async function ProductContent({ params }: Props) {
-  const p = await getProductBySlug((await params).slug);
+  const slug = (await params).slug;
+  let p = await getProductBySlug(slug);
+  let [cats, all] = await Promise.all([getCategories(), getProducts()]);
+  if (!p) {
+    // Üyeye / onaylı üyeye özel ürün olabilir
+    ({ categories: cats, products: all } = await getMemberCatalog());
+    p = all.find((x) => x.slug === slug) ?? null;
+  }
   if (!p) notFound();
-  const [cats, all] = await Promise.all([getCategories(), getProducts()]);
   const cat = cats.find((c) => c.id === p.category_id);
   const similar = all.filter((x) => x.category_id === p.category_id && x.id !== p.id).slice(0, 10);
   const off = discountRate(p);

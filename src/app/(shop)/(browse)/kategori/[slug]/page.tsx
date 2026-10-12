@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ProductGrid } from "@/components/shop/ProductCard";
 import { GridSkeleton } from "@/components/shop/Skeletons";
-import { getCategories, getProducts } from "@/lib/data/catalog";
+import { getCategories, getMemberCatalog, getProducts } from "@/lib/data/catalog";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -28,11 +28,17 @@ export default function CategoryPage({ params }: Props) {
 
 async function CategoryContent({ params }: Props) {
   const { slug } = await params;
-  const [categories, products] = await Promise.all([getCategories(), getProducts()]);
-  const cat = categories.find((c) => c.slug === slug);
+  let [categories, products] = await Promise.all([getCategories(), getProducts()]);
+  let cat = categories.find((c) => c.slug === slug);
+  if (!cat) {
+    // Üyeye / onaylı üyeye özel kategori olabilir
+    ({ categories, products } = await getMemberCatalog());
+    cat = categories.find((c) => c.slug === slug);
+  }
   if (!cat) notFound();
+  const catId = cat.id;
   const list = products
-    .filter((p) => p.category_id === cat.id)
+    .filter((p) => p.category_id === catId)
     .sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0));
   return (
     <div>

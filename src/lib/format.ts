@@ -35,6 +35,8 @@ export const discountRate = (p: { price: number; sale_price: number | null }) =>
 export function orderErrorMessage(raw: string): string {
   const [code, arg] = raw.split(":");
   switch (code) {
+    case "URUN_KISITLI":
+      return "Sepetindeki bazı ürünler online siparişe kapalı ya da yalnızca onaylı üyelere satılıyor. Lütfen sepetinden çıkar.";
     case "MUSTERI_ENGELLI":
       return "Siparişin şu an alınamıyor. Lütfen marketimizle iletişime geç.";
     case "SOZLESME_ONAYI":

@@ -6,6 +6,8 @@ export type Customer = {
   phone: string;
   name: string;
   member: boolean;
+  /** Üye hesabı (tik verilebilmesi için) */
+  userId: string | null;
   orderCount: number;
   delivered: number;
   cancelled: number;
@@ -28,6 +30,7 @@ export async function loadCustomers(supabase: SupabaseClient): Promise<Customer[
 
   const map = new Map<string, Customer>();
   const memberPhones = new Set((profiles ?? []).map((p) => p.phone).filter(Boolean));
+  const userByPhone = new Map((profiles ?? []).filter((p) => p.phone && p.role !== "admin").map((p) => [p.phone as string, p.id as string]));
 
   for (const o of (orders ?? []) as Pick<Order, "customer_name" | "phone" | "total" | "status" | "created_at" | "address" | "user_id">[]) {
     let c = map.get(o.phone);
@@ -36,6 +39,7 @@ export async function loadCustomers(supabase: SupabaseClient): Promise<Customer[
         phone: o.phone,
         name: o.customer_name,
         member: !!o.user_id || memberPhones.has(o.phone),
+        userId: userByPhone.get(o.phone) ?? null,
         orderCount: 0,
         delivered: 0,
         cancelled: 0,
@@ -52,6 +56,7 @@ export async function loadCustomers(supabase: SupabaseClient): Promise<Customer[
     else c.totalSpent += Number(o.total);
     c.firstOrder = o.created_at; // liste yeniden eskiye sıralı
     if (o.user_id) c.member = true;
+    if (o.user_id && !c.userId) c.userId = o.user_id;
   }
 
   // Henüz sipariş vermemiş üyeler
@@ -61,6 +66,7 @@ export async function loadCustomers(supabase: SupabaseClient): Promise<Customer[
       phone: p.phone,
       name: p.full_name ?? "—",
       member: true,
+      userId: p.id,
       orderCount: 0,
       delivered: 0,
       cancelled: 0,

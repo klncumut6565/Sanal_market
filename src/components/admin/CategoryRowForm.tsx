@@ -42,6 +42,17 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
             <span className="text-xs font-normal text-muted">Yazdığın sıradaki ve sonraki kategoriler bir sıra aşağı kayar.</span>
           </label>
         )}
+        <select
+          name="visibility"
+          defaultValue={category?.visibility ?? "herkes"}
+          title="Bu kategoriyi kimler görebilir?"
+          className="input w-auto py-2 text-sm"
+        >
+          <option value="herkes">👁 Herkes görür</option>
+          <option value="uye">👤 Yalnızca üyeler</option>
+          <option value="onayli">✔️ Yalnızca tikli üyeler</option>
+          <option value="kapali">🚫 Müşteriye kapalı (mevzuat)</option>
+        </select>
         <label className="flex items-center gap-1.5 text-sm font-semibold">
           <input type="checkbox" name="is_active" defaultChecked={category?.is_active ?? true} className="h-4 w-4 accent-brand" /> Aktif
         </label>

@@ -3,7 +3,7 @@ import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
 import { sendEmail, sendWhatsApp } from "@/lib/notify";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
-import { updateTag } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/data/auth";
 import { CATALOG_TAG, SETTINGS_TAG } from "@/lib/data/catalog";
@@ -304,6 +304,7 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
     slug: slugify(str(fd, "slug") || name),
     emoji: str(fd, "emoji") || guessCategoryEmoji(name),
     is_active: fd.get("is_active") === "on",
+    visibility: ["herkes", "uye", "onayli", "kapali"].includes(str(fd, "visibility")) ? str(fd, "visibility") : "herkes",
   };
   const res = id
     ? await supabase.from("categories").update(row).eq("id", id).select("id").single()
@@ -389,6 +390,17 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
   if (error) return { error: error.message };
   updateTag(SETTINGS_TAG);
   return { ok: "Ayarlar kaydedildi" };
+}
+
+// ---------------- ONAYLI (TİKLİ) MÜŞTERİ ----------------
+// Tikli üyeler "Yalnızca tikli üyeler" görünürlüğündeki kategorileri (ör. Elektronik) görür.
+export async function toggleVerified(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const userId = str(fd, "user_id");
+  if (!/^[0-9a-f-]{36}$/i.test(userId)) return;
+  if (fd.get("on") === "1") await supabase.from("verified_customers").upsert({ user_id: userId });
+  else await supabase.from("verified_customers").delete().eq("user_id", userId);
+  revalidatePath("/admin/musteriler", "layout");
 }
 
 // ---------------- KARA LİSTE ----------------

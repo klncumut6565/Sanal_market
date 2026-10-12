@@ -6,7 +6,11 @@ export type Category = {
   image_url: string | null;
   sort_order: number;
   is_active: boolean;
+  /** herkes | uye | onayli (tikli üye) | kapali (müşteriye gösterilmez) */
+  visibility?: CategoryVisibility;
 };
+
+export type CategoryVisibility = "herkes" | "uye" | "onayli" | "kapali";
 
 export type Product = {
   id: string;
