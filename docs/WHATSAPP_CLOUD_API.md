@@ -6,6 +6,19 @@ Meta'nın resmi **WhatsApp Cloud API**'si mesajı 1–2 saniyede iletir.
 - **Alıcı:** 0533 360 56 59 (WhatsApp Business uygulaması — telefonda kullanmaya devam edersin)
 - **Gönderen:** Meta'nın verdiği ücretsiz **test numarası** (ya da sonradan eklenen ikinci bir işletme numarası)
 
+## Ücretsiz kullanım (varsayılan)
+Meta, alıcı son **24 saat** içinde bot numarasına mesaj yazdıysa ("müşteri hizmeti penceresi")
+düz metin mesajları **ücretsiz** iletir. Ücret yalnızca pencere kapalıyken gönderilen *şablon* mesajlarındadır.
+
+Sistem bu yüzden şöyle çalışır:
+1. Önce **ücretsiz düz metin** dener → pencere açıksa bildirim anında, ücretsiz gelir.
+2. Pencere kapalıysa **ücretli şablon GÖNDERMEZ**; CallMeBot ile (ücretsiz, gecikmeli) gönderir.
+3. Pencereyi açık tutmak için: **0533 360 56 59'dan bot numarasına her gün bir kez** WhatsApp'tan
+   herhangi bir mesaj yaz (ör. sabah dükkânı açarken "açtık"). Pencere 24 saat açık kalır.
+
+İleride ücretli anlık şablona geçmek istersen: 2. adımdaki şablonu oluştur ve Vercel'e
+`WHATSAPP_USE_TEMPLATE=1` ekle.
+
 > Önemli: Gönderen numara ile alıcı numara aynı olamaz. 0533'ü gönderen yaparsan
 > WhatsApp Business uygulaması o numarada çalışmayı bırakabilir; bu yüzden 0533 **alıcı** kalır.
 
@@ -17,7 +30,8 @@ Meta'nın resmi **WhatsApp Cloud API**'si mesajı 1–2 saniyede iletir.
    - **Phone number ID** değerini kopyala → `WHATSAPP_PHONE_NUMBER_ID`
    - **To (Alıcı)** → *Manage phone number list* → **+90 533 360 56 59** ekle. Bu numaraya WhatsApp'tan gelen doğrulama kodunu gir.
 
-## 2. Mesaj şablonu oluştur (onay genelde dakikalar sürer)
+## 2. (İSTEĞE BAĞLI — ücretli mod) Mesaj şablonu oluştur
+Ücretsiz modda bu adım GEREKMEZ. Yalnızca `WHATSAPP_USE_TEMPLATE=1` kullanacaksan yap.
 İşletmenin başlattığı mesajlar için Meta onaylı şablon zorunludur.
 
 **WhatsApp Manager → Message templates (Mesaj şablonları) → Create template**
@@ -61,16 +75,20 @@ Sonra **Deployments → son dağıtım → Redeploy**.
 Yönetim → **Ayarlar → Sipariş bildirimleri**:
 - "Bildirim WhatsApp numarası": **+90 533 360 56 59** → Kaydet
 - Kutunun altında **"✅ Meta WhatsApp API aktif"** yazmalı
+- 0533'ten bot (test) numarasına WhatsApp'tan "merhaba" yaz (ücretsiz pencereyi açar)
 - **WhatsApp test** → mesaj birkaç saniyede gelir
+- Yedek (pencere kapalıyken) için CallMeBot'u da 0533'e bağla: 0533'ten CallMeBot numarasına
+  *I allow callmebot to send me messages* yaz, gelen apikey'i Ayarlar'a gir.
 
 Bu ayarlar varken CallMeBot kullanılmaz; ayarlar silinirse sistem otomatik CallMeBot'a döner.
 
 ## Ücret
-Meta, şablon mesajlarını mesaj başına ücretlendirir ("Utility" kategorisi en düşük grup).
-Güncel Türkiye fiyatı: https://developers.facebook.com/docs/whatsapp/pricing
-Ödeme yöntemi eklenmeden de test numarasıyla doğrulanmış alıcılara gönderim yapılabilir.
+- Pencere açıkken düz metin: **ücretsiz**.
+- Şablon mesajları ücretlidir (yalnızca `WHATSAPP_USE_TEMPLATE=1` ile kullanılır).
+- Kaynak: https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing
 
 ## Sorun giderme (Ayarlar → "Son otomatik bildirim" satırı)
+- `24 saatlik ücretsiz pencere kapalı` → 0533'ten bot numarasına bir mesaj yaz.
 - `Template name does not exist in the translation` → şablon adı/dili yanlış ya da henüz onaylanmadı.
 - `Recipient phone number not in allowed list` → 0533 numarası 1. adımda "To" listesine eklenip doğrulanmamış.
 - `Authentication Error` / `expired` → token süresi dolmuş; 3. adımdaki kalıcı token'ı kullan.

@@ -2,6 +2,10 @@ import "server-only";
 // Yeni sipariş bildirimleri: e-posta (Resend) + WhatsApp.
 // WhatsApp: Meta WhatsApp Cloud API ayarlıysa (WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID) ANLIK resmi API,
 // değilse CallMeBot (ücretsiz, kuyruklu — dakikalarca gecikebilir).
+// ÜCRETSİZ KULLANIM: Alıcı (market sahibi) son 24 saatte bot numarasına bir mesaj yazdıysa
+// "müşteri hizmeti penceresi" açıktır ve düz metin mesajlar ÜCRETSİZDİR. Pencere kapalıysa
+// (Meta hata 131047) ücretli şablon GÖNDERİLMEZ; CallMeBot'a (ücretsiz, gecikmeli) düşülür.
+// WHATSAPP_USE_TEMPLATE=1 verilirse pencere kapalıyken ücretli şablon kullanılır.
 // Yalnızca sunucuda çalışır; anahtarlar tarayıcıya gitmez.
 
 type Payload = {
@@ -68,36 +72,50 @@ const oneLine = (s: string, max = 900) =>
  * Varsayılan şablon: "yeni_siparis" (tr), 6 değişken:
  *   {{1}} sipariş no · {{2}} tutar · {{3}} müşteri · {{4}} adres · {{5}} ürünler · {{6}} panel bağlantısı
  */
-export async function sendWhatsAppCloud(to: string, params: string[]) {
+type CloudResult = { ok: boolean; error?: string; windowClosed?: boolean };
+
+async function cloudPost(body: Record<string, unknown>): Promise<CloudResult> {
   const token = process.env.WHATSAPP_TOKEN!.trim();
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID!.trim();
-  const template = process.env.WHATSAPP_TEMPLATE?.trim() || "yeni_siparis";
-  const lang = process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "tr";
   const res = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
     method: "POST",
     signal: AbortSignal.timeout(15_000),
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: to.replace(/\D/g, ""),
-      type: "template",
-      template: {
-        name: template,
-        language: { code: lang },
-        components: [{ type: "body", parameters: params.map((t) => ({ type: "text", text: oneLine(t) })) }],
-      },
-    }),
+    body: JSON.stringify({ messaging_product: "whatsapp", ...body }),
   });
-  if (!res.ok) {
-    let msg = `${res.status}`;
-    try {
-      const j = (await res.json()) as { error?: { message?: string; error_data?: { details?: string } } };
-      msg += `: ${j.error?.error_data?.details ?? j.error?.message ?? ""}`;
-    } catch {}
-    return { ok: false, error: `WhatsApp (Meta) gönderilemedi — ${msg.slice(0, 250)}` };
-  }
-  return { ok: true };
+  if (res.ok) return { ok: true };
+  let msg = `${res.status}`;
+  let code = 0;
+  try {
+    const j = (await res.json()) as { error?: { code?: number; message?: string; error_data?: { details?: string } } };
+    code = j.error?.code ?? 0;
+    msg += `: ${j.error?.error_data?.details ?? j.error?.message ?? ""}`;
+  } catch {}
+  // 131047: 24 saatlik pencere kapalı (yalnızca şablon gönderilebilir)
+  const windowClosed = code === 131047 || /24 hours|re-engagement/i.test(msg);
+  return { ok: false, windowClosed, error: `WhatsApp (Meta) gönderilemedi — ${msg.slice(0, 250)}` };
 }
+
+/** Düz metin (ücretsiz; yalnızca alıcı son 24 saatte bot numarasına yazdıysa gider). */
+export async function sendWhatsAppCloudText(to: string, text: string) {
+  return cloudPost({ to: to.replace(/\D/g, ""), type: "text", text: { body: text.slice(0, 4000), preview_url: false } });
+}
+
+export async function sendWhatsAppCloud(to: string, params: string[]) {
+  const template = process.env.WHATSAPP_TEMPLATE?.trim() || "yeni_siparis";
+  const lang = process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "tr";
+  return cloudPost({
+    to: to.replace(/\D/g, ""),
+    type: "template",
+    template: {
+      name: template,
+      language: { code: lang },
+      components: [{ type: "body", parameters: params.map((t) => ({ type: "text", text: oneLine(t) })) }],
+    },
+  });
+}
+
+export const templateFallbackEnabled = () => process.env.WHATSAPP_USE_TEMPLATE?.trim() === "1";
 
 const cloudParams = (o: NonNullable<Payload["order"]>) => [
   String(o.order_no),
@@ -141,10 +159,24 @@ export async function notifyNewOrder(payload: Payload): Promise<string | null> {
     );
   }
   if (payload.whatsapp_phone && hasWhatsAppCloud()) {
+    const phone = payload.whatsapp_phone;
+    const apikey = payload.callmebot_apikey;
     jobs.push(
-      sendWhatsAppCloud(payload.whatsapp_phone, cloudParams(o))
-        .then((r) => results.push(r.ok ? "WhatsApp (Meta): gönderildi" : r.error!))
-        .catch((e) => results.push(`WhatsApp (Meta): ${(e as Error).message}`)),
+      (async () => {
+        const r = await sendWhatsAppCloudText(phone, text);
+        if (r.ok) return results.push("WhatsApp (Meta, ücretsiz): gönderildi");
+        if (r.windowClosed && templateFallbackEnabled()) {
+          const t = await sendWhatsAppCloud(phone, cloudParams(o));
+          return results.push(t.ok ? "WhatsApp (Meta şablon, ücretli): gönderildi" : t.error!);
+        }
+        if (r.windowClosed && apikey) {
+          const c = await sendWhatsApp(phone, apikey, text);
+          return results.push(
+            `WhatsApp: 24 saatlik ücretsiz pencere kapalı → CallMeBot ile gönderildi${c.ok ? "" : ` (hata: ${c.error})`}. Pencereyi açmak için bot numarasına WhatsApp'tan bir mesaj yaz.`,
+          );
+        }
+        results.push(r.windowClosed ? "WhatsApp: 24 saatlik ücretsiz pencere kapalı — bot numarasına WhatsApp'tan bir mesaj yaz." : r.error!);
+      })().catch((e) => results.push(`WhatsApp (Meta): ${(e as Error).message}`)),
     );
   } else if (payload.whatsapp_phone && payload.callmebot_apikey) {
     jobs.push(

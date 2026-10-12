@@ -142,3 +142,5 @@
 - 2026-10-12: İki tik: 🔵 mavi tik (verified_customers) → visibility "onayli" (Alkol, Tütün); 🚬 sigara tiki (special_customers) → visibility "ozel" (Elektronik). Tiksiz üye/ziyaretçi bunları görmez. categories.night_ban: 22:00–06:00 TR saatinde sipariş engeli (GECE_SATIS_YASAGI) — Alkol açık. Kullanıcı mevzuat notuna rağmen alkol/tütünün mavi tikliye açılmasını seçti.
 
 - 2026-10-12: Anlık WhatsApp: Meta WhatsApp Cloud API desteği (lib/notify.ts sendWhatsAppCloud, şablon "yeni_siparis" tr, 6 değişken). Env: WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID (+ ops. WHATSAPP_TEMPLATE/_LANG). Varsa Cloud API, yoksa CallMeBot. Hedef alıcı: 0533 360 56 59 (WhatsApp Business uygulaması). Kurulum: docs/WHATSAPP_CLOUD_API.md. Bekleyen: kullanıcı Meta kurulumu + Ayarlar numarasını 0533 yapmak.
+
+- 2026-10-12: WhatsApp Cloud API ÜCRETSİZ mod: önce düz metin (24 saatlik pencere açıksa ücretsiz), pencere kapalıysa (131047) CallMeBot yedeğine düşer; ücretli şablon yalnızca WHATSAPP_USE_TEMPLATE=1 ile. Sahip her gün 0533ten bot numarasına bir mesaj yazarak pencereyi açık tutar.

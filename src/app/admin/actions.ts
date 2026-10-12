@@ -1,7 +1,7 @@
 "use server";
 import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
-import { cloudTestParams, hasWhatsAppCloud, sendEmail, sendWhatsApp, sendWhatsAppCloud } from "@/lib/notify";
+import { cloudTestParams, hasWhatsAppCloud, sendEmail, sendWhatsApp, sendWhatsAppCloud, sendWhatsAppCloudText, templateFallbackEnabled } from "@/lib/notify";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -490,8 +490,17 @@ export async function testNotify(_: ActionState, fd: FormData): Promise<ActionSt
     return r.ok ? { ok: `Test e-postası ${n.email} adresine gönderildi.` } : { error: r.error };
   }
   if (n.whatsapp_phone && hasWhatsAppCloud()) {
-    const r = await sendWhatsAppCloud(n.whatsapp_phone, cloudTestParams());
-    return r.ok ? { ok: "Test mesajı Meta WhatsApp API ile gönderildi (anlık gelmeli)." } : { error: r.error };
+    const r = await sendWhatsAppCloudText(n.whatsapp_phone, text);
+    if (r.ok) return { ok: "Test mesajı Meta WhatsApp API ile ücretsiz gönderildi (anlık gelmeli)." };
+    if (r.windowClosed && templateFallbackEnabled()) {
+      const t = await sendWhatsAppCloud(n.whatsapp_phone, cloudTestParams());
+      return t.ok ? { ok: "Test mesajı ücretli şablonla gönderildi." } : { error: t.error };
+    }
+    return {
+      error: r.windowClosed
+        ? "Ücretsiz pencere kapalı: bildirim numarasından (WhatsApp Business) bot numarasına WhatsApp'tan herhangi bir mesaj yaz (ör. \"merhaba\"), sonra tekrar test et. Pencere 24 saat açık kalır."
+        : r.error,
+    };
   }
   if (!n.whatsapp_phone || !n.callmebot_apikey) return { error: "Önce WhatsApp numarasını ve CallMeBot anahtarını kaydet." };
   const r = await sendWhatsApp(n.whatsapp_phone, n.callmebot_apikey, text);
