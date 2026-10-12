@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BadgeCheck, ChevronRight, MessageCircle, Phone } from "lucide-react";
+import { BadgeCheck, ChevronRight, Cigarette, MessageCircle, Phone } from "lucide-react";
 import { toggleVerified } from "../actions";
 import { Suspense } from "react";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
@@ -19,6 +19,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const banned = new Set((bl ?? []).map((b) => b.phone as string));
   const { data: vf } = await supabase.from("verified_customers").select("user_id");
   const verified = new Set((vf ?? []).map((v) => v.user_id as string));
+  const { data: sp } = await supabase.from("special_customers").select("user_id");
+  const special = new Set((sp ?? []).map((v) => v.user_id as string));
 
   const needle = q.trim().toLocaleLowerCase("tr");
   const digits = localDigits(q);
@@ -28,6 +30,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   if (sira === "siparis") list = [...list].sort((a, b) => b.orderCount - a.orderCount);
   if (sira === "kara") list = list.filter((c) => banned.has(c.phone));
   if (sira === "tikli") list = list.filter((c) => c.userId && verified.has(c.userId));
+  if (sira === "sigara") list = list.filter((c) => c.userId && special.has(c.userId));
 
   const total = list.reduce((a, c) => a + c.totalSpent, 0);
 
@@ -50,7 +53,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           <option value="son">Son sipariş</option>
           <option value="harcama">En çok harcayan</option>
           <option value="siparis">En çok sipariş</option>
-          <option value="tikli">✔️ Tikli üyeler ({verified.size})</option>
+          <option value="tikli">🔵 Mavi tikli üyeler ({verified.size})</option>
+          <option value="sigara">🚬 Sigara tikli üyeler ({special.size})</option>
           <option value="kara">⛔ Kara liste ({banned.size})</option>
         </select>
         <button className="btn-ghost">Uygula</button>
@@ -64,24 +68,36 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             <li key={c.phone} className="rounded-2xl bg-white p-3.5 ring-1 ring-line">
               <div className="flex items-start gap-3">
                 {c.userId ? (
-                  <form action={toggleVerified} className="shrink-0">
-                    <input type="hidden" name="user_id" value={c.userId} />
-                    <input type="hidden" name="on" value={verified.has(c.userId) ? "0" : "1"} />
-                    <button
-                      title={verified.has(c.userId) ? "Tik verildi — tikli kategorileri (ör. Elektronik) görür. Kaldırmak için dokun." : "Tik ver: tikli kategorileri (ör. Elektronik) görebilsin"}
-                      aria-label={verified.has(c.userId) ? "Tiki kaldır" : "Tik ver"}
-                      className={`grid h-8 w-8 place-items-center rounded-full transition ${verified.has(c.userId) ? "bg-sky-500 text-white" : "text-line ring-1 ring-line hover:text-sky-500 hover:ring-sky-300"}`}
+                  <div className="flex shrink-0 flex-col gap-1.5">
+                    <TickButton
+                      userId={c.userId}
+                      kind="mavi"
+                      on={verified.has(c.userId)}
+                      title="Mavi tik: alkol ve tütün dahil tüm kategorileri görür (elektronik hariç)"
+                      onCls="bg-sky-500 text-white"
+                      offCls="hover:text-sky-500 hover:ring-sky-300"
                     >
                       <BadgeCheck size={18} />
-                    </button>
-                  </form>
+                    </TickButton>
+                    <TickButton
+                      userId={c.userId}
+                      kind="sigara"
+                      on={special.has(c.userId)}
+                      title="Sigara tiki: elektronik ürünleri görür"
+                      onCls="bg-amber-500 text-white"
+                      offCls="hover:text-amber-500 hover:ring-amber-300"
+                    >
+                      <Cigarette size={17} />
+                    </TickButton>
+                  </div>
                 ) : (
                   <span title="Üye değil — tik yalnızca üyelere verilir" className="grid h-8 w-8 shrink-0 place-items-center text-xs text-muted">—</span>
                 )}
                 <Link href={`/admin/musteriler/${encodeURIComponent(c.phone)}`} className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 font-bold">
                     <span className="truncate">{c.name}</span>
-                    {c.userId && verified.has(c.userId) && <BadgeCheck size={16} className="shrink-0 text-sky-500" aria-label="Tikli üye" />}
+                    {c.userId && verified.has(c.userId) && <BadgeCheck size={16} className="shrink-0 text-sky-500" aria-label="Mavi tikli üye" />}
+                    {c.userId && special.has(c.userId) && <Cigarette size={16} className="shrink-0 text-amber-500" aria-label="Sigara tikli üye" />}
                     {c.member && <span className="shrink-0 rounded-full bg-sky-50 px-2 py-0.5 text-[11px] font-bold text-sky-700">Üye</span>}
                     {banned.has(c.phone) && <span className="shrink-0 rounded-full bg-red-600 px-2 py-0.5 text-[11px] font-bold text-white">Kara liste</span>}
                   </p>
@@ -109,5 +125,23 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </ul>
       )}
     </div>
+  );
+}
+
+function TickButton(props: { userId: string; kind: "mavi" | "sigara"; on: boolean; title: string; onCls: string; offCls: string; children: React.ReactNode }) {
+  return (
+    <form action={toggleVerified}>
+      <input type="hidden" name="user_id" value={props.userId} />
+      <input type="hidden" name="kind" value={props.kind} />
+      <input type="hidden" name="on" value={props.on ? "0" : "1"} />
+      <button
+        title={`${props.title}${props.on ? " — verildi, kaldırmak için dokun" : " — vermek için dokun"}`}
+        aria-label={props.title}
+        aria-pressed={props.on}
+        className={`grid h-8 w-8 place-items-center rounded-full transition ${props.on ? props.onCls : `text-line ring-1 ring-line ${props.offCls}`}`}
+      >
+        {props.children}
+      </button>
+    </form>
   );
 }

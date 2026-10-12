@@ -50,9 +50,13 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
         >
           <option value="herkes">👁 Herkes görür</option>
           <option value="uye">👤 Yalnızca üyeler</option>
-          <option value="onayli">✔️ Yalnızca tikli üyeler</option>
+          <option value="onayli">🔵 Mavi tikli üyeler</option>
+          <option value="ozel">🚬 Sigara tikli üyeler</option>
           <option value="kapali">🚫 Müşteriye kapalı (mevzuat)</option>
         </select>
+        <label className="flex items-center gap-1.5 text-sm font-semibold" title="Türkiye'de 22:00–06:00 arası alkol perakende satışı yasak">
+          <input type="checkbox" name="night_ban" defaultChecked={category?.night_ban ?? false} className="h-4 w-4 accent-brand" /> 22–06 satış yok
+        </label>
         <label className="flex items-center gap-1.5 text-sm font-semibold">
           <input type="checkbox" name="is_active" defaultChecked={category?.is_active ?? true} className="h-4 w-4 accent-brand" /> Aktif
         </label>

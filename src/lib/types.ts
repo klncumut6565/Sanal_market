@@ -6,11 +6,13 @@ export type Category = {
   image_url: string | null;
   sort_order: number;
   is_active: boolean;
-  /** herkes | uye | onayli (tikli üye) | kapali (müşteriye gösterilmez) */
+  /** 22:00–06:00 satış yasağı (alkol) */
+  night_ban?: boolean;
+  /** herkes | uye | onayli (🔵 mavi tik) | ozel (🚬 sigara tiki) | kapali (müşteriye gösterilmez) */
   visibility?: CategoryVisibility;
 };
 
-export type CategoryVisibility = "herkes" | "uye" | "onayli" | "kapali";
+export type CategoryVisibility = "herkes" | "uye" | "onayli" | "ozel" | "kapali";
 
 export type Product = {
   id: string;

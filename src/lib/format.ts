@@ -35,6 +35,8 @@ export const discountRate = (p: { price: number; sale_price: number | null }) =>
 export function orderErrorMessage(raw: string): string {
   const [code, arg] = raw.split(":");
   switch (code) {
+    case "GECE_SATIS_YASAGI":
+      return "Alkollü içkiler yasal olarak 22:00–06:00 arasında satılamıyor. Bu ürünleri sepetinden çıkarıp siparişini verebilirsin.";
     case "URUN_KISITLI":
       return "Sepetindeki bazı ürünler online siparişe kapalı ya da yalnızca onaylı üyelere satılıyor. Lütfen sepetinden çıkar.";
     case "MUSTERI_ENGELLI":

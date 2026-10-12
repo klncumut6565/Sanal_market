@@ -98,7 +98,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 }
 
 // ---------------------------------------------------------------------
-// Üyelere özel katalog (visibility = uye / onayli). Vitrin önbelleği anonim
+// Üyelere özel katalog (visibility = uye / onayli / ozel). Vitrin önbelleği anonim
 // olduğu için bu kategoriler orada yer almaz; oturumlu istemciyle istek anında
 // (Suspense içinde) getirilir. Hangi kategorinin görüneceğine RLS karar verir.
 // ---------------------------------------------------------------------
@@ -115,7 +115,7 @@ export const getMemberCatalog = cache(async (): Promise<{ categories: Category[]
     .from("categories")
     .select("*")
     .eq("is_active", true)
-    .in("visibility", ["uye", "onayli"])
+    .in("visibility", ["uye", "onayli", "ozel"])
     .order("sort_order")
     .order("name");
   if (!cats?.length) return empty;

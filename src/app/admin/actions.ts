@@ -304,7 +304,8 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
     slug: slugify(str(fd, "slug") || name),
     emoji: str(fd, "emoji") || guessCategoryEmoji(name),
     is_active: fd.get("is_active") === "on",
-    visibility: ["herkes", "uye", "onayli", "kapali"].includes(str(fd, "visibility")) ? str(fd, "visibility") : "herkes",
+    night_ban: fd.get("night_ban") === "on",
+    visibility: ["herkes", "uye", "onayli", "ozel", "kapali"].includes(str(fd, "visibility")) ? str(fd, "visibility") : "herkes",
   };
   const res = id
     ? await supabase.from("categories").update(row).eq("id", id).select("id").single()
@@ -398,8 +399,10 @@ export async function toggleVerified(fd: FormData) {
   const { supabase } = await requireAdmin();
   const userId = str(fd, "user_id");
   if (!/^[0-9a-f-]{36}$/i.test(userId)) return;
-  if (fd.get("on") === "1") await supabase.from("verified_customers").upsert({ user_id: userId });
-  else await supabase.from("verified_customers").delete().eq("user_id", userId);
+  // kind=mavi → verified_customers (alkol/tütün vb.), kind=sigara → special_customers (elektronik)
+  const table = fd.get("kind") === "sigara" ? "special_customers" : "verified_customers";
+  if (fd.get("on") === "1") await supabase.from(table).upsert({ user_id: userId });
+  else await supabase.from(table).delete().eq("user_id", userId);
   revalidatePath("/admin/musteriler", "layout");
 }
 
