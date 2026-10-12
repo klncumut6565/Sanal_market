@@ -80,7 +80,7 @@ Yönetim → **Ayarlar → Sipariş bildirimleri**:
 - Yedek (pencere kapalıyken) için CallMeBot'u da 0533'e bağla: 0533'ten CallMeBot numarasına
   *I allow callmebot to send me messages* yaz, gelen apikey'i Ayarlar'a gir.
 
-Bu ayarlar varken CallMeBot kullanılmaz; ayarlar silinirse sistem otomatik CallMeBot'a döner.
+Meta ayarları varken CallMeBot yalnızca pencere kapalıyken yedek olarak kullanılır; Meta ayarları silinirse sistem tamamen CallMeBot'a döner.
 
 ## Ücret
 - Pencere açıkken düz metin: **ücretsiz**.
