@@ -98,7 +98,7 @@ export async function getStoreSettings(): Promise<StoreSettings> {
 }
 
 // ---------------------------------------------------------------------
-// Üyelere özel katalog (visibility = uye / onayli / ozel). Vitrin önbelleği anonim
+// Oturuma özel katalog (visibility = uye / onayli / ozel). Vitrin önbelleği anonim
 // olduğu için bu kategoriler orada yer almaz; oturumlu istemciyle istek anında
 // (Suspense içinde) getirilir. Hangi kategorinin görüneceğine RLS karar verir.
 // ---------------------------------------------------------------------
@@ -111,14 +111,10 @@ export const getMemberCatalog = cache(async (): Promise<{ categories: Category[]
   const empty = { categories: [], products: [] };
   if (!hasSupabase || !(await hasAuthCookie())) return empty;
   const sb = await createClient();
-  const { data: cats } = await sb
-    .from("categories")
-    .select("*")
-    .eq("is_active", true)
-    .in("visibility", ["uye", "onayli", "ozel"])
-    .order("sort_order")
-    .order("name");
-  if (!cats?.length) return empty;
+  // Müşteri gözüyle (yönetici dahil tik durumuna göre) görünen, herkese açık olmayan kategoriler
+  const { data: all } = await sb.rpc("shop_categories");
+  const cats = ((all ?? []) as Category[]).filter((c) => c.visibility && c.visibility !== "herkes");
+  if (!cats.length) return empty;
   const { data: prods } = await sb
     .from("products")
     .select(PRODUCT_COLS)

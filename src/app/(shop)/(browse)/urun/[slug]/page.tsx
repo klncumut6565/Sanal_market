@@ -35,7 +35,7 @@ async function ProductContent({ params }: Props) {
   let p = await getProductBySlug(slug);
   let [cats, all] = await Promise.all([getCategories(), getProducts()]);
   if (!p) {
-    // Üyeye / onaylı üyeye özel ürün olabilir
+    // Oturuma özel ürün olabilir
     ({ categories: cats, products: all } = await getMemberCatalog());
     p = all.find((x) => x.slug === slug) ?? null;
   }

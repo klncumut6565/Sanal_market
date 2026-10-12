@@ -3,7 +3,7 @@ import type { createClient } from "@/lib/supabase/client";
 
 type Sb = ReturnType<typeof createClient>;
 
-export async function fetchDiscounts(sb: Sb, opts: { includeInactive?: boolean; query?: string; limit?: number } = {}) {
+export async function fetchDiscounts(sb: Sb, opts: { includeInactive?: boolean; query?: string; limit?: number; categoryIds?: Set<string> } = {}) {
   let q = sb
     .from("products")
     .select("id,name,unit_label,price,sale_price,stock,is_active,category_id,categories(name)")
@@ -14,6 +14,7 @@ export async function fetchDiscounts(sb: Sb, opts: { includeInactive?: boolean; 
   if (error) return { error: error.message };
   const term = (opts.query ?? "").trim().toLocaleLowerCase("tr");
   const rows = (data ?? [])
+    .filter((p) => !opts.categoryIds || !p.category_id || opts.categoryIds.has(p.category_id))
     .map((p) => {
       const price = Number(p.price);
       const sale = Number(p.sale_price);

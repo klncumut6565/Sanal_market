@@ -31,7 +31,7 @@ async function CategoryContent({ params }: Props) {
   let [categories, products] = await Promise.all([getCategories(), getProducts()]);
   let cat = categories.find((c) => c.slug === slug);
   if (!cat) {
-    // Üyeye / onaylı üyeye özel kategori olabilir
+    // Oturuma özel kategori olabilir
     ({ categories, products } = await getMemberCatalog());
     cat = categories.find((c) => c.slug === slug);
   }

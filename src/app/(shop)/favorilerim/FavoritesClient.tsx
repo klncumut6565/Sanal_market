@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Heart } from "lucide-react";
+import { shopCategories, visibleIn } from "@/lib/shopCategories";
 import { createClient } from "@/lib/supabase/client";
 import { useFavorites } from "@/store/favorites";
 import { ProductGrid } from "@/components/shop/ProductCard";
@@ -22,14 +23,12 @@ export function FavoritesClient() {
       Promise.resolve().then(() => alive && setProducts([]));
       return;
     }
-    createClient()
-      .from("products")
-      .select(COLS)
-      .in("id", list)
-      .eq("is_active", true)
-      .then(({ data }) => {
+    const sb = createClient();
+    Promise.all([sb.from("products").select(COLS).in("id", list).eq("is_active", true), shopCategories(sb)])
+      .then(([{ data }, cats]) => {
         if (!alive) return;
-        const byId = new Map(((data ?? []) as Product[]).map((p) => [p.id, { ...p, price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price) }]));
+        const canSee = visibleIn(new Set(cats.map((c) => c.id)));
+        const byId = new Map(((data ?? []) as Product[]).filter(canSee).map((p) => [p.id, { ...p, price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price) }]));
         setProducts(list.map((id) => byId.get(id)).filter(Boolean) as Product[]);
       });
     return () => {

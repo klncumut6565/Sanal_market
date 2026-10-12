@@ -38,7 +38,7 @@ export function orderErrorMessage(raw: string): string {
     case "GECE_SATIS_YASAGI":
       return "Alkollü içkiler yasal olarak 22:00–06:00 arasında satılamıyor. Bu ürünleri sepetinden çıkarıp siparişini verebilirsin.";
     case "URUN_KISITLI":
-      return "Sepetindeki bazı ürünler online siparişe kapalı ya da yalnızca onaylı üyelere satılıyor. Lütfen sepetinden çıkar.";
+      return "Sepetindeki bazı ürünler şu an satışta değil. Lütfen sepetinden çıkarıp tekrar dene.";
     case "MUSTERI_ENGELLI":
       return "Siparişin şu an alınamıyor. Lütfen marketimizle iletişime geç.";
     case "SOZLESME_ONAYI":

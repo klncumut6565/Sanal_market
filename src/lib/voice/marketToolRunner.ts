@@ -6,6 +6,7 @@ import { hoursState } from "@/lib/hours";
 import type { Product } from "@/lib/types";
 import type { VoiceSettings, VoiceAction } from "./useMarketVoice";
 import { fetchDiscounts } from "./discounts";
+import { shopCategories, visibleIn } from "@/lib/shopCategories";
 import { halusinasyonMu, kisaYankiMi, yankiMi } from "./halusinasyon";
 
 /** Sepet onayı: öneri bekletilir, müşterinin SONRAKİ konuşmasında açık "evet" aranır. */
@@ -135,8 +136,8 @@ export function createMarketToolRunner(deps: {
       if (q.length < 2) return { error: "Arama kelimesi çok kısa." };
       let { data } = await sb.rpc("search_products", { q });
       if (!data?.length && q.includes(" ")) ({ data } = await sb.rpc("search_products", { q: q.split(/\s+/).pop() }));
-      const { data: cats } = await sb.from("categories").select("id,name");
-      const catName = new Map((cats ?? []).map((c) => [c.id, c.name]));
+      const cats = await shopCategories(sb);
+      const catName = new Map(cats.map((c) => [c.id, c.name]));
       const list = ((data ?? []) as Product[]).map(num).sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0)).slice(0, 8);
       if (!list.length) return { results: [], note: "Bu aramayla eşleşen ürün yok." };
       return {
@@ -155,7 +156,8 @@ export function createMarketToolRunner(deps: {
     }
 
     if (name === "list_discounted_products") {
-      const r = await fetchDiscounts(sb, { query: args.query ? String(args.query) : undefined, limit: 15 });
+      const allowed = new Set((await shopCategories(sb)).map((c) => c.id));
+      const r = await fetchDiscounts(sb, { query: args.query ? String(args.query) : undefined, limit: 15, categoryIds: allowed });
       if ("error" in r) return r;
       // Müşteriye stok adedi gösterme; yalnızca var/yok
       return {
@@ -175,11 +177,11 @@ export function createMarketToolRunner(deps: {
     }
 
     if (name === "list_categories") {
-      const [{ data: cats }, { data: prods }] = await Promise.all([
-        sb.from("categories").select("id,name").eq("is_active", true).order("sort_order"),
+      const [cats, { data: prods }] = await Promise.all([
+        shopCategories(sb),
         sb.from("products").select("category_id").eq("is_active", true).gt("stock", 0),
       ]);
-      const categories = (cats ?? []).map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
+      const categories = cats.map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
       return { count: categories.length, categories, note: "Kategorilerin hepsini adlarıyla say." };
     }
 
@@ -203,8 +205,7 @@ export function createMarketToolRunner(deps: {
       const norm = (t: string) => t.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, " ").trim();
       const q = norm(String(args.category ?? ""));
       if (q.length < 2) return { error: "Kategori adı söylenmedi." };
-      const { data: cats } = await sb.from("categories").select("id,name").eq("is_active", true).order("sort_order");
-      const all = cats ?? [];
+      const all = await shopCategories(sb);
       const words = q.split(" ").filter((w) => w.length >= 3);
       const cat =
         all.find((c) => norm(c.name) === q) ??
@@ -244,10 +245,14 @@ export function createMarketToolRunner(deps: {
         want.set(id, (want.get(id) ?? 0) + q);
       }
       if (!want.size) return { ok: false, error: "Geçerli ürün yok. Önce search_products ile ara." };
-      const { data } = await sb.from("products").select(PRODUCT_COLS).in("id", [...want.keys()]).eq("is_active", true);
+      const [{ data }, cats] = await Promise.all([
+        sb.from("products").select(PRODUCT_COLS).in("id", [...want.keys()]).eq("is_active", true),
+        shopCategories(sb),
+      ]);
+      const canSee = visibleIn(new Set(cats.map((c) => c.id)));
       const items: CartProposal["items"] = [];
       const problems: string[] = [];
-      for (const row of (data ?? []) as Product[]) {
+      for (const row of ((data ?? []) as Product[]).filter(canSee)) {
         const p = num(row);
         const cur = cart.lines.find((l) => l.id === p.id)?.qty ?? 0;
         const room = Math.min(p.stock, p.max_per_order) - cur;
