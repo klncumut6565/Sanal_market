@@ -7,7 +7,7 @@ import type { StoreSettings } from "@/lib/types";
 import { ProductImage } from "./ProductImage";
 import { useStoreHours } from "./useStoreHours";
 
-type Props = { settings: Pick<StoreSettings, "delivery_fee" | "free_delivery_threshold" | "min_order_amount" | "is_open" | "open_time" | "close_time"> };
+type Props = { settings: Pick<StoreSettings, "delivery_fee" | "free_delivery_threshold" | "min_order_amount" | "is_open" | "force_open" | "open_time" | "close_time"> };
 
 export function useCartSummary(settings: Props["settings"]) {
   const ready = useCartHydrated();

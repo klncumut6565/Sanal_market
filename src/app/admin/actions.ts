@@ -3,7 +3,7 @@ import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
 import { after } from "next/server";
 import { cloudTestParams, sendEmail, sendWhatsAppChain, windowOpenFor } from "@/lib/notify";
-import { courierKey, loadCourierCfg, notifyCourier, sendToCourier } from "@/lib/courier";
+import { COURIER_REMINDER, courierKey, loadCourierCfg, notifyCourier, sendToCourier } from "@/lib/courier";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -529,7 +529,35 @@ export async function saveCourierSettings(_: ActionState, fd: FormData): Promise
     .eq("id", 1);
   if (error) return { error: error.message };
   revalidatePath("/admin/siparisler", "layout");
-  return { ok: phone ? "Kurye numarası kaydedildi" : "Kurye numarası kaldırıldı" };
+  if (!phone) return { ok: "Kurye numarası kaldırıldı" };
+  // Kuryeye hatırlatma: her gün bot numarasına yazmazsa bildirimler gelmez
+  after(async () => {
+    try {
+      const n = await loadCourierCfg(supabase);
+      if (n?.courier_phone) {
+        const r = await sendToCourier(n, COURIER_REMINDER);
+        await supabase
+          .from("notify_settings")
+          .update({ courier_last_result: `${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })} · HATIRLATMA → ${r}` })
+          .eq("id", 1);
+      }
+    } catch (e) {
+      console.error("[kurye] hatırlatma", e);
+    }
+  });
+  return { ok: "Kurye numarası kaydedildi · kuryeye hatırlatma mesajı gönderiliyor" };
+}
+
+// ---------------- MAĞAZA MODU ----------------
+/** otomatik: çalışma saatleri · acik: saat dışında da sipariş · kapali: sipariş alınmaz */
+export async function setStoreMode(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const mode = str(fd, "mode");
+  const row =
+    mode === "acik" ? { is_open: true, force_open: true } : mode === "kapali" ? { is_open: false, force_open: false } : { is_open: true, force_open: false };
+  await supabase.from("store_settings").update(row).eq("id", 1);
+  updateTag(SETTINGS_TAG);
+  revalidatePath("/admin", "layout");
 }
 
 export async function testCourier(): Promise<ActionState> {

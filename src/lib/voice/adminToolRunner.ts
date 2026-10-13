@@ -10,6 +10,7 @@ type Settings = {
   open_time: string;
   close_time: string;
   is_open: boolean;
+  force_open?: boolean;
   delivery_fee: number;
   free_delivery_threshold: number;
   min_order_amount: number;
@@ -164,7 +165,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
     if (settings) return settings;
     const { data } = await sb
       .from("store_settings")
-      .select("open_time,close_time,is_open,delivery_fee,free_delivery_threshold,min_order_amount,sla_accept_min,sla_prepare_min,sla_delivery_min")
+      .select("open_time,close_time,is_open,force_open,delivery_fee,free_delivery_threshold,min_order_amount,sla_accept_min,sla_prepare_min,sla_delivery_min")
       .eq("id", 1)
       .single();
     settings = (data ?? {
@@ -339,7 +340,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
     }
 
     if (name === "get_store_status") {
-      const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open);
+      const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open, s.force_open);
       return {
         open_now: h.open,
         manually_closed: !s.is_open,

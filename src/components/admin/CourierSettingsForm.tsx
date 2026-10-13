@@ -5,6 +5,8 @@ import { Bike, Loader2 } from "lucide-react";
 import { saveCourierSettings, testCourier, type ActionState } from "@/app/admin/actions";
 import { displayPhone } from "@/lib/phone";
 import { PhoneInput } from "@/components/PhoneInput";
+import { BOT_NUMBER_DISPLAY, COURIER_REMINDER } from "@/lib/botNumber";
+import { waLink } from "@/lib/whatsapp";
 
 export function CourierSettingsForm({ phone, apikey, lastResult }: { phone: string | null; apikey: string | null; lastResult: string | null }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCourierSettings, {});
@@ -35,6 +37,15 @@ export function CourierSettingsForm({ phone, apikey, lastResult }: { phone: stri
         {state.ok && <p className="text-sm font-semibold text-ok">{state.ok}</p>}
         {tState.error && <p className="text-sm font-semibold text-brand">{tState.error}</p>}
         {tState.ok && <p className="text-sm font-semibold text-ok">{tState.ok}</p>}
+        {phone && (
+          <div className="rounded-xl bg-amber-50 p-2.5 text-xs text-amber-900 ring-1 ring-amber-200">
+            <b>Kuryeye hatırlatma:</b> {BOT_NUMBER_DISPLAY} numarasına her gün WhatsApp&apos;tan &quot;merhaba&quot; yazmalı, yoksa sipariş bildirimleri gelmez.
+            Numara kaydedilince bu hatırlatma kuryeye otomatik gönderilir.{" "}
+            <a href={waLink(phone, COURIER_REMINDER)} target="_blank" rel="noopener noreferrer" className="font-bold text-[#128c4a] underline">
+              Hatırlatmayı kendi WhatsApp&apos;ımdan gönder
+            </a>
+          </div>
+        )}
         {lastResult && <p className="rounded-lg bg-bg p-2 text-xs"><b>Son kurye mesajı:</b> {lastResult}</p>}
         <details className="text-xs text-muted">
           <summary className="cursor-pointer font-semibold">Kurye mesajı nasıl gider?</summary>

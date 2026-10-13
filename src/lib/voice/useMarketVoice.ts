@@ -15,7 +15,7 @@ import type { RealtimeSessionResponse, VoiceState } from "./types";
 
 export type VoiceSettings = Pick<
   StoreSettings,
-  "store_name" | "delivery_fee" | "free_delivery_threshold" | "min_order_amount" | "open_time" | "close_time" | "is_open"
+  "store_name" | "delivery_fee" | "free_delivery_threshold" | "min_order_amount" | "open_time" | "close_time" | "is_open" | "force_open"
 >;
 
 export type VoiceAction = { id: number; text: string; kind: "add" | "remove" | "info" };

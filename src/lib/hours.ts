@@ -27,11 +27,13 @@ export type HoursState = {
   minuteOfDay: number;
 };
 
-export function hoursState(nowMs: number, openHM: string, closeHM: string, manualOpen = true): HoursState {
+export function hoursState(nowMs: number, openHM: string, closeHM: string, manualOpen = true, forceOpen = false): HoursState {
   const o = toMin(openHM);
   const c = toMin(closeHM);
   const m = istMinuteOfDay(nowMs);
   if (!manualOpen) return { open: false, secondsToClose: null, secondsToOpen: null, lastCall: false, minuteOfDay: m };
+  // Yönetici "Açık" modunu seçtiyse çalışma saati dışında da sipariş alınır
+  if (forceOpen) return { open: true, secondsToClose: null, secondsToOpen: null, lastCall: false, minuteOfDay: m };
   if (o === c) return { open: true, secondsToClose: null, secondsToOpen: null, lastCall: false, minuteOfDay: m };
   const inside = o < c ? m >= o && m < c : m >= o || m < c;
   if (inside) {

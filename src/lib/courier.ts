@@ -31,6 +31,8 @@ export async function loadOrderMsg(sb: SupabaseClient, orderId: string): Promise
   };
 }
 
+export { BOT_NUMBER_DISPLAY, BOT_WA_LINK, COURIER_REMINDER } from "@/lib/botNumber";
+
 /** Kurye mesajı metni (yönetici bildirimiyle aynı; panel bağlantısı yerine harita). */
 export const courierText = (o: OrderMsg) => `🛵 KURYE — ${textBody(o, true)}`;
 

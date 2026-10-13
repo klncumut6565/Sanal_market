@@ -38,7 +38,7 @@ export function replyIntent(text: string): "red" | "onay" | "belirsiz" {
 
 /** Market kapalıysa müşteriye söylenecek not (sipariş verilemez, sepet hazırlanabilir). */
 export function closedNote(s: VoiceSettings): string | undefined {
-  const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open);
+  const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open, s.force_open);
   if (h.open) return undefined;
   if (!s.is_open || h.secondsToOpen == null) {
     return "Market şu an sipariş almıyor. Ürünleri sepete ekleyebilirsin, sipariş market açıldığında verilebilir.";
@@ -375,7 +375,7 @@ export function createMarketToolRunner(deps: {
     }
 
     if (name === "get_store_info") {
-      const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open);
+      const h = hoursState(Date.now(), s.open_time, s.close_time, s.is_open, s.force_open);
       return {
         store: s.store_name,
         hours: `${s.open_time} - ${s.close_time}`,

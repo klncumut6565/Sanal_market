@@ -54,6 +54,8 @@ export type StoreSettings = {
   sla_prepare_min: number;
   sla_delivery_min: number;
   is_open: boolean;
+  /** Yönetici "Açık" modu: çalışma saati dışında da sipariş alınır */
+  force_open?: boolean;
 };
 
 export type OrderStatus = "alindi" | "hazirlaniyor" | "yolda" | "teslim_edildi" | "iptal";
