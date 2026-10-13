@@ -2,6 +2,7 @@
 import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
 import { after } from "next/server";
+import { sendPush } from "@/lib/push/server";
 import { cloudTestParams, sendEmail, sendWhatsAppChain, windowOpenFor } from "@/lib/notify";
 import { COURIER_REMINDER, courierKey, loadCourierCfg, notifyCourier, sendToCourier } from "@/lib/courier";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
@@ -546,6 +547,29 @@ export async function saveCourierSettings(_: ActionState, fd: FormData): Promise
     }
   });
   return { ok: "Kurye numarası kaydedildi · kuryeye hatırlatma mesajı gönderiliyor" };
+}
+
+// ---------------- TELEFON BİLDİRİMİ (Web Push) ----------------
+export async function saveAdminPush(sub: { endpoint: string; keys: { p256dh: string; auth: string } }, device: string) {
+  const { supabase } = await requireAdmin();
+  if (!sub?.endpoint?.startsWith("https://") || !sub.keys?.p256dh || !sub.keys?.auth) return { error: "Geçersiz abonelik" };
+  const { error } = await supabase
+    .from("push_subscriptions")
+    .upsert({ endpoint: sub.endpoint, p256dh: sub.keys.p256dh, auth: sub.keys.auth, role: "admin", device: device.slice(0, 200), dead: false });
+  return error ? { error: error.message } : {};
+}
+
+export async function testPush(role: "admin" | "kurye"): Promise<{ ok?: string; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const { data: tk } = await supabase.from("notify_settings").select("courier_token").eq("id", 1).maybeSingle();
+  const r = await sendPush(role, {
+    title: role === "admin" ? "✅ Sanal Market bildirim testi" : "✅ Kurye bildirim testi",
+    body: "Yeni siparişler bu şekilde bildirilecek.",
+    url: role === "admin" ? "/admin/siparisler" : `/kurye?k=${tk?.courier_token ?? ""}`,
+    tag: "test",
+  });
+  if (!r.total) return { error: role === "admin" ? "Bildirimi açık telefon yok." : "Kurye telefonunda bildirim henüz açılmamış." };
+  return r.sent ? { ok: `${r.sent} telefona gönderildi${r.failed ? ` (${r.failed} başarısız)` : ""}.` } : { error: "Gönderilemedi. Telefonda bildirimi kapatıp yeniden aç." };
 }
 
 // ---------------- MAĞAZA MODU ----------------

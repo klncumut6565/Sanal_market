@@ -2,6 +2,7 @@ import "server-only";
 // "Hazır · Kuryeye ver" (yolda) seçilince sipariş mesajını kuryeye WhatsApp'tan gönderir.
 // Kanal: Meta (kurye son 24 saatte bot numarasına yazdıysa anlık/ücretsiz) → kuryenin CallMeBot anahtarı.
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { sendPush } from "@/lib/push/server";
 import { sendWhatsAppChain, textBody, windowOpenFor, type OrderMsg } from "@/lib/notify";
 
 export async function loadOrderMsg(sb: SupabaseClient, orderId: string): Promise<OrderMsg | null> {
@@ -62,11 +63,19 @@ export async function notifyCourier(sb: SupabaseClient, orderId: string): Promis
   if (!n?.courier_phone) return null;
   const o = await loadOrderMsg(sb, orderId);
   if (!o) return null;
+  // Telefon bildirimi (kurye sayfası ana ekrana eklenmişse) — günlük mesaj gerektirmez
+  const { data: tk } = await sb.from("notify_settings").select("courier_token").eq("id", 1).maybeSingle();
+  const push = await sendPush("kurye", {
+    title: `🛵 Teslimat #${o.order_no} — ${o.customer_name}`,
+    body: `${o.address}${o.address_note ? ` (${o.address_note})` : ""}`,
+    url: `/kurye?k=${tk?.courier_token ?? ""}`,
+    tag: `kurye-${o.order_no}`,
+  }).catch(() => ({ sent: 0, failed: 0, total: 0 }));
   const r = await sendToCourier(n, courierText(o));
-  const summary = `#${o.order_no} kurye → ${r}`;
+  const summary = `#${o.order_no} kurye → ${push.sent ? `telefon bildirimi: ${push.sent} cihaz · ` : ""}${r}`;
   await Promise.all([
     sb.from("notify_settings").update({ courier_last_result: `${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })} · ${summary}` }).eq("id", 1),
-    /gönderildi/.test(r) ? sb.from("orders").update({ courier_notified_at: new Date().toISOString() }).eq("id", orderId) : null,
+    /gönderildi/.test(r) || push.sent ? sb.from("orders").update({ courier_notified_at: new Date().toISOString() }).eq("id", orderId) : null,
   ]);
   console.log("[kurye]", summary);
   return summary;

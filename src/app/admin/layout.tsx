@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Brand } from "@/components/Brand";
 import { requireAdmin } from "@/lib/data/auth";
@@ -6,7 +7,12 @@ import { AdminNav } from "@/components/admin/AdminNav";
 import { NewOrderAlarm } from "@/components/admin/NewOrderAlarm";
 import { AdminVoiceAssistant } from "@/components/admin/AdminVoiceAssistant";
 
-export const metadata = { title: { default: "Yönetim", template: "%s · Yönetim" } };
+export const metadata: Metadata = {
+  title: { default: "Yönetim", template: "%s · Yönetim" },
+  manifest: "/api/manifest/admin",
+  appleWebApp: { capable: true, title: "SM Yönetim", statusBarStyle: "default" },
+  icons: { apple: "/pwa-192.png" },
+};
 export const instant = false;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

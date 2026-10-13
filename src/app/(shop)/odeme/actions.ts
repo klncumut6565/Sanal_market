@@ -2,6 +2,7 @@
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createPublicClient } from "@/lib/supabase/public";
+import { sendPush } from "@/lib/push/server";
 import { notifyNewOrder } from "@/lib/notify";
 import { orderErrorMessage } from "@/lib/format";
 import { normalizeTrMobile } from "@/lib/phone";
@@ -90,6 +91,19 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   const row = (Array.isArray(data) ? data[0] : data) as { order_id: string; access_token: string; order_no: number } | undefined;
   if (!row) return { ok: false, error: orderErrorMessage("") };
   // Yönetim paneli kapalıysa işletmeye e-posta + WhatsApp (yanıtı geciktirmeden)
+  after(async () => {
+    // Telefon bildirimi (yönetici): panel açık olsa da gönderilir
+    try {
+      await sendPush("admin", {
+        title: `🛒 Yeni sipariş #${row.order_no}`,
+        body: `${input.name.trim()} · dokun, siparişi aç`,
+        url: `/admin/siparisler/${row.order_id}`,
+        tag: `siparis-${row.order_no}`,
+      });
+    } catch (e) {
+      console.error("[push]", e);
+    }
+  });
   after(async () => {
     try {
       const sb = createPublicClient();
