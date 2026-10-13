@@ -164,3 +164,5 @@
 - 2026-10-13: Sesli asistan sohbeti kendisi kapatıyor: yeni araç end_session (useMarketVoice'ta işlenir → finishSession: mikrofon HEMEN kapanır, veda sesi bitince bağlantı kesilir, panel gizlenir; en fazla 12 sn). go_to_checkout sonrası "Sohbeti kapatmamı ister misin?" diye sorar; sipariş tamamlanınca tek cümle teşekkür + otomatik kapanış. Veda döngüsü önlemi: talimatta tek veda + tekrar yasağı; kodda yedek — asistan veda kelimesi söyler ve müşterinin son sözü veda/kapat/teşekkür ise oturum kapanır (mikrofon kapandığı için karşılıklı "görüşürüz" döngüsü olamaz).
 
 - 2026-10-13: WhatsApp/e-posta sipariş metnine "🧾 Sipariş saati" (orders.created_at, TR saati), kurye mesajına ayrıca "🛵 Kuryeye bildirim" saati eklendi (lib/notify.ts trTime; loadOrderMsg created_at okur).
+
+- 2026-10-13: "WhatsApp'tan bize yaz" (sipariş takip sayfası) store_settings.whatsapp_phone'u kullanıyor; değer 0541'di → +905333605659 yapıldı. Ayarlar'daki "İşletme WhatsApp numarası" alanı artık +90 sabit PhoneInput ve açıklaması netleştirildi. (Bildirim numaraları ayrı: notify_settings.)

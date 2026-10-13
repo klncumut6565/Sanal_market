@@ -2,6 +2,7 @@
 import { useActionState } from "react";
 import { saveSettings, type ActionState } from "@/app/admin/actions";
 import type { StoreSettings } from "@/lib/types";
+import { PhoneInput } from "@/components/PhoneInput";
 
 export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveSettings, {});
@@ -15,7 +16,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <F label="Telefon"><input name="phone" defaultValue={s.phone ?? ""} className="input" /></F>
           <F label="Teslimat bölgesi notu"><input name="delivery_area_note" defaultValue={s.delivery_area_note ?? ""} className="input" /></F>
-          <F label="İşletme WhatsApp numarası (müşteriler size yazar)"><input name="whatsapp_phone" type="tel" defaultValue={s.whatsapp_phone ?? ""} placeholder="05xx xxx xx xx" className="input" /></F>
+          <F label="İşletme WhatsApp numarası (müşterilerin 'WhatsApp'tan bize yaz' ile ulaştığı numara)"><PhoneInput name="whatsapp_phone" defaultValue={s.whatsapp_phone ?? ""} /></F>
           <div className="grid grid-cols-2 gap-3">
             <F label="Açılış saati"><input name="open_time" type="time" required defaultValue={s.open_time ?? "10:00"} className="input" /></F>
             <F label="Kapanış saati"><input name="close_time" type="time" required defaultValue={s.close_time ?? "01:00"} className="input" /></F>
