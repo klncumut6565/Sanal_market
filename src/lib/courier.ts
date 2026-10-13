@@ -8,7 +8,7 @@ import { sendWhatsAppChain, textBody, windowOpenFor, type OrderMsg } from "@/lib
 export async function loadOrderMsg(sb: SupabaseClient, orderId: string): Promise<OrderMsg | null> {
   const { data: o } = await sb
     .from("orders")
-    .select("id, order_no, customer_name, phone, address, address_note, note, delivery_slot, payment_method, total, order_items(quantity, product_name, unit_label, removed)")
+    .select("id, order_no, customer_name, phone, address, address_note, note, delivery_slot, payment_method, total, created_at, order_items(quantity, product_name, unit_label, removed)")
     .eq("id", orderId)
     .maybeSingle();
   if (!o) return null;
@@ -29,6 +29,7 @@ export async function loadOrderMsg(sb: SupabaseClient, orderId: string): Promise
     payment_method: o.payment_method,
     total: Number(o.total),
     items: items || null,
+    created_at: o.created_at,
   };
 }
 

@@ -29,6 +29,8 @@ type Payload = {
     payment_method: string;
     total: number;
     items: string | null;
+    /** Sipariş verilme anı (ISO) */
+    created_at?: string | null;
   };
 };
 
@@ -39,8 +41,18 @@ const pay = (m: string) => (m === "kapida_pos" ? "Kapıda kart (POS)" : "Kapıda
 
 export type OrderMsg = NonNullable<Payload["order"]>;
 
+/** Türkiye saatiyle "13.10.2026 07:16" */
+export const trTime = (d: string | number | Date = Date.now()) =>
+  new Date(d).toLocaleString("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
 /** Sipariş mesajı. forCourier: panel bağlantısı yerine adresin harita bağlantısı. */
 export function textBody(o: OrderMsg, forCourier = false) {
+  const zaman = [
+    o.created_at ? `🧾 Sipariş saati: ${trTime(o.created_at)}` : "",
+    forCourier ? `🛵 Kuryeye bildirim: ${trTime()}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
   const last = forCourier
     ? `\n🗺 Harita: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${o.address}, Çorlu, Tekirdağ`)}`
     : `\nPanel: ${SITE}/admin/siparisler/${o.id}`;
@@ -49,6 +61,7 @@ export function textBody(o: OrderMsg, forCourier = false) {
     `${o.customer_name} · ${o.phone}`,
     `📍 ${o.address}${o.address_note ? ` (${o.address_note})` : ""}`,
     `🕒 ${o.delivery_slot} · ${pay(o.payment_method)}`,
+    zaman,
     o.items ? `\n${o.items}` : "",
     o.note ? `\nNot: ${o.note}` : "",
     last,

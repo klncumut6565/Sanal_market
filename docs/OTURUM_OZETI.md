@@ -162,3 +162,5 @@
 - 2026-10-13: #10007 WhatsApp gelmedi → sebep: "Yalnızca panel kapalıyken" (only_when_away) açıktı ve sipariş anında yönetim paneli bir cihazda açık/görünürdü (admin_heartbeat son 2 dk) → claim "panel_acik" ile atladı. Ayar kapatıldı (her siparişte gönderilir); atlanırsa sebep artık "Son otomatik bildirim" satırına yazılıyor (migration 20261013040000_notify_skip_reason, uygulandı).
 
 - 2026-10-13: Sesli asistan sohbeti kendisi kapatıyor: yeni araç end_session (useMarketVoice'ta işlenir → finishSession: mikrofon HEMEN kapanır, veda sesi bitince bağlantı kesilir, panel gizlenir; en fazla 12 sn). go_to_checkout sonrası "Sohbeti kapatmamı ister misin?" diye sorar; sipariş tamamlanınca tek cümle teşekkür + otomatik kapanış. Veda döngüsü önlemi: talimatta tek veda + tekrar yasağı; kodda yedek — asistan veda kelimesi söyler ve müşterinin son sözü veda/kapat/teşekkür ise oturum kapanır (mikrofon kapandığı için karşılıklı "görüşürüz" döngüsü olamaz).
+
+- 2026-10-13: WhatsApp/e-posta sipariş metnine "🧾 Sipariş saati" (orders.created_at, TR saati), kurye mesajına ayrıca "🛵 Kuryeye bildirim" saati eklendi (lib/notify.ts trTime; loadOrderMsg created_at okur).
