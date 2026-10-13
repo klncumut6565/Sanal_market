@@ -264,25 +264,34 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
     if (name === "search_products") {
       const q = String(args.query ?? "").trim().slice(0, 60);
       if (q.length < 2) return { error: "Ürün adı çok kısa." };
-      const { data, error } = await sb
-        .from("products")
-        .select("id,name,unit_label,price,sale_price,stock,critical_stock,is_active,barcode,product_costs(cost_price)")
-        .ilike("name", `%${q.replace(/[%_\\]/g, "")}%`)
-        .order("name")
-        .limit(10);
+      // Kelime bazlı, Türkçe karakter duyarsız arama (İ/ı, "70'lik", "kaç adet" gibi ekler sorun olmaz)
+      const { data, error } = await sb.rpc("admin_search_products", { q, lim: 10 });
       if (error) return { error: error.message };
-      if (!data?.length) return { results: [], note: "Bu adla ürün yok." };
+      const rows = (data ?? []) as {
+        name: string;
+        unit_label: string | null;
+        price: number;
+        sale_price: number | null;
+        stock: number;
+        critical_stock: number;
+        is_active: boolean;
+        barcode: string | null;
+        cost_price: number | null;
+      }[];
+      if (!rows.length) return { results: [], note: "Bu adla ürün yok. Farklı bir kelimeyle (ör. yalnız marka) tekrar ara." };
       return {
-        results: data.map((p) => ({
+        results: rows.map((p) => ({
           name: p.name,
           unit: p.unit_label,
+          barcode: p.barcode,
           price: Number(p.price),
           sale_price: p.sale_price == null ? null : Number(p.sale_price),
           stock: p.stock,
           critical: p.stock <= p.critical_stock,
           on_sale: p.is_active,
-          ...costInfo(p),
+          ...costInfo({ price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price), product_costs: p.cost_price == null ? null : { cost_price: p.cost_price } }),
         })),
+        note: rows.length > 1 ? "Birden fazla eşleşme var; soruya uyanları (ör. tüm boyları) stoklarıyla birlikte say." : undefined,
       };
     }
 
