@@ -108,9 +108,22 @@ export async function quickUpdateProduct(fd: FormData) {
   const stock = numOrNull(fd, "stock");
   if (stock != null && Number.isInteger(stock) && stock >= 0) patch.stock = stock;
   if (fd.has("toggle_active")) patch.is_active = str(fd, "toggle_active") === "1";
+  if (fd.has("category_id")) patch.category_id = str(fd, "category_id") || null;
+  if (fd.has("price")) {
+    const price = parseNumTR(str(fd, "price"));
+    if (price != null && price > 0) patch.price = Math.round(price * 100) / 100;
+  }
+  if (fd.has("sale_price")) {
+    const raw = str(fd, "sale_price");
+    const sale = raw ? parseNumTR(raw) : null;
+    const base = (patch.price as number | undefined) ?? null;
+    if (!raw) patch.sale_price = null;
+    else if (sale != null && sale > 0 && (base == null || sale < base)) patch.sale_price = Math.round(sale * 100) / 100;
+  }
   if (Object.keys(patch).length) {
     await supabase.from("products").update(patch).eq("id", id);
     updateTag(CATALOG_TAG);
+    revalidatePath("/admin/urunler");
   }
 }
 

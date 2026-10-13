@@ -6,6 +6,7 @@ import { formatTL } from "@/lib/format";
 import type { Category, Product } from "@/lib/types";
 import { quickUpdateProduct } from "../actions";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
+import { InlineCategorySelect } from "@/components/admin/InlineCategorySelect";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { Suspense } from "react";
@@ -23,7 +24,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const costOf = new Map((costs ?? []).map((c) => [c.product_id as string, Number(c.cost_price)]));
   const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
   const cats = (categories ?? []) as Category[];
-  const catName = new Map(cats.map((c) => [c.id, c.name]));
+  const catOpts = cats.map((c) => ({ id: c.id, name: c.name }));
   const q = (sp.q ?? "").trim().toLocaleLowerCase("tr");
   const list = ((products ?? []) as Product[]).filter(
     (p) =>
@@ -89,13 +90,14 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       </p>
 
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-line">
-        <table className="w-full min-w-[860px] text-sm">
+        <table className="w-full min-w-[1060px] text-sm">
           <thead className="bg-bg text-left text-xs uppercase text-muted">
-            <tr><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
+            <tr><th className="w-10 py-3 pl-3 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {list.map((p) => (
+            {list.map((p, i) => (
               <tr key={p.id} className={p.is_active ? "" : "opacity-55"}>
+                <td className="py-3 pl-3 text-right text-xs font-bold tabular-nums text-muted">{i + 1}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
@@ -105,13 +107,37 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     </div>
                   </div>
                 </td>
-                <td className="text-muted">{(p.category_id && catName.get(p.category_id)) ?? "—"}</td>
                 <td>
-                  {p.sale_price != null ? (
-                    <><span className="text-xs text-muted line-through">{formatTL(p.price)}</span><br /><b className="text-brand">{formatTL(p.sale_price)}</b></>
-                  ) : (
-                    <b>{formatTL(p.price)}</b>
-                  )}
+                  <InlineCategorySelect id={p.id} value={p.category_id} options={catOpts} />
+                </td>
+                <td>
+                  <form action={quickUpdateProduct} className="flex items-center gap-1">
+                    <input type="hidden" name="id" value={p.id} />
+                    <div className="space-y-1">
+                      <label className="flex items-center gap-1">
+                        <span className="w-3 text-xs text-muted">₺</span>
+                        <input
+                          name="price"
+                          inputMode="decimal"
+                          defaultValue={String(p.price).replace(".", ",")}
+                          aria-label="Satış fiyatı"
+                          className={`w-24 rounded-lg border border-line px-2 py-1.5 font-bold ${p.sale_price != null ? "text-xs text-muted line-through" : ""}`}
+                        />
+                      </label>
+                      <label className="flex items-center gap-1" title="İndirimli fiyat (boş = indirim yok)">
+                        <span className="w-3 text-[10px] font-bold text-brand">%</span>
+                        <input
+                          name="sale_price"
+                          inputMode="decimal"
+                          defaultValue={p.sale_price != null ? String(p.sale_price).replace(".", ",") : ""}
+                          placeholder="İndirim"
+                          aria-label="İndirimli fiyat"
+                          className={`w-24 rounded-lg border px-2 py-1 text-xs ${p.sale_price != null ? "border-brand font-bold text-brand" : "border-dashed border-line"}`}
+                        />
+                      </label>
+                    </div>
+                    <button className="rounded-lg px-2 py-1.5 text-xs font-bold text-brand hover:bg-brand-soft">Kaydet</button>
+                  </form>
                 </td>
                 <td>
                   {(() => {
