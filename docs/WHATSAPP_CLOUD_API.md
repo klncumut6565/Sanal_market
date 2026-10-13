@@ -6,6 +6,20 @@ Meta'nın resmi **WhatsApp Cloud API**'si mesajı 1–2 saniyede iletir.
 - **Alıcı:** 0533 360 56 59 (WhatsApp Business uygulaması — telefonda kullanmaya devam edersin)
 - **Gönderen:** Meta'nın verdiği ücretsiz **test numarası** (ya da sonradan eklenen ikinci bir işletme numarası)
 
+## 6. Webhook (teslim takibi + yedek) — ÖNEMLİ
+Meta düz mesajı önce "kabul eder", 24 saat penceresi kapalıysa sonradan **sessizce düşürür**.
+Webhook bunu bize bildirir; sistem de mesajı CallMeBot ile yedek numaraya gönderir. Ayrıca kimin
+bot numarasına ne zaman yazdığını kaydeder (pencere kapalıysa Meta hiç denenmez).
+
+1. Vercel → Environment Variables → `WHATSAPP_VERIFY_TOKEN` = (Supabase notify_settings.webhook_secret ile aynı değer) → Redeploy
+2. developers.facebook.com → uygulama → **WhatsApp → Configuration (Yapılandırma)** → Webhook → **Edit**
+   - Callback URL: `https://sanalmarket.vercel.app/api/whatsapp/webhook`
+   - Verify token: 1. adımdaki değer → **Verify and save**
+3. Aynı sayfada **Webhook fields → messages → Subscribe**
+4. (İsteğe bağlı) `WHATSAPP_APP_SECRET` = App settings → Basic → App secret (imza doğrulaması)
+
+Webhook kurulmadan önce sistem güvenli tarafta kalır: Meta'ya gönderdiği her bildirimi CallMeBot ile yedek numaraya da gönderir.
+
 ## Ücretsiz kullanım (varsayılan)
 Meta, alıcı son **24 saat** içinde bot numarasına mesaj yazdıysa ("müşteri hizmeti penceresi")
 düz metin mesajları **ücretsiz** iletir. Ücret yalnızca pencere kapalıyken gönderilen *şablon* mesajlarındadır.
@@ -81,6 +95,20 @@ Yönetim → **Ayarlar → Sipariş bildirimleri**:
   *I allow callmebot to send me messages* yaz, gelen apikey'i Ayarlar'a gir.
 
 Meta ayarları varken CallMeBot yalnızca pencere kapalıyken yedek olarak kullanılır; Meta ayarları silinirse sistem tamamen CallMeBot'a döner.
+
+## 6. Webhook (teslim takibi + yedek) — ÖNEMLİ
+Meta düz mesajı önce "kabul eder", 24 saat penceresi kapalıysa sonradan **sessizce düşürür**.
+Webhook bunu bize bildirir; sistem de mesajı CallMeBot ile yedek numaraya gönderir. Ayrıca kimin
+bot numarasına ne zaman yazdığını kaydeder (pencere kapalıysa Meta hiç denenmez).
+
+1. Vercel → Environment Variables → `WHATSAPP_VERIFY_TOKEN` = (Supabase notify_settings.webhook_secret ile aynı değer) → Redeploy
+2. developers.facebook.com → uygulama → **WhatsApp → Configuration (Yapılandırma)** → Webhook → **Edit**
+   - Callback URL: `https://sanalmarket.vercel.app/api/whatsapp/webhook`
+   - Verify token: 1. adımdaki değer → **Verify and save**
+3. Aynı sayfada **Webhook fields → messages → Subscribe**
+4. (İsteğe bağlı) `WHATSAPP_APP_SECRET` = App settings → Basic → App secret (imza doğrulaması)
+
+Webhook kurulmadan önce sistem güvenli tarafta kalır: Meta'ya gönderdiği her bildirimi CallMeBot ile yedek numaraya da gönderir.
 
 ## Ücret
 - Pencere açıkken düz metin: **ücretsiz**.

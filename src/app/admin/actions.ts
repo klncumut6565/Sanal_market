@@ -2,7 +2,7 @@
 import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
 import { after } from "next/server";
-import { cloudTestParams, sendEmail, sendWhatsAppChain } from "@/lib/notify";
+import { cloudTestParams, sendEmail, sendWhatsAppChain, windowOpenFor } from "@/lib/notify";
 import { courierKey, loadCourierCfg, notifyCourier, sendToCourier } from "@/lib/courier";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
@@ -545,6 +545,7 @@ export async function testNotify(_: ActionState, fd: FormData): Promise<ActionSt
     apikey: n.callmebot_apikey,
     text,
     templateParams: cloudTestParams(),
+    windowOpen: await windowOpenFor(n.whatsapp_phone),
   });
   return /gönderildi/.test(r) ? { ok: r } : { error: r };
 }

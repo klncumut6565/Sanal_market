@@ -1,4 +1,5 @@
 import "server-only";
+import { createPublicClient } from "@/lib/supabase/public";
 // Yeni sipariş bildirimleri: e-posta (Resend) + WhatsApp.
 // WhatsApp: Meta WhatsApp Cloud API ayarlıysa (WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID) ANLIK resmi API,
 // değilse CallMeBot (ücretsiz, kuyruklu — dakikalarca gecikebilir).
@@ -14,6 +15,7 @@ type Payload = {
   whatsapp_phone?: string | null;
   /** Meta ile asıl numaraya gidemezse CallMeBot ile gönderilecek yedek numara (0541) */
   backup_phone?: string | null;
+  whatsapp_window_open?: boolean | null;
   callmebot_apikey?: string | null;
   order?: {
     id: string;
@@ -80,7 +82,7 @@ const oneLine = (s: string, max = 900) =>
  * Varsayılan şablon: "yeni_siparis" (tr), 6 değişken:
  *   {{1}} sipariş no · {{2}} tutar · {{3}} müşteri · {{4}} adres · {{5}} ürünler · {{6}} panel bağlantısı
  */
-type CloudResult = { ok: boolean; error?: string; windowClosed?: boolean };
+type CloudResult = { ok: boolean; error?: string; windowClosed?: boolean; wamid?: string };
 
 async function cloudPost(body: Record<string, unknown>): Promise<CloudResult> {
   const token = process.env.WHATSAPP_TOKEN!.trim();
@@ -91,7 +93,13 @@ async function cloudPost(body: Record<string, unknown>): Promise<CloudResult> {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", ...body }),
   });
-  if (res.ok) return { ok: true };
+  if (res.ok) {
+    let wamid: string | undefined;
+    try {
+      wamid = ((await res.json()) as { messages?: { id?: string }[] }).messages?.[0]?.id;
+    } catch {}
+    return { ok: true, wamid };
+  }
   let msg = `${res.status}`;
   let code = 0;
   try {
@@ -174,6 +182,7 @@ export async function notifyNewOrder(payload: Payload): Promise<string | null> {
         apikey: payload.callmebot_apikey ?? null,
         text,
         templateParams: cloudParams(o),
+        windowOpen: payload.whatsapp_window_open ?? null,
       })
         .then((r) => results.push(r))
         .catch((e) => results.push(`WhatsApp: ${(e as Error).message}`)),
@@ -197,22 +206,61 @@ export async function sendWhatsAppChain(a: {
   apikey: string | null;
   text: string;
   templateParams?: string[];
+  /** Alıcı son 24 saatte bot numarasına yazdı mı (webhook). null/undefined = bilinmiyor */
+  windowOpen?: boolean | null;
 }): Promise<string> {
   let metaErr = "";
-  if (a.phone && hasWhatsAppCloud()) {
+  const fallbackPhone = a.backupPhone || a.phone;
+  if (a.phone && hasWhatsAppCloud() && a.windowOpen !== false) {
     const r = await sendWhatsAppCloudText(a.phone, a.text);
-    if (r.ok) return "WhatsApp (Meta, anlık): gönderildi";
+    if (r.ok) {
+      // Meta düz mesajı kabul edip sonradan teslim edemeyebilir; webhook "failed" derse yedek gider
+      if (r.wamid && fallbackPhone && a.apikey) await recordOutbox(r.wamid, a.phone, a.text, fallbackPhone, a.apikey);
+      if (a.windowOpen == null && fallbackPhone && a.apikey && !webhookReady()) {
+        // Webhook kurulmadan teslim edilip edilmediğini bilemeyiz → güvenli taraf: yedeğe de gönder
+        const c = await sendWhatsApp(fallbackPhone, a.apikey, a.text);
+        return `WhatsApp (Meta): iletildi + güvenlik için CallMeBot ile ${fallbackPhone} numarasına da ${c.ok ? "gönderildi" : `gönderilemedi (${c.error})`}`;
+      }
+      return "WhatsApp (Meta, anlık): gönderildi";
+    }
     if (r.windowClosed && a.templateParams && templateFallbackEnabled()) {
       const t = await sendWhatsAppCloud(a.phone, a.templateParams);
       if (t.ok) return "WhatsApp (Meta şablon, ücretli): gönderildi";
     }
     metaErr = r.windowClosed ? "Meta: 24 saatlik ücretsiz pencere kapalı" : `Meta: ${r.error}`;
+  } else if (a.phone && hasWhatsAppCloud() && a.windowOpen === false) {
+    metaErr = "Meta: alıcı son 24 saatte bot numarasına yazmamış";
   }
-  const target = a.backupPhone || a.phone;
-  if (target && a.apikey) {
-    const c = await sendWhatsApp(target, a.apikey, a.text);
+  if (fallbackPhone && a.apikey) {
+    const c = await sendWhatsApp(fallbackPhone, a.apikey, a.text);
     const head = metaErr ? `${metaErr} → ` : "";
-    return c.ok ? `${head}CallMeBot ile ${target} numarasına gönderildi (birkaç dk gecikebilir)` : `${head}CallMeBot: ${c.error}`;
+    return c.ok ? `${head}CallMeBot ile ${fallbackPhone} numarasına gönderildi (birkaç dk gecikebilir)` : `${head}CallMeBot: ${c.error}`;
   }
   return metaErr || "WhatsApp: numara veya anahtar eksik";
+}
+
+// ---------------- Webhook yardımcıları ----------------
+const webhookSecret = () => process.env.WHATSAPP_VERIFY_TOKEN?.trim() || "";
+/** Webhook gizli anahtarı tanımlı mı (Vercel: WHATSAPP_VERIFY_TOKEN) */
+export const webhookReady = () => !!webhookSecret();
+
+async function recordOutbox(wamid: string, to: string, body: string, fallbackPhone: string, apikey: string) {
+  if (!webhookReady()) return;
+  const { error } = await createPublicClient().rpc("wa_outbox_add", {
+    p_secret: webhookSecret(),
+    p_wamid: wamid,
+    p_to: to,
+    p_body: body,
+    p_fallback_phone: fallbackPhone,
+    p_fallback_apikey: apikey,
+  });
+  if (error) console.error("[whatsapp] outbox:", error.message);
+}
+
+/** Numaranın 24 saatlik penceresi açık mı (webhook verisine göre; bilinmiyorsa null). */
+export async function windowOpenFor(phone: string | null): Promise<boolean | null> {
+  if (!phone) return null;
+  const { data, error } = await createPublicClient().rpc("wa_window_open", { p_phone: phone });
+  if (error) return null;
+  return (data as boolean | null) ?? null;
 }

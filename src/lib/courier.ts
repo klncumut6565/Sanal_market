@@ -2,7 +2,7 @@ import "server-only";
 // "Hazır · Kuryeye ver" (yolda) seçilince sipariş mesajını kuryeye WhatsApp'tan gönderir.
 // Kanal: Meta (kurye son 24 saatte bot numarasına yazdıysa anlık/ücretsiz) → kuryenin CallMeBot anahtarı.
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sendWhatsAppChain, textBody, type OrderMsg } from "@/lib/notify";
+import { sendWhatsAppChain, textBody, windowOpenFor, type OrderMsg } from "@/lib/notify";
 
 export async function loadOrderMsg(sb: SupabaseClient, orderId: string): Promise<OrderMsg | null> {
   const { data: o } = await sb
@@ -46,7 +46,13 @@ export async function loadCourierCfg(sb: SupabaseClient): Promise<CourierCfg | n
 }
 
 export async function sendToCourier(n: CourierCfg, text: string) {
-  return sendWhatsAppChain({ phone: n.courier_phone, backupPhone: null, apikey: courierKey(n), text });
+  return sendWhatsAppChain({
+    phone: n.courier_phone,
+    backupPhone: null,
+    apikey: courierKey(n),
+    text,
+    windowOpen: await windowOpenFor(n.courier_phone),
+  });
 }
 
 export async function notifyCourier(sb: SupabaseClient, orderId: string): Promise<string | null> {
