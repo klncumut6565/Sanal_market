@@ -4,6 +4,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { OrderTable } from "@/components/admin/OrderTable";
 import { OrderCard } from "@/components/admin/OrderProgress";
 import { STAGES } from "@/lib/sla";
+import { CourierSettingsForm } from "@/components/admin/CourierSettingsForm";
 import type { Order, StoreSettings } from "@/lib/types";
 
 export const metadata = { title: "Siparişler" };
@@ -31,7 +32,8 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   let q = supabase.from("orders").select("*").order("created_at", { ascending: tab.key === "acik" }).limit(200);
   if (tab.key === "acik") q = q.in("status", COLUMNS as unknown as string[]);
   else if (tab.key !== "tumu") q = q.eq("status", tab.key);
-  const [{ data }, { data: sla }] = await Promise.all([q, settingsQ]);
+  const courierQ = supabase.from("notify_settings").select("courier_phone, courier_apikey, courier_last_result").eq("id", 1).maybeSingle();
+  const [{ data }, { data: sla }, { data: courier }] = await Promise.all([q, settingsQ, courierQ]);
   const orders = (data ?? []) as Order[];
   const targets = (sla ?? { sla_accept_min: 2, sla_prepare_min: 7, sla_delivery_min: 20 }) as Pick<StoreSettings, "sla_accept_min" | "sla_prepare_min" | "sla_delivery_min">;
 
@@ -39,6 +41,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     <div className="space-y-4">
       <AutoRefresh seconds={20} />
       <h1 className="text-2xl font-black">Siparişler</h1>
+      <CourierSettingsForm phone={courier?.courier_phone ?? null} apikey={courier?.courier_apikey ?? null} lastResult={courier?.courier_last_result ?? null} />
       <div className="no-scrollbar flex gap-2 overflow-x-auto">
         {TABS.map((t) => (
           <Link key={t.key} href={`/admin/siparisler?durum=${t.key}`} className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold ring-1 ${t.key === tab.key ? "bg-brand text-white ring-brand" : "bg-white ring-line"}`}>

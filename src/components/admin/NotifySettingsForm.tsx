@@ -8,6 +8,7 @@ type N = {
   email: string | null;
   whatsapp_phone: string | null;
   callmebot_apikey: string | null;
+  backup_phone?: string | null;
   email_enabled: boolean;
   whatsapp_enabled: boolean;
   only_when_away: boolean;
@@ -43,6 +44,11 @@ export function NotifySettingsForm({ n, hasResendKey, panelOpen, cloud = false }
         <label className="block space-y-1">
           <span className="text-sm font-semibold">CallMeBot WhatsApp anahtarı (apikey)</span>
           <input name="callmebot_apikey" defaultValue={n.callmebot_apikey ?? ""} placeholder="ör. 1234567" autoComplete="off" className="input font-mono" />
+        </label>
+        <label className="block space-y-1">
+          <span className="text-sm font-semibold">Yedek WhatsApp numarası (CallMeBot)</span>
+          <input name="backup_phone" type="tel" defaultValue={n.backup_phone ? displayPhone(n.backup_phone) : ""} placeholder="+90 541 673 58 63" className="input" />
+          <span className="block text-xs text-muted">Bildirim yukarıdaki numaraya Meta ile gidemezse bu numaraya CallMeBot ile (birkaç dk gecikmeli) gönderilir. CallMeBot anahtarı bu numaraya ait olmalı.</span>
         </label>
         <details className="rounded-xl bg-bg p-3 text-sm">
           <summary className="cursor-pointer font-semibold">WhatsApp anahtarı nasıl alınır? (1 dakika, ücretsiz)</summary>

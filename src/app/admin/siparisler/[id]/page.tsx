@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { MessageCircle, Phone } from "lucide-react";
+import { Bike, MessageCircle, Phone } from "lucide-react";
 import { requireAdmin } from "@/lib/data/auth";
 import { StatusBadge } from "@/components/admin/OrderTable";
 import { PAYMENT_LABEL, formatDate, formatTL } from "@/lib/format";
@@ -12,6 +12,7 @@ import { WhatsAppActions } from "@/components/admin/WhatsAppActions";
 import { waLink } from "@/lib/whatsapp";
 import { displayPhone } from "@/lib/phone";
 import { getStoreSettings } from "@/lib/data/catalog";
+import { courierText, loadOrderMsg } from "@/lib/courier";
 import { OrderItems, type Alt } from "@/components/admin/OrderItems";
 
 export const metadata = { title: "Sipariş detayı" };
@@ -21,11 +22,14 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
   const { supabase } = await requireAdmin();
   const { data: order } = await supabase.from("orders").select("*").eq("id", id).maybeSingle<Order>();
   if (!order) notFound();
-  const [{ data: items }, settings, { data: banned }] = await Promise.all([
+  const [{ data: items }, settings, { data: banned }, { data: courier }, courierMsg] = await Promise.all([
     supabase.from("order_items").select("*").eq("order_id", id).order("product_name"),
     getStoreSettings(),
     supabase.from("customer_blacklist").select("reason").eq("phone", order.phone).maybeSingle(),
+    supabase.from("notify_settings").select("courier_phone").eq("id", 1).maybeSingle(),
+    loadOrderMsg(supabase, id),
   ]);
+  const courierPhone = (courier?.courier_phone as string | null) ?? null;
   const itemList = (items ?? []) as OrderItem[];
   const editable = order.status === "alindi" || order.status === "hazirlaniyor";
 
@@ -72,6 +76,27 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
           <SlaBar since={stageStart(order)} targetMin={stageTargetMin(order.status, settings)} label={STAGES[order.status as "alindi"].waitingFor} />
         )}
         <NextStepForm order={order} back={`/admin/siparisler/${order.id}`} big />
+        {courierMsg && (order.status === "hazirlaniyor" || order.status === "yolda") && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-bg p-2.5 text-sm">
+            <Bike size={18} className="text-brand" />
+            {courierPhone ? (
+              <>
+                <span className="flex-1">
+                  {order.courier_notified_at
+                    ? `Kuryeye otomatik gönderildi (${formatDate(order.courier_notified_at)}).`
+                    : order.status === "yolda"
+                      ? "Kurye mesajı gönderiliyor…"
+                      : "“Hazır · Kuryeye ver” deyince kuryeye otomatik gider."}
+                </span>
+                <a href={waLink(courierPhone, courierText(courierMsg))} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 rounded-lg bg-[#25D366] px-3 py-1.5 font-bold text-white">
+                  <MessageCircle size={15} /> Kuryeye WhatsApp&apos;tan gönder
+                </a>
+              </>
+            ) : (
+              <Link href="/admin/siparisler" className="font-semibold text-brand">Kurye numarası girilmemiş — Siparişler sayfasından ekle</Link>
+            )}
+          </div>
+        )}
         {order.status === "teslim_edildi" && order.delivered_at && (
           <p className="text-sm font-semibold text-emerald-700">
             Teslim edildi · toplam {Math.round((new Date(order.delivered_at).getTime() - new Date(order.created_at).getTime()) / 60000)} dk

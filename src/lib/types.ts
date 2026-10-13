@@ -79,6 +79,7 @@ export type Order = {
   preparing_at?: string | null;
   dispatched_at?: string | null;
   delivered_at?: string | null;
+  courier_notified_at?: string | null;
   cancelled_at?: string | null;
 };
 

@@ -12,6 +12,8 @@ type Payload = {
   skip?: string;
   email?: string | null;
   whatsapp_phone?: string | null;
+  /** Meta ile asıl numaraya gidemezse CallMeBot ile gönderilecek yedek numara (0541) */
+  backup_phone?: string | null;
   callmebot_apikey?: string | null;
   order?: {
     id: string;
@@ -33,7 +35,13 @@ const tl = (n: number) => new Intl.NumberFormat("tr-TR", { style: "currency", cu
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const pay = (m: string) => (m === "kapida_pos" ? "Kapıda kart (POS)" : "Kapıda nakit");
 
-function textBody(o: NonNullable<Payload["order"]>) {
+export type OrderMsg = NonNullable<Payload["order"]>;
+
+/** Sipariş mesajı. forCourier: panel bağlantısı yerine adresin harita bağlantısı. */
+export function textBody(o: OrderMsg, forCourier = false) {
+  const last = forCourier
+    ? `\n🗺 Harita: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${o.address}, Çorlu, Tekirdağ`)}`
+    : `\nPanel: ${SITE}/admin/siparisler/${o.id}`;
   return [
     `🛒 YENİ SİPARİŞ #${o.order_no} — ${tl(o.total)}`,
     `${o.customer_name} · ${o.phone}`,
@@ -41,7 +49,7 @@ function textBody(o: NonNullable<Payload["order"]>) {
     `🕒 ${o.delivery_slot} · ${pay(o.payment_method)}`,
     o.items ? `\n${o.items}` : "",
     o.note ? `\nNot: ${o.note}` : "",
-    `\nPanel: ${SITE}/admin/siparisler/${o.id}`,
+    last,
   ]
     .filter(Boolean)
     .join("\n");
@@ -158,36 +166,53 @@ export async function notifyNewOrder(payload: Payload): Promise<string | null> {
         .catch((e) => results.push(`E-posta: ${(e as Error).message}`)),
     );
   }
-  if (payload.whatsapp_phone && hasWhatsAppCloud()) {
-    const phone = payload.whatsapp_phone;
-    const apikey = payload.callmebot_apikey;
+  if (payload.whatsapp_phone || payload.backup_phone) {
     jobs.push(
-      (async () => {
-        const r = await sendWhatsAppCloudText(phone, text);
-        if (r.ok) return results.push("WhatsApp (Meta, ücretsiz): gönderildi");
-        if (r.windowClosed && templateFallbackEnabled()) {
-          const t = await sendWhatsAppCloud(phone, cloudParams(o));
-          return results.push(t.ok ? "WhatsApp (Meta şablon, ücretli): gönderildi" : t.error!);
-        }
-        if (r.windowClosed && apikey) {
-          const c = await sendWhatsApp(phone, apikey, text);
-          return results.push(
-            `WhatsApp: 24 saatlik ücretsiz pencere kapalı → CallMeBot ile gönderildi${c.ok ? "" : ` (hata: ${c.error})`}. Pencereyi açmak için bot numarasına WhatsApp'tan bir mesaj yaz.`,
-          );
-        }
-        results.push(r.windowClosed ? "WhatsApp: 24 saatlik ücretsiz pencere kapalı — bot numarasına WhatsApp'tan bir mesaj yaz." : r.error!);
-      })().catch((e) => results.push(`WhatsApp (Meta): ${(e as Error).message}`)),
-    );
-  } else if (payload.whatsapp_phone && payload.callmebot_apikey) {
-    jobs.push(
-      sendWhatsApp(payload.whatsapp_phone, payload.callmebot_apikey, text)
-        .then((r) => results.push(r.ok ? "WhatsApp: gönderildi" : `WhatsApp: ${r.error}`))
+      sendWhatsAppChain({
+        phone: payload.whatsapp_phone ?? null,
+        backupPhone: payload.backup_phone ?? null,
+        apikey: payload.callmebot_apikey ?? null,
+        text,
+        templateParams: cloudParams(o),
+      })
+        .then((r) => results.push(r))
         .catch((e) => results.push(`WhatsApp: ${(e as Error).message}`)),
     );
-  } else if (payload.whatsapp_phone || payload.callmebot_apikey) results.push("WhatsApp: numara veya anahtar eksik");
+  }
   await Promise.allSettled(jobs);
   if (!results.length) results.push("Bildirim hedefi yok (e-posta/WhatsApp ayarlanmamış)");
   const summary = `#${o.order_no} → ${results.join(" · ")}`;
   console.log("[bildirim]", summary);
   return summary;
+}
+
+/**
+ * WhatsApp gönderim zinciri:
+ *  1) Meta (anlık, 24 saat penceresi açıksa ücretsiz) → asıl numara (0533)
+ *  2) Gitmezse: (WHATSAPP_USE_TEMPLATE=1 ise ücretli şablon) yoksa CallMeBot → yedek numara (0541)
+ */
+export async function sendWhatsAppChain(a: {
+  phone: string | null;
+  backupPhone: string | null;
+  apikey: string | null;
+  text: string;
+  templateParams?: string[];
+}): Promise<string> {
+  let metaErr = "";
+  if (a.phone && hasWhatsAppCloud()) {
+    const r = await sendWhatsAppCloudText(a.phone, a.text);
+    if (r.ok) return "WhatsApp (Meta, anlık): gönderildi";
+    if (r.windowClosed && a.templateParams && templateFallbackEnabled()) {
+      const t = await sendWhatsAppCloud(a.phone, a.templateParams);
+      if (t.ok) return "WhatsApp (Meta şablon, ücretli): gönderildi";
+    }
+    metaErr = r.windowClosed ? "Meta: 24 saatlik ücretsiz pencere kapalı" : `Meta: ${r.error}`;
+  }
+  const target = a.backupPhone || a.phone;
+  if (target && a.apikey) {
+    const c = await sendWhatsApp(target, a.apikey, a.text);
+    const head = metaErr ? `${metaErr} → ` : "";
+    return c.ok ? `${head}CallMeBot ile ${target} numarasına gönderildi (birkaç dk gecikebilir)` : `${head}CallMeBot: ${c.error}`;
+  }
+  return metaErr || "WhatsApp: numara veya anahtar eksik";
 }

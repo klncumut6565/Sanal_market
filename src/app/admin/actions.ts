@@ -1,7 +1,9 @@
 "use server";
 import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
-import { cloudTestParams, hasWhatsAppCloud, sendEmail, sendWhatsApp, sendWhatsAppCloud, sendWhatsAppCloudText, templateFallbackEnabled } from "@/lib/notify";
+import { after } from "next/server";
+import { cloudTestParams, sendEmail, sendWhatsAppChain } from "@/lib/notify";
+import { notifyCourier } from "@/lib/courier";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -331,6 +333,16 @@ export async function setOrderStatus(fd: FormData) {
   const status = str(fd, "status") as OrderStatus;
   const { error } = await supabase.rpc("admin_set_order_status", { p_order_id: id, p_status: status });
   if (status === "iptal" && !error) updateTag(CATALOG_TAG); // stok iade edildi
+  // "Hazır · Kuryeye ver": sipariş mesajı kuryeye WhatsApp'tan (arka planda, sayfayı bekletmeden)
+  if (status === "yolda" && !error) {
+    after(async () => {
+      try {
+        await notifyCourier(supabase, id);
+      } catch (e) {
+        console.error("[kurye]", e);
+      }
+    });
+  }
   const back = str(fd, "back");
   const target = back.startsWith("/admin") && !back.startsWith("//") ? back : `/admin/siparisler/${id}`;
   const msg = error?.message?.startsWith("GECERSIZ_GECIS")
@@ -434,6 +446,34 @@ export async function ownerGrantByEmail(fd: FormData) {
   redirect(`/admin/yoneticiler?${msg ? "hata=" + encodeURIComponent(msg) : "ok=verildi"}`);
 }
 
+// ---------------- KURYE ----------------
+export async function saveCourierSettings(_: ActionState, fd: FormData): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const raw = str(fd, "courier_phone");
+  const phone = raw ? normalizeTrMobile(raw) : null;
+  if (raw && !phone) return { error: "Geçerli bir cep telefonu gir (ör. +90 5xx xxx xx xx)." };
+  const { error } = await supabase
+    .from("notify_settings")
+    .update({ courier_phone: phone, courier_apikey: str(fd, "courier_apikey") || null })
+    .eq("id", 1);
+  if (error) return { error: error.message };
+  revalidatePath("/admin/siparisler", "layout");
+  return { ok: phone ? "Kurye numarası kaydedildi" : "Kurye numarası kaldırıldı" };
+}
+
+export async function testCourier(): Promise<ActionState> {
+  const { supabase } = await requireAdmin();
+  const { data: n } = await supabase.from("notify_settings").select("courier_phone, courier_apikey").eq("id", 1).single();
+  if (!n?.courier_phone) return { error: "Önce kurye numarasını kaydet." };
+  const r = await sendWhatsAppChain({
+    phone: n.courier_phone,
+    backupPhone: null,
+    apikey: n.courier_apikey,
+    text: "✅ Sanal Market kurye test mesajı — siparişler hazırlanınca buraya gelecek.",
+  });
+  return /gönderildi/.test(r) ? { ok: r } : { error: r };
+}
+
 // ---------------- KARA LİSTE ----------------
 export async function addToBlacklist(fd: FormData) {
   const { supabase } = await requireAdmin();
@@ -463,12 +503,16 @@ export async function saveNotifySettings(_: ActionState, fd: FormData): Promise<
   const rawPhone = str(fd, "whatsapp_phone");
   const phone = rawPhone ? normalizeTrMobile(rawPhone) : null;
   if (rawPhone && !phone) return { error: "Geçerli bir cep telefonu gir (ör. +90 541 673 58 63)." };
+  const rawBackup = str(fd, "backup_phone");
+  const backup = rawBackup ? normalizeTrMobile(rawBackup) : null;
+  if (rawBackup && !backup) return { error: "Yedek numara geçersiz (ör. +90 541 673 58 63)." };
   const { error } = await supabase
     .from("notify_settings")
     .update({
       email: email || null,
       whatsapp_phone: phone,
       callmebot_apikey: str(fd, "callmebot_apikey") || null,
+      backup_phone: backup,
       email_enabled: fd.get("email_enabled") === "on",
       whatsapp_enabled: fd.get("whatsapp_enabled") === "on",
       only_when_away: fd.get("only_when_away") === "on",
@@ -489,20 +533,13 @@ export async function testNotify(_: ActionState, fd: FormData): Promise<ActionSt
     const r = await sendEmail(n.email, "Sanal Market test bildirimi", text, `<p>${text}</p>`);
     return r.ok ? { ok: `Test e-postası ${n.email} adresine gönderildi.` } : { error: r.error };
   }
-  if (n.whatsapp_phone && hasWhatsAppCloud()) {
-    const r = await sendWhatsAppCloudText(n.whatsapp_phone, text);
-    if (r.ok) return { ok: "Test mesajı Meta WhatsApp API ile ücretsiz gönderildi (anlık gelmeli)." };
-    if (r.windowClosed && templateFallbackEnabled()) {
-      const t = await sendWhatsAppCloud(n.whatsapp_phone, cloudTestParams());
-      return t.ok ? { ok: "Test mesajı ücretli şablonla gönderildi." } : { error: t.error };
-    }
-    return {
-      error: r.windowClosed
-        ? "Ücretsiz pencere kapalı: bildirim numarasından (WhatsApp Business) bot numarasına WhatsApp'tan herhangi bir mesaj yaz (ör. \"merhaba\"), sonra tekrar test et. Pencere 24 saat açık kalır."
-        : r.error,
-    };
-  }
-  if (!n.whatsapp_phone || !n.callmebot_apikey) return { error: "Önce WhatsApp numarasını ve CallMeBot anahtarını kaydet." };
-  const r = await sendWhatsApp(n.whatsapp_phone, n.callmebot_apikey, text);
-  return r.ok ? { ok: "Test WhatsApp mesajı gönderildi." } : { error: r.error };
+  if (!n.whatsapp_phone && !n.backup_phone) return { error: "Önce WhatsApp numarasını kaydet." };
+  const r = await sendWhatsAppChain({
+    phone: n.whatsapp_phone,
+    backupPhone: n.backup_phone,
+    apikey: n.callmebot_apikey,
+    text,
+    templateParams: cloudTestParams(),
+  });
+  return /gönderildi/.test(r) ? { ok: r } : { error: r };
 }
