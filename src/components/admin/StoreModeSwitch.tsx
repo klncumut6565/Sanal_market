@@ -1,4 +1,4 @@
-// Siparişler ekranı: mağaza modu (Otomatik / Açık / Kapalı)
+// Yönetim paneli: sağ üstte sabit mağaza modu (Otomatik / Açık / Kapalı) — tüm sayfalarda görünür
 import { Clock, DoorClosed, DoorOpen } from "lucide-react";
 import { setStoreMode } from "@/app/admin/actions";
 
@@ -7,33 +7,28 @@ type Props = { isOpen: boolean; forceOpen: boolean; openTime: string; closeTime:
 export function StoreModeSwitch({ isOpen, forceOpen, openTime, closeTime }: Props) {
   const mode = !isOpen ? "kapali" : forceOpen ? "acik" : "otomatik";
   const opts = [
-    { v: "otomatik", label: "Otomatik", sub: `${openTime}–${closeTime} arası`, Icon: Clock, on: "bg-ink text-white" },
-    { v: "acik", label: "Açık", sub: "saat dışında da sipariş", Icon: DoorOpen, on: "bg-emerald-600 text-white" },
-    { v: "kapali", label: "Kapalı", sub: "sipariş alınmaz", Icon: DoorClosed, on: "bg-red-600 text-white" },
+    { v: "otomatik", label: "Otomatik", title: `Çalışma saatlerine göre (${openTime}–${closeTime})`, Icon: Clock, on: "bg-ink text-white" },
+    { v: "acik", label: "Açık", title: "Saat dışında da sipariş alınır", Icon: DoorOpen, on: "bg-emerald-600 text-white" },
+    { v: "kapali", label: "Kapalı", title: "Sipariş alınmaz", Icon: DoorClosed, on: "bg-red-600 text-white" },
   ] as const;
   return (
-    <div className="space-y-1.5 rounded-2xl bg-white p-3 ring-1 ring-line">
-      <p className="text-sm font-bold">Mağaza modu</p>
-      <form action={setStoreMode} className="grid grid-cols-3 gap-1.5">
-        {opts.map(({ v, label, sub, Icon, on }) => (
-          <button
-            key={v}
-            name="mode"
-            value={v}
-            aria-pressed={mode === v}
-            className={`flex flex-col items-center gap-0.5 rounded-xl px-2 py-2 text-center transition ${mode === v ? on : "bg-bg text-muted hover:text-ink"}`}
-          >
-            <span className="flex items-center gap-1.5 text-sm font-black"><Icon size={16} /> {label}</span>
-            <span className="text-[11px] leading-tight opacity-80">{sub}</span>
-          </button>
-        ))}
-      </form>
-      {mode === "acik" && (
-        <p className="rounded-lg bg-emerald-50 p-2 text-xs font-semibold text-emerald-800">
-          Mağaza çalışma saatleri dışında da sipariş alıyor. Normale dönmek için <b>Otomatik</b>&apos;i seç.
-        </p>
-      )}
-      {mode === "kapali" && <p className="rounded-lg bg-red-50 p-2 text-xs font-semibold text-red-700">Mağaza kapalı: müşteriler sipariş veremez (sepete ekleyebilir).</p>}
-    </div>
+    <form action={setStoreMode} className="flex items-center gap-2 rounded-full bg-white/95 p-1 shadow-sm ring-1 ring-line backdrop-blur">
+      <span className="hidden pl-2 text-xs font-bold text-muted sm:inline">Mağaza</span>
+      {opts.map(({ v, label, title, Icon, on }) => (
+        <button
+          key={v}
+          name="mode"
+          value={v}
+          title={title}
+          aria-pressed={mode === v}
+          className={`flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-black transition sm:text-sm ${
+            mode === v ? on : "text-muted hover:bg-bg hover:text-ink"
+          }`}
+        >
+          <Icon size={15} /> {label}
+          {mode === v && v === "acik" && <span className="h-2 w-2 animate-pulse rounded-full bg-white" />}
+        </button>
+      ))}
+    </form>
   );
 }

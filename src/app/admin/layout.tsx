@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/data/auth";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { NewOrderAlarm } from "@/components/admin/NewOrderAlarm";
 import { AdminVoiceAssistant } from "@/components/admin/AdminVoiceAssistant";
+import { StoreModeSwitch } from "@/components/admin/StoreModeSwitch";
 
 export const metadata: Metadata = {
   title: { default: "Yönetim", template: "%s · Yönetim" },
@@ -38,9 +39,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 }
 
 async function Gate({ children }: { children: React.ReactNode }) {
-  await requireAdmin();
+  const { supabase } = await requireAdmin();
+  const { data: s } = await supabase.from("store_settings").select("is_open,force_open,open_time,close_time").eq("id", 1).maybeSingle();
   return (
     <>
+      {/* Mağaza modu: her sayfada sağ üstte sabit */}
+      <div className="pointer-events-none sticky top-2 z-40 -mt-1 mb-3 flex justify-end lg:-mt-4">
+        <div className="pointer-events-auto">
+          <StoreModeSwitch
+            isOpen={s?.is_open ?? true}
+            forceOpen={s?.force_open ?? false}
+            openTime={s?.open_time ?? "10:00"}
+            closeTime={s?.close_time ?? "01:00"}
+          />
+        </div>
+      </div>
       <NewOrderAlarm />
       <AdminVoiceAssistant />
       {children}

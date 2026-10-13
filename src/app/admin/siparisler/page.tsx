@@ -5,7 +5,6 @@ import { OrderTable } from "@/components/admin/OrderTable";
 import { OrderCard } from "@/components/admin/OrderProgress";
 import { STAGES } from "@/lib/sla";
 import { CourierSettingsForm } from "@/components/admin/CourierSettingsForm";
-import { StoreModeSwitch } from "@/components/admin/StoreModeSwitch";
 import { AdminPushCard } from "@/components/admin/AdminPushCard";
 import type { Order, StoreSettings } from "@/lib/types";
 
@@ -32,7 +31,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   const settingsQ = supabase
     .from("store_settings")
-    .select("sla_accept_min,sla_prepare_min,sla_delivery_min,is_open,force_open,open_time,close_time")
+    .select("sla_accept_min,sla_prepare_min,sla_delivery_min")
     .eq("id", 1)
     .single();
   let q = supabase.from("orders").select("*").order("created_at", { ascending: tab.key === "acik" }).limit(200);
@@ -48,12 +47,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       <AutoRefresh seconds={20} />
       <h1 className="text-2xl font-black">Siparişler</h1>
       <AdminPushCard />
-      <StoreModeSwitch
-        isOpen={sla?.is_open ?? true}
-        forceOpen={sla?.force_open ?? false}
-        openTime={sla?.open_time ?? "10:00"}
-        closeTime={sla?.close_time ?? "01:00"}
-      />
       <CourierSettingsForm phone={courier?.courier_phone ?? null} apikey={courier?.courier_apikey ?? null} lastResult={courier?.courier_last_result ?? null} courierToken={courier?.courier_token ?? null} />
       <div className="no-scrollbar flex gap-2 overflow-x-auto">
         {TABS.map((t) => (
