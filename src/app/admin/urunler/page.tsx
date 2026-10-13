@@ -5,6 +5,7 @@ import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
 import type { Category, Product } from "@/lib/types";
 import { quickUpdateProduct } from "../actions";
+import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { Suspense } from "react";
@@ -150,7 +151,12 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     </button>
                   </form>
                 </td>
-                <td className="pr-3 text-right"><Link href={`/admin/urunler/${p.id}`} className="font-bold text-brand">Düzenle</Link></td>
+                <td className="pr-3 text-right">
+                  <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+                    <Link href={`/admin/urunler/${p.id}`} className="font-bold text-brand">Düzenle</Link>
+                    <DeleteProductButton id={p.id} name={p.name} />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>

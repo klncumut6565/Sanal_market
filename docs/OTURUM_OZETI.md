@@ -166,3 +166,5 @@
 - 2026-10-13: WhatsApp/e-posta sipariş metnine "🧾 Sipariş saati" (orders.created_at, TR saati), kurye mesajına ayrıca "🛵 Kuryeye bildirim" saati eklendi (lib/notify.ts trTime; loadOrderMsg created_at okur).
 
 - 2026-10-13: "WhatsApp'tan bize yaz" (sipariş takip sayfası) store_settings.whatsapp_phone'u kullanıyor; değer 0541'di → +905333605659 yapıldı. Ayarlar'daki "İşletme WhatsApp numarası" alanı artık +90 sabit PhoneInput ve açıklaması netleştirildi. (Bildirim numaraları ayrı: notify_settings.)
+
+- 2026-10-13: Ürünler & stok listesinde "Düzenle"nin yanına "Sil" (DeleteProductButton): tıklayınca "Ürün silinsin mi?" onay penceresi (ürün adı, Vazgeç / Evet, sil; Esc ile kapanır) → deleteProductById (sayfada kalır, liste yenilenir). Ürün düzenleme sayfasındaki "Ürünü sil" de aynı onaylı pencereyi kullanıyor (eskiden onaysız siliyordu). Geçmiş sipariş kalemleri korunur (order_items.product_id ON DELETE SET NULL), alış fiyatı kaydı birlikte silinir.

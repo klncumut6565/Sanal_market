@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { requireAdmin } from "@/lib/data/auth";
 import { ProductForm } from "@/components/admin/ProductForm";
 import type { Category, Product } from "@/lib/types";
-import { deleteProduct } from "../../actions";
+import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 
 export const metadata = { title: "Ürünü düzenle" };
 
@@ -19,10 +19,9 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
     <div className="max-w-3xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black">Ürünü düzenle</h1>
-        <form action={deleteProduct}>
-          <input type="hidden" name="id" value={id} />
-          <button className="text-sm font-bold text-muted hover:text-brand">Ürünü sil</button>
-        </form>
+        <span className="text-sm">
+          <DeleteProductButton id={id} name={(product as Product).name} redirectTo="/admin/urunler" label="Ürünü sil" />
+        </span>
       </div>
       <ProductForm product={product as Product} categories={(categories ?? []) as Category[]} cost={cost ? Number(cost.cost_price) : null} />
     </div>

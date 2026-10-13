@@ -91,6 +91,16 @@ export async function deleteProduct(fd: FormData) {
   redirect("/admin/urunler");
 }
 
+/** Listeden silme (onay kutusundan sonra). Sayfada kalır. */
+export async function deleteProductById(id: string): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.from("products").delete().eq("id", id);
+  if (error) return { ok: false, error: "Ürün silinemedi: " + error.message };
+  updateTag(CATALOG_TAG);
+  revalidatePath("/admin/urunler");
+  return { ok: true };
+}
+
 export async function quickUpdateProduct(fd: FormData) {
   const { supabase } = await requireAdmin();
   const id = str(fd, "id");
