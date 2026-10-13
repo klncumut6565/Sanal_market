@@ -3,10 +3,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { LayoutDashboard, MapPin, Package, ReceiptText, ScanBarcode, Settings, ShieldCheck, Tags, Users } from "lucide-react";
+import { LayoutDashboard, MapPin, Package, ReceiptText, ScanBarcode, Settings, ShieldCheck, ShoppingBasket, Tags, Users } from "lucide-react";
 
 const items = [
   { href: "/admin", label: "Genel bakış", icon: LayoutDashboard },
+  { href: "/admin/satis", label: "Satış ekranı", icon: ShoppingBasket },
   { href: "/admin/siparisler", label: "Siparişler", icon: ReceiptText },
   { href: "/admin/musteriler", label: "Müşteriler", icon: Users },
   { href: "/admin/urunler", label: "Ürünler & stok", icon: Package },
