@@ -13,7 +13,9 @@ import { discountRate } from "@/lib/format";
 type Props = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
-  const products = await getProducts();
+  // Yalnızca öne çıkan / indirimli ilk 100 ürün derlemede hazırlanır; kalanlar ilk ziyarette oluşturulup önbelleğe alınır
+  // (3000+ ürün sayfasını her yayında derlemek yayın süresini çok uzatır).
+  const products = (await getProducts()).filter((p) => p.is_featured || p.sale_price != null).slice(0, 100);
   return products.length ? products.map((p) => ({ slug: p.slug })) : [{ slug: "_" }];
 }
 

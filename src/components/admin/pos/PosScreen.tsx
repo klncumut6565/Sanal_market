@@ -1,7 +1,7 @@
 "use client";
 // Mağaza içi satış ekranı (kasa). Barkod okuyucu / arama / hızlı ürün kutucukları ile fiş oluşturur,
 // nakit-kart-karışık ödeme alır, stoktan düşer (pos_complete_sale), fiş yazdırır, bekletme ve iptal destekler.
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   Banknote,
   CreditCard,
@@ -240,8 +240,14 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
   };
 
   // ---------------- arama ----------------
+  // Arama dizini: Türkçe-katlanmış adlar bir kez hesaplanır (her tuşta 3000+ ad yeniden işlenmez)
+  const index = useMemo(() => (products ?? []).map((p) => ({ p, n: fold(p.name) })), [products]);
+  // Yazarken arayüz takılmasın: arama bir sonraki karede çalışır
+  const dq = useDeferredValue(q);
+
   const results = useMemo(() => {
     if (!products) return [];
+    const q = dq;
     const m = q.trim().match(/^(\d+)\*(.*)$/);
     const text = fold(m ? m[2] : q);
     if (!text) {
@@ -250,15 +256,14 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
     }
     const words = text.split(" ");
     const scored: { p: PosProduct; s: number }[] = [];
-    for (const p of products) {
+    for (const { p, n } of index) {
       if (cat && p.category_id !== cat) continue;
-      const n = fold(p.name);
       if (p.barcode && p.barcode.startsWith(text)) scored.push({ p, s: 0 });
       else if (words.every((w) => n.includes(w))) scored.push({ p, s: n.startsWith(text) ? 1 : n.split(" ").some((w) => w.startsWith(words[0])) ? 2 : 3 });
     }
     scored.sort((a, b) => a.s - b.s || Number(b.p.is_active) - Number(a.p.is_active) || a.p.name.localeCompare(b.p.name, "tr"));
     return scored.slice(0, 60).map((x) => x.p);
-  }, [products, q, cat]);
+  }, [products, index, dq, cat]);
 
   const submitSearch = () => {
     const v = q.trim();
