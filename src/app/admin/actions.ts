@@ -695,3 +695,32 @@ export async function testNotify(_: ActionState, fd: FormData): Promise<ActionSt
   });
   return /gönderildi/.test(r) ? { ok: r } : { error: r };
 }
+
+// ---------------- GÖRSEL: bağlantıdan getir ----------------
+/** Kopyalanan görsel bağlantısını sunucuda indirir (tarayıcının CORS engelini aşmak için). */
+export async function fetchRemoteImage(url: string): Promise<{ ok: true; base64: string; type: string } | { ok: false; error: string }> {
+  await requireAdmin();
+  let u: URL;
+  try {
+    u = new URL(url.trim());
+  } catch {
+    return { ok: false, error: "Geçerli bir görsel bağlantısı değil." };
+  }
+  if (!/^https?:$/.test(u.protocol)) return { ok: false, error: "Yalnızca http/https bağlantıları." };
+  if (/^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.|0\.|\[?::1)/i.test(u.hostname)) return { ok: false, error: "Bu adres kullanılamaz." };
+  try {
+    const res = await fetch(u, {
+      signal: AbortSignal.timeout(12_000),
+      headers: { "User-Agent": "Mozilla/5.0 (SanalMarket görsel aktarımı)", Accept: "image/avif,image/webp,image/png,image/jpeg,image/*;q=0.8" },
+      redirect: "follow",
+    });
+    if (!res.ok) return { ok: false, error: `Görsel indirilemedi (${res.status}).` };
+    const type = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+    if (!type.startsWith("image/")) return { ok: false, error: "Bağlantı bir görsel değil (sayfa bağlantısı olabilir). Görsele sağ tıklayıp 'Resmi kopyala' deneyin." };
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > 8 * 1024 * 1024) return { ok: false, error: "Görsel çok büyük (8 MB üstü)." };
+    return { ok: true, base64: buf.toString("base64"), type };
+  } catch {
+    return { ok: false, error: "Görsel indirilemedi. Görsele sağ tıklayıp 'Resmi kopyala' ile deneyin." };
+  }
+}

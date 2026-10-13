@@ -1,11 +1,12 @@
 "use client";
 import Link from "next/link";
-import { useActionState, useState } from "react";
-import { ImagePlus, Loader2, ScanBarcode, X } from "lucide-react";
+import { useActionState, useEffect, useRef, useState } from "react";
+import { ClipboardPaste, ImagePlus, Loader2, ScanBarcode, X } from "lucide-react";
+import { compressImage } from "@/lib/imageCompress";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { useHidScanner } from "@/lib/hidScanner";
 import { createClient } from "@/lib/supabase/client";
-import { saveProduct, type ActionState } from "@/app/admin/actions";
+import { fetchRemoteImage, saveProduct, type ActionState } from "@/app/admin/actions";
 import type { Category, Product } from "@/lib/types";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
@@ -44,17 +45,87 @@ export function ProductForm({
     return true;
   });
 
-  async function upload(file: File) {
+  async function upload(file: Blob) {
     setUploadError(null);
-    if (file.size > 3 * 1024 * 1024) return setUploadError("Görsel en fazla 3 MB olmalı.");
+    if (!file.type.startsWith("image/")) return setUploadError("Bu bir görsel değil.");
     setUploading(true);
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const img = await compressImage(file);
+    if (img.size > 3 * 1024 * 1024) {
+      setUploading(false);
+      return setUploadError("Görsel en fazla 3 MB olmalı.");
+    }
+    const ext = img.type === "image/webp" ? "webp" : img.type === "image/png" ? "png" : "jpg";
     const path = `${crypto.randomUUID()}.${ext}`;
     const supabase = createClient();
-    const { error } = await supabase.storage.from("product-images").upload(path, file, { cacheControl: "31536000", contentType: file.type });
+    const { error } = await supabase.storage.from("product-images").upload(path, img, { cacheControl: "31536000", contentType: img.type });
     if (error) setUploadError("Yükleme başarısız: " + error.message);
     else setImageUrl(supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl);
     setUploading(false);
+  }
+
+  /** Kopyalanan görsel bağlantısını (Google görseller → "Resim adresini kopyala") indirip yükler */
+  async function uploadFromUrl(url: string) {
+    setUploadError(null);
+    if (url.startsWith("data:image/")) {
+      const blob = await (await fetch(url)).blob();
+      return upload(blob);
+    }
+    setUploading(true);
+    const r = await fetchRemoteImage(url);
+    setUploading(false);
+    if (!r.ok) return setUploadError(r.error);
+    const bin = Uint8Array.from(atob(r.base64), (c) => c.charCodeAt(0));
+    await upload(new Blob([bin], { type: r.type }));
+  }
+  const uploadRef = useRef({ upload, uploadFromUrl });
+  useEffect(() => {
+    uploadRef.current = { upload, uploadFromUrl };
+  });
+
+  // Ctrl+V / Cmd+V: panodaki görsel (veya görsel bağlantısı) sayfanın her yerinde yapıştırılabilir
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      const dt = e.clipboardData;
+      if (!dt) return;
+      const file = Array.from(dt.items).find((i) => i.kind === "file" && i.type.startsWith("image/"))?.getAsFile();
+      if (file) {
+        e.preventDefault();
+        void uploadRef.current.upload(file);
+        return;
+      }
+      const t = e.target as HTMLElement | null;
+      const inText = t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement;
+      const text = dt.getData("text/plain").trim();
+      const html = dt.getData("text/html");
+      const src = html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+      const url = src && /^(https?:|data:image\/)/.test(src) ? src : /^(https?:\/\/\S+|data:image\/\S+)$/i.test(text) ? text : null;
+      if (url && (!inText || (t as HTMLElement).dataset.imagePaste === "1" || src)) {
+        e.preventDefault();
+        void uploadRef.current.uploadFromUrl(url);
+      }
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, []);
+
+  async function pasteFromClipboard() {
+    setUploadError(null);
+    try {
+      const items = await navigator.clipboard.read();
+      for (const it of items) {
+        const type = it.types.find((t) => t.startsWith("image/"));
+        if (type) return upload(await it.getType(type));
+      }
+      for (const it of items) {
+        if (it.types.includes("text/plain")) {
+          const txt = (await (await it.getType("text/plain")).text()).trim();
+          if (/^(https?:|data:image\/)/i.test(txt)) return uploadFromUrl(txt);
+        }
+      }
+      setUploadError("Panoda görsel yok. Google'da görsele sağ tıklayıp 'Resmi kopyala' deyin.");
+    } catch {
+      setUploadError("Pano okunamadı. Ctrl+V (Mac: ⌘+V) ile yapıştırmayı deneyin.");
+    }
   }
 
   return (
@@ -73,11 +144,47 @@ export function ProductForm({
 
       <section className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-[160px_minmax(0,1fr)]">
         <div className="space-y-2">
-          <ProductImage src={imageUrl || null} emoji={product?.emoji ?? null} alt="Ürün görseli" />
+          <div
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith("image/"));
+              if (f) void upload(f);
+              else {
+                const u = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+                if (u) void uploadFromUrl(u.split("\n")[0].trim());
+              }
+            }}
+            className="relative"
+            title="Görseli buraya sürükleyebilir veya Ctrl+V ile yapıştırabilirsin"
+          >
+            <ProductImage src={imageUrl || null} emoji={product?.emoji ?? null} alt="Ürün görseli" />
+            {uploading && (
+              <span className="absolute inset-0 grid place-items-center rounded-2xl bg-white/70">
+                <Loader2 className="animate-spin text-brand" />
+              </span>
+            )}
+          </div>
           <label className="btn-ghost w-full cursor-pointer py-2 text-sm">
             {uploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />} Görsel yükle
-            <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
           </label>
+          <button type="button" onClick={() => void pasteFromClipboard()} disabled={uploading} className="btn-ghost w-full py-2 text-sm">
+            <ClipboardPaste size={16} /> Panodan yapıştır
+          </button>
+          <input
+            data-image-paste="1"
+            placeholder="veya görsel bağlantısı yapıştır"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                const v = (e.target as HTMLInputElement).value.trim();
+                if (v) void uploadFromUrl(v).then(() => ((e.target as HTMLInputElement).value = ""));
+              }
+            }}
+            className="w-full rounded-lg border border-dashed border-line px-2 py-1.5 text-xs"
+          />
+          <p className="text-[11px] leading-snug text-muted">İpucu: Google Görseller&apos;de resme sağ tıkla → <b>Resmi kopyala</b>, sonra bu sayfada <b>Ctrl+V</b>.</p>
           {imageUrl && (
             <button type="button" onClick={() => setImageUrl("")} className="flex w-full items-center justify-center gap-1 text-xs font-semibold text-muted hover:text-brand">
               <X size={14} /> Görseli kaldır
