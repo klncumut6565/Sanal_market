@@ -466,6 +466,11 @@ export async function testCourier(): Promise<ActionState> {
   const n = await loadCourierCfg(supabase);
   if (!n?.courier_phone) return { error: "Önce kurye numarasını kaydet." };
   const r = await sendToCourier(n, "✅ Sanal Market kurye test mesajı — siparişler hazırlanınca buraya gelecek.");
+  await supabase
+    .from("notify_settings")
+    .update({ courier_last_result: `${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })} · TEST → ${r}` })
+    .eq("id", 1);
+  revalidatePath("/admin/siparisler");
   if (/gönderildi/.test(r)) return { ok: r };
   return {
     error: courierKey(n)
