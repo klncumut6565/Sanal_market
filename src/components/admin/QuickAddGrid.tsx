@@ -5,6 +5,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Loader2, Plus, Save, ScanBarcode, Trash2 } from "lucide-react";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { useHidScanner } from "@/lib/hidScanner";
 import { createClient } from "@/lib/supabase/client";
 import { quickAddProducts, type QuickRow } from "@/app/admin/actions";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
@@ -164,6 +165,28 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
       setSaving(false);
     }
   };
+
+  // El barkod okuyucu: barkod hücresindeyken normal yazım (Enter sonraki hücre);
+  // başka hücredeyken o satırın barkoduna, hiçbir hücrede değilken ilk boş satıra yazılır.
+  useHidScanner((code, target) => {
+    const cell = target?.getAttribute?.("data-cell");
+    let i: number;
+    if (cell) {
+      const [ri, ci] = cell.split("-").map(Number);
+      if (ci === 0) return false;
+      i = ri;
+    } else {
+      i = rows.findIndex(isEmpty);
+      if (i < 0) {
+        i = rows.length;
+        setRows((rs) => [...rs, blank(defCat)]);
+      }
+    }
+    update(i, { barcode: code, dup: undefined });
+    void checkBarcode(i, code);
+    setTimeout(() => focusCell(i, 1), 50);
+    return true;
+  }, scanRow === null);
 
   return (
     <div className="space-y-3">

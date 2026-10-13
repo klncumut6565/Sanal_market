@@ -6,6 +6,7 @@ import { findByBarcode, quickPriceUpdate, type BarcodeProduct } from "@/app/admi
 import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { useHidScanner } from "@/lib/hidScanner";
 
 type Form = { price: string; sale_price: string; stock: string };
 const toForm = (p: BarcodeProduct): Form => ({
@@ -51,6 +52,12 @@ export function QuickBarcode() {
     [lookup],
   );
 
+  // El barkod okuyucu (USB): sayfanın neresinde olursan ol okutunca ürünü getirir
+  useHidScanner((c) => {
+    onScan(c);
+    return true;
+  });
+
   useEffect(() => {
     codeRef.current?.focus();
   }, []);
@@ -91,6 +98,7 @@ export function QuickBarcode() {
         >
           <input
             ref={codeRef}
+            data-barcode="1"
             value={code}
             onChange={(e) => setCode(e.target.value)}
             inputMode="numeric"

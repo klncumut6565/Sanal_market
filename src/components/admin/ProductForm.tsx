@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { ImagePlus, Loader2, ScanBarcode, X } from "lucide-react";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { useHidScanner } from "@/lib/hidScanner";
 import { createClient } from "@/lib/supabase/client";
 import { saveProduct, type ActionState } from "@/app/admin/actions";
 import type { Category, Product } from "@/lib/types";
@@ -37,6 +38,11 @@ export function ProductForm({
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [barcode, setBarcode] = useState(product?.barcode ?? initialBarcode ?? "");
   const [scanning, setScanning] = useState(false);
+  // El barkod okuyucu: form neredeyse okutulan barkod Barkod alanına yazılır (Enter formu göndermez)
+  useHidScanner((code) => {
+    setBarcode(code);
+    return true;
+  });
 
   async function upload(file: File) {
     setUploadError(null);
@@ -92,7 +98,7 @@ export function ProductForm({
           <F label="Bağlantı adı (slug)"><input name="slug" defaultValue={product?.slug ?? ""} placeholder="Boşsa addan üretilir" className="input" /></F>
           <F label="Barkod" className="sm:col-span-2">
             <div className="flex gap-2">
-              <input name="barcode" value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" placeholder="Ör. 8690504012345" className="input font-mono" />
+              <input name="barcode" data-barcode="1" value={barcode} onChange={(e) => setBarcode(e.target.value)} inputMode="numeric" placeholder="Ör. 8690504012345" className="input font-mono" />
               <button type="button" onClick={() => setScanning(true)} className="btn-ghost shrink-0 px-3" aria-label="Kamerayla barkod okut">
                 <ScanBarcode size={20} /> Okut
               </button>

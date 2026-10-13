@@ -5,6 +5,7 @@ import { Brand } from "@/components/Brand";
 import { requireAdmin } from "@/lib/data/auth";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { NewOrderAlarm } from "@/components/admin/NewOrderAlarm";
+import { AdminScanListener } from "@/components/admin/AdminScanListener";
 import { AdminVoiceAssistant } from "@/components/admin/AdminVoiceAssistant";
 import { StoreModeSwitch } from "@/components/admin/StoreModeSwitch";
 
@@ -55,6 +56,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <NewOrderAlarm />
+      <AdminScanListener />
       <AdminVoiceAssistant />
       {children}
     </>
