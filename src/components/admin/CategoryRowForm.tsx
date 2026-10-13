@@ -1,7 +1,9 @@
 "use client";
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
+import { ClipboardPaste, ImagePlus, Loader2, X } from "lucide-react";
+import { imageFromClipboard, imageFromPaste, uploadImageBlob, uploadImageFromUrl, type UploadResult } from "@/lib/imageUpload";
 import { CATEGORY_EMOJIS } from "@/lib/categoryEmoji";
-import { deleteCategory, saveCategory, type ActionState } from "@/app/admin/actions";
+import { deleteCategory, saveCategory, setCategoryImage, type ActionState } from "@/app/admin/actions";
 import type { Category } from "@/lib/types";
 
 export function CategoryRowForm({
@@ -29,12 +31,97 @@ export function CategoryRowForm({
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCategory, {});
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const [pick, setPick] = useState(false);
+  const [imageUrl, setImageUrl] = useState(category?.image_url ?? "");
+  const [imgBusy, setImgBusy] = useState(false);
+  const [imgErr, setImgErr] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const applyImage = async (p: Promise<UploadResult> | null, remove = false) => {
+    setImgErr(null);
+    let url: string | null = null;
+    if (!remove && p) {
+      setImgBusy(true);
+      const r = await p;
+      setImgBusy(false);
+      if (!r.ok) return setImgErr(r.error);
+      url = r.url;
+    }
+    setImageUrl(url ?? "");
+    // Kayıtlı kategoride hemen kaydet; yenisinde "Ekle" ile kaydedilir
+    if (category) {
+      const r = await setCategoryImage(category.id, url);
+      if (!r.ok) setImgErr(r.error ?? "Kaydedilemedi");
+    }
+  };
+  const fromBlob = (b: Blob) => applyImage(uploadImageBlob(b, "kategori", 400));
+  const fromUrl = (u: string) => applyImage(uploadImageFromUrl(u, "kategori", 400));
   return (
     <div>
       <form action={action} className="flex flex-wrap items-center gap-2" key={category ? undefined : state.ok}>
         {category && <input type="hidden" name="id" value={category.id} />}
         {parentId && <input type="hidden" name="parent_id" value={parentId} />}
         <input type="hidden" name="emoji" value={emoji} />
+        <input type="hidden" name="image_url" value={imageUrl} />
+        {/* Görsel kutusu: tıkla + Ctrl/⌘+V ile yapıştır, sürükle-bırak */}
+        <div
+          tabIndex={0}
+          role="button"
+          aria-label="Kategori görseli — tıklayıp yapıştırın"
+          title="Tıkla ve Ctrl+V ile görsel yapıştır, ya da görseli buraya sürükle"
+          onPaste={(e) => {
+            const x = imageFromPaste(e.clipboardData);
+            if (!x) return;
+            e.preventDefault();
+            void (x.file ? fromBlob(x.file) : fromUrl(x.url!));
+          }}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const f = Array.from(e.dataTransfer.files).find((x) => x.type.startsWith("image/"));
+            if (f) void fromBlob(f);
+            else {
+              const u = (e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain")).split("\n")[0].trim();
+              if (u) void fromUrl(u);
+            }
+          }}
+          className="relative grid h-14 w-14 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-xl border-2 border-dashed border-line bg-white outline-none focus:border-brand focus:ring-2 focus:ring-brand/20"
+        >
+          {imgBusy ? (
+            <Loader2 size={18} className="animate-spin text-brand" />
+          ) : imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="h-full w-full object-contain p-1" />
+          ) : (
+            <span className="text-center text-[9px] font-semibold leading-tight text-muted">
+              görsel
+              <br />
+              yapıştır
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <button type="button" onClick={() => fileRef.current?.click()} title="Dosyadan görsel yükle" className="grid h-6 w-6 place-items-center rounded-md text-muted hover:bg-bg hover:text-brand">
+            <ImagePlus size={14} />
+          </button>
+          <button
+            type="button"
+            title="Panodan yapıştır"
+            onClick={async () => {
+              const r = await imageFromClipboard();
+              if ("error" in r) return setImgErr(r.error);
+              void (r.blob ? fromBlob(r.blob) : fromUrl(r.url!));
+            }}
+            className="grid h-6 w-6 place-items-center rounded-md text-muted hover:bg-bg hover:text-brand"
+          >
+            <ClipboardPaste size={14} />
+          </button>
+          {imageUrl && (
+            <button type="button" title="Görseli kaldır (emoji kullanılır)" onClick={() => void applyImage(null, true)} className="grid h-6 w-6 place-items-center rounded-md text-muted hover:bg-bg hover:text-red-600">
+              <X size={14} />
+            </button>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && void fromBlob(e.target.files[0])} />
+        </div>
         <button
           type="button"
           onClick={() => setPick((p) => !p)}
@@ -143,6 +230,7 @@ export function CategoryRowForm({
           </span>
         )}
         {state.error && <span className="font-semibold text-brand">{state.error}</span>}
+        {imgErr && <span className="font-semibold text-brand">{imgErr}</span>}
         {state.ok && <span className="font-semibold text-ok">{state.ok}</span>}
       </div>
     </div>

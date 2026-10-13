@@ -334,6 +334,7 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
     night_ban: fd.get("night_ban") === "on",
     visibility: ["herkes", "uye", "onayli", "ozel", "kapali"].includes(str(fd, "visibility")) ? str(fd, "visibility") : "herkes",
     ...(fd.has("parent_id") ? { parent_id: str(fd, "parent_id") || null } : {}),
+    ...(fd.has("image_url") ? { image_url: str(fd, "image_url") || null } : {}),
   };
   const res = id
     ? await supabase.from("categories").update(row).eq("id", id).select("id").single()
@@ -351,6 +352,16 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
   updateTag(CATALOG_TAG);
   if (posErr) return { error: "Kaydedildi ama sıra ayarlanamadı: " + posErr.message };
   return { ok: id ? "Güncellendi" : "Eklendi" };
+}
+
+/** Kategori görselini hemen kaydet (yapıştır/yükle sonrası) */
+export async function setCategoryImage(id: string, url: string | null): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.from("categories").update({ image_url: url }).eq("id", id);
+  if (error) return { ok: false, error: error.message };
+  updateTag(CATALOG_TAG);
+  revalidatePath("/admin/kategoriler");
+  return { ok: true };
 }
 
 export async function deleteCategory(fd: FormData) {

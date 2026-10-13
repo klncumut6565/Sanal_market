@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ProductGrid } from "@/components/shop/ProductCard";
@@ -53,11 +54,11 @@ async function CategoryContent({ params, searchParams }: Props) {
     <div>
       {parent && (
         <Link href={`/kategori/${parent.slug}`} className="mb-1 inline-block text-sm font-semibold text-muted hover:text-brand">
-          {parent.emoji} {parent.name} ›
+          <CategoryIcon cat={parent} imgClass="h-4 w-4" /> {parent.name} ›
         </Link>
       )}
       <h1 className="mb-3 text-xl font-black">
-        {parent ? "" : `${cat.emoji ?? ""} `}
+        {!parent && <CategoryIcon cat={cat} className="mr-1.5" imgClass="mr-1.5 h-7 w-7 align-middle" />}
         {cat.name}
         <span className="ml-2 text-sm font-semibold text-muted">{list.length} ürün</span>
       </h1>

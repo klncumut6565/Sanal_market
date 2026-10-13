@@ -2,6 +2,7 @@
 // Mağaza içi satış ekranı (kasa). Barkod okuyucu / arama / hızlı ürün kutucukları ile fiş oluşturur,
 // nakit-kart-karışık ödeme alır, stoktan düşer (pos_complete_sale), fiş yazdırır, bekletme ve iptal destekler.
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import {
   Banknote,
   CreditCard,
@@ -28,7 +29,7 @@ import { PosHistory } from "./PosHistory";
 import { PosReceipt, type ReceiptData } from "./PosReceipt";
 import { fold, posError, r2, unitPrice, type PosLine, type PosProduct, type PosStore } from "./posTypes";
 
-type Cat = { id: string; name: string; emoji: string | null; parent_id?: string | null; sort_order?: number };
+type Cat = { id: string; name: string; emoji: string | null; image_url?: string | null; parent_id?: string | null; sort_order?: number };
 type PayMode = "nakit" | "kart" | "karisik";
 type Held = { id: string; at: number; lines: PosLine[]; discount: string };
 
@@ -473,7 +474,7 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
                 onClick={() => setCat(c.id === activeTop ? "" : c.id)}
                 className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold ${activeTop === c.id ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}
               >
-                {c.emoji} {c.name}
+                <CategoryIcon cat={c} imgClass="h-5 w-5 -my-1" /> {c.name}
               </button>
             ))}
           </div>

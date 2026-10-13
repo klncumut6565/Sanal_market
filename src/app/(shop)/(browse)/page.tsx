@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { Suspense } from "react";
@@ -43,7 +44,7 @@ export default async function HomePage() {
           <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
             {topLevel(categories).map((c) => (
               <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
-                <span className="grid aspect-square w-full place-items-center rounded-xl bg-brand-soft text-3xl">{c.emoji ?? "🛒"}</span>
+                <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl"><CategoryIcon cat={c} imgClass="h-full w-full p-1.5" /></span>
                 <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
               </Link>
             ))}
@@ -85,7 +86,7 @@ async function MemberSections() {
         <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
           {topLevel(categories).map((c) => (
             <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
-              <span className="grid aspect-square w-full place-items-center rounded-xl bg-brand-soft text-3xl">{c.emoji ?? "🛒"}</span>
+              <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl"><CategoryIcon cat={c} imgClass="h-full w-full p-1.5" /></span>
               <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
             </Link>
           ))}

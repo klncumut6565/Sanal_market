@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import { usePathname } from "next/navigation";
 import type { Category } from "@/lib/types";
 import { childrenOf, topLevel } from "@/lib/categoryTree";
@@ -25,7 +26,7 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
         return (
           <div key={c.id}>
             <Link href={`/kategori/${c.slug}`} className={`${item} ${active === c.slug ? "bg-brand-soft text-brand" : "hover:bg-white"}`}>
-              <span className="text-lg">{c.emoji ?? "🛒"}</span> {c.name}
+              <CategoryIcon cat={c} className="text-lg" imgClass="h-6 w-6" /> {c.name}
             </Link>
             {openParent === c.id && subs.length > 0 && (
               <div className="mb-1 ml-6 space-y-0.5 border-l border-line pl-2">
@@ -59,7 +60,7 @@ export function CategoryChips({ categories }: { categories: Category[] }) {
       </Link>
       {topLevel(categories).map((c) => (
         <Link key={c.id} href={`/kategori/${c.slug}`} className={`${chip} ${activeTop === c.id ? "bg-brand text-white ring-brand" : "bg-white ring-line"}`}>
-          {c.emoji} {c.name}
+          <CategoryIcon cat={c} imgClass="h-5 w-5 -my-1" /> {c.name}
         </Link>
       ))}
     </nav>
