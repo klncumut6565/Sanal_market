@@ -11,6 +11,7 @@ import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { Suspense } from "react";
 import { fetchAll } from "@/lib/data/fetchAll";
+import { fold, matchWords } from "@/lib/trFold";
 
 const PAGE = 100;
 
@@ -28,10 +29,12 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
   const cats = (categories ?? []) as Category[];
   const catOpts = cats.map((c) => ({ id: c.id, name: c.name }));
-  const q = (sp.q ?? "").trim().toLocaleLowerCase("tr");
+  // Türkçe karakter ve büyük/küçük harf duyarsız, kelime bazlı ("yeni raki 70" → YENİ RAKI 70CL)
+  const rawQ = (sp.q ?? "").trim();
+  const q = fold(rawQ);
   const list = ((products ?? []) as Product[]).filter(
     (p) =>
-      (!q || p.name.toLocaleLowerCase("tr").includes(q) || (p.barcode ?? "").includes(q)) &&
+      (!q || matchWords(p.name, rawQ) || (p.barcode ?? "").includes(rawQ.replace(/\s/g, ""))) &&
       (!sp.kategori || p.category_id === sp.kategori) &&
       (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
       (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
@@ -40,8 +43,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   if (q) {
     // Ada göre en iyi eşleşme en üstte: tam eşleşme > başlıyor > kelime başı > içeriyor
     const rank = (p: Product) => {
-      const n = p.name.toLocaleLowerCase("tr");
-      if (n === q || p.barcode === q) return 0;
+      const n = fold(p.name);
+      if (n === q || p.barcode === rawQ) return 0;
       if (n.startsWith(q)) return 1;
       if (n.split(/\s+/).some((w) => w.startsWith(q))) return 2;
       return 3;

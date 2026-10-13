@@ -47,14 +47,8 @@ export const PAY_LABEL = { nakit: "Nakit", kart: "Kart", karisik: "Nakit + Kart"
 export const unitPrice = (p: Pick<PosProduct, "price" | "sale_price">) => Number(p.sale_price ?? p.price);
 export const r2 = (n: number) => Math.round(n * 100) / 100;
 
-const trMap: Record<string, string> = { ç: "c", ğ: "g", ı: "i", i: "i", ö: "o", ş: "s", ü: "u", â: "a", î: "i", û: "u" };
 /** Aramada Türkçe karakter/büyük-küçük farkını yok say */
-export const fold = (s: string) =>
-  s
-    .toLocaleLowerCase("tr")
-    .replace(/[çğıiöşüâîû]/g, (c) => trMap[c] ?? c)
-    .replace(/\s+/g, " ")
-    .trim();
+export { fold } from "@/lib/trFold";
 
 export const POS_ERR: Record<string, string> = {
   YETKISIZ: "Bu işlem için yönetici girişi gerekli.",
