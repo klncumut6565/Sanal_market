@@ -216,8 +216,9 @@ export async function sendWhatsAppChain(a: {
     if (r.ok) {
       // Meta düz mesajı kabul edip sonradan teslim edemeyebilir; webhook "failed" derse yedek gider
       if (r.wamid && fallbackPhone && a.apikey) await recordOutbox(r.wamid, a.phone, a.text, fallbackPhone, a.apikey);
-      if (a.windowOpen == null && fallbackPhone && a.apikey && !webhookReady()) {
-        // Webhook kurulmadan teslim edilip edilmediğini bilemeyiz → güvenli taraf: yedeğe de gönder
+      if (a.windowOpen == null && fallbackPhone && a.apikey) {
+        // Webhook'tan henüz hiç veri gelmedi (kurulmadı ya da uygulama yayında değil):
+        // teslim edilip edilmediğini bilemeyiz → güvenli taraf: yedeğe de gönder
         const c = await sendWhatsApp(fallbackPhone, a.apikey, a.text);
         return `WhatsApp (Meta): iletildi + güvenlik için CallMeBot ile ${fallbackPhone} numarasına da ${c.ok ? "gönderildi" : `gönderilemedi (${c.error})`}`;
       }
