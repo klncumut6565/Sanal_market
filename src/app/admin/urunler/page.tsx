@@ -12,6 +12,7 @@ import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { Suspense } from "react";
 import { fetchAll } from "@/lib/data/fetchAll";
 import { fold, matchWords } from "@/lib/trFold";
+import { categoryOptions, withDescendants } from "@/lib/categoryTree";
 
 const PAGE = 100;
 
@@ -28,14 +29,16 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const costOf = new Map((costs ?? []).map((c) => [c.product_id as string, Number(c.cost_price)]));
   const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
   const cats = (categories ?? []) as Category[];
-  const catOpts = cats.map((c) => ({ id: c.id, name: c.name }));
+  const treeOpts = categoryOptions(cats);
+  const catOpts = treeOpts.map((o) => ({ id: o.id, name: o.label }));
+  const catFilter = sp.kategori ? withDescendants(cats, sp.kategori) : null;
   // Türkçe karakter ve büyük/küçük harf duyarsız, kelime bazlı ("yeni raki 70" → YENİ RAKI 70CL)
   const rawQ = (sp.q ?? "").trim();
   const q = fold(rawQ);
   const list = ((products ?? []) as Product[]).filter(
     (p) =>
       (!q || matchWords(p.name, rawQ) || (p.barcode ?? "").includes(rawQ.replace(/\s/g, ""))) &&
-      (!sp.kategori || p.category_id === sp.kategori) &&
+      (!catFilter || (!!p.category_id && catFilter.has(p.category_id))) &&
       (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
       (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
       (sp.marj !== "girilmemis" || !costOf.has(p.id)),
@@ -83,7 +86,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         </Suspense>
         <select name="kategori" defaultValue={sp.kategori ?? ""} className="input max-w-52">
           <option value="">Tüm kategoriler</option>
-          {cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {treeOpts.map((o) => <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>)}
         </select>
         <select name="stok" defaultValue={sp.stok ?? ""} className="input max-w-44">
           <option value="">Tüm stoklar</option>

@@ -333,11 +333,19 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
     is_active: fd.get("is_active") === "on",
     night_ban: fd.get("night_ban") === "on",
     visibility: ["herkes", "uye", "onayli", "ozel", "kapali"].includes(str(fd, "visibility")) ? str(fd, "visibility") : "herkes",
+    ...(fd.has("parent_id") ? { parent_id: str(fd, "parent_id") || null } : {}),
   };
   const res = id
     ? await supabase.from("categories").update(row).eq("id", id).select("id").single()
     : await supabase.from("categories").insert({ ...row, sort_order: 9999 }).select("id").single();
-  if (res.error) return { error: res.error.code === "23505" ? "Bu kategori zaten var." : res.error.message };
+  if (res.error) {
+    const m = res.error.message;
+    if (res.error.code === "23505") return { error: "Bu adla bir kategori zaten var (alt kategori adları da benzersiz olmalı)." };
+    if (m.includes("IKI_SEVIYE")) return { error: "Alt kategorinin altına kategori eklenemez (en fazla 2 seviye)." };
+    if (m.includes("ALTI_OLAN_ALT_OLAMAZ")) return { error: "Alt kategorileri olan bir kategori başka kategorinin altına taşınamaz." };
+    if (m.includes("KENDI_ALTI_OLAMAZ")) return { error: "Kategori kendi altına taşınamaz." };
+    return { error: m };
+  }
   // İstenen sıraya yerleştir; o sıradaki ve sonrakiler bir kayar (boşsa en sona)
   const { error: posErr } = await supabase.rpc("admin_place_category", { p_id: res.data.id, p_pos: pos > 0 ? pos : null });
   updateTag(CATALOG_TAG);

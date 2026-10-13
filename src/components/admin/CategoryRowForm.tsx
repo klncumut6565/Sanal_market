@@ -4,7 +4,28 @@ import { CATEGORY_EMOJIS } from "@/lib/categoryEmoji";
 import { deleteCategory, saveCategory, type ActionState } from "@/app/admin/actions";
 import type { Category } from "@/lib/types";
 
-export function CategoryRowForm({ category, productCount, total }: { category?: Category; productCount?: number; total?: number }) {
+export function CategoryRowForm({
+  category,
+  productCount,
+  total,
+  parents = [],
+  parentId,
+  parentName,
+  subCount,
+}: {
+  category?: Category;
+  productCount?: number;
+  total?: number;
+  /** Ana kategoriler (alt kategoriyi taşımak için) */
+  parents?: { id: string; name: string }[];
+  /** Yeni alt kategori formu: hangi ana kategorinin altına */
+  parentId?: string;
+  parentName?: string;
+  /** Ana kategori satırında: alt kategorilerdeki ürün sayısı */
+  subCount?: number;
+}) {
+  const isSub = !!(parentId || category?.parent_id);
+  const hasParentSelect = !!category && !!category.parent_id; // alt kategoriyi başka ana kategoriye taşıyabil
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCategory, {});
   const [emoji, setEmoji] = useState(category?.emoji ?? "");
   const [pick, setPick] = useState(false);
@@ -12,6 +33,7 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
     <div>
       <form action={action} className="flex flex-wrap items-center gap-2" key={category ? undefined : state.ok}>
         {category && <input type="hidden" name="id" value={category.id} />}
+        {parentId && <input type="hidden" name="parent_id" value={parentId} />}
         <input type="hidden" name="emoji" value={emoji} />
         <button
           type="button"
@@ -22,7 +44,19 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
         >
           {emoji || <span className="text-xs text-muted">simge</span>}
         </button>
-        <input name="name" required defaultValue={category?.name} placeholder="Kategori adı" className="input min-w-40 flex-1" />
+        <input name="name" required defaultValue={category?.name} placeholder={parentName ? `Alt kategori adı (${parentName} altında)` : "Kategori adı"} className="input min-w-40 flex-1" />
+        {hasParentSelect && (
+          <select name="parent_id" defaultValue={category?.parent_id ?? ""} title="Ana kategori" className="input w-auto py-2 text-sm">
+            {parents
+              .filter((p) => p.id !== category?.id)
+              .map((p) => (
+                <option key={p.id} value={p.id}>
+                  ↳ {p.name}
+                </option>
+              ))}
+            <option value="">— Ana kategori yap —</option>
+          </select>
+        )}
         {category ? (
           <label className="flex items-center gap-1.5 text-sm font-semibold" title="Diziliş sırası">
             Sıra
@@ -42,6 +76,12 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
             <span className="text-xs font-normal text-muted">Yazdığın sıradaki ve sonraki kategoriler bir sıra aşağı kayar.</span>
           </label>
         )}
+        {isSub ? (
+          <span className="text-xs text-muted" title="Alt kategori görünürlük ve 22–06 ayarını ana kategoriden alır">
+            👁 Ana kategoriden
+          </span>
+        ) : (
+        <>
         <select
           name="visibility"
           defaultValue={category?.visibility ?? "herkes"}
@@ -57,6 +97,8 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
         <label className="flex items-center gap-1.5 text-sm font-semibold" title="Türkiye'de 22:00–06:00 arası alkol perakende satışı yasak">
           <input type="checkbox" name="night_ban" defaultChecked={category?.night_ban ?? false} className="h-4 w-4 accent-brand" /> 22–06 satış yok
         </label>
+        </>
+        )}
         <label className="flex items-center gap-1.5 text-sm font-semibold">
           <input type="checkbox" name="is_active" defaultChecked={category?.is_active ?? true} className="h-4 w-4 accent-brand" /> Aktif
         </label>
@@ -66,7 +108,7 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
             formAction={deleteCategory}
             formNoValidate
             onClick={(e) => {
-              if (!confirm(`"${category.name}" silinsin mi? Ürünleri kategorisiz kalır.`)) e.preventDefault();
+              if (!confirm(`"${category.name}" silinsin mi? Ürünleri kategorisiz kalır${category.parent_id ? "" : "; alt kategorileri ana kategori olur"}.`)) e.preventDefault();
             }}
             className="px-2 text-sm font-semibold text-muted hover:text-brand"
           >
@@ -95,7 +137,11 @@ export function CategoryRowForm({ category, productCount, total }: { category?: 
         )}
       </form>
       <div className="mt-1 flex gap-3 text-xs">
-        {category && <span className="text-muted">{productCount} ürün · /kategori/{category.slug}</span>}
+        {category && (
+          <span className="text-muted">
+            {productCount} ürün{subCount != null ? ` (+ alt kategorilerde ${subCount})` : ""} · /kategori/{category.slug}
+          </span>
+        )}
         {state.error && <span className="font-semibold text-brand">{state.error}</span>}
         {state.ok && <span className="font-semibold text-ok">{state.ok}</span>}
       </div>

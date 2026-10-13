@@ -28,7 +28,7 @@ import { PosHistory } from "./PosHistory";
 import { PosReceipt, type ReceiptData } from "./PosReceipt";
 import { fold, posError, r2, unitPrice, type PosLine, type PosProduct, type PosStore } from "./posTypes";
 
-type Cat = { id: string; name: string; emoji: string | null };
+type Cat = { id: string; name: string; emoji: string | null; parent_id?: string | null; sort_order?: number };
 type PayMode = "nakit" | "kart" | "karisik";
 type Held = { id: string; at: number; lines: PosLine[]; discount: string };
 
@@ -240,6 +240,15 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
   };
 
   // ---------------- arama ----------------
+  // Ana kategori seçilince alt kategorilerinin ürünleri de gelir
+  const catSet = useMemo(() => {
+    if (!cat) return null;
+    return new Set([cat, ...categories.filter((c) => c.parent_id === cat).map((c) => c.id)]);
+  }, [cat, categories]);
+  const topCats = useMemo(() => categories.filter((c) => !c.parent_id), [categories]);
+  const activeTop = cat ? (categories.find((c) => c.id === cat)?.parent_id ?? cat) : "";
+  const subCats = useMemo(() => (activeTop ? categories.filter((c) => c.parent_id === activeTop) : []), [activeTop, categories]);
+
   // Arama dizini: Türkçe-katlanmış adlar bir kez hesaplanır (her tuşta 3000+ ad yeniden işlenmez)
   const index = useMemo(() => (products ?? []).map((p) => ({ p, n: fold(p.name) })), [products]);
   // Yazarken arayüz takılmasın: arama bir sonraki karede çalışır
@@ -251,19 +260,19 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
     const m = q.trim().match(/^(\d+)\*(.*)$/);
     const text = fold(m ? m[2] : q);
     if (!text) {
-      const pool = cat ? products.filter((p) => p.category_id === cat) : products.filter((p) => p.is_active && p.stock > 0);
-      return pool.slice(0, cat ? 120 : 48);
+      const pool = catSet ? products.filter((p) => !!p.category_id && catSet.has(p.category_id)) : products.filter((p) => p.is_active && p.stock > 0);
+      return pool.slice(0, catSet ? 120 : 48);
     }
     const words = text.split(" ");
     const scored: { p: PosProduct; s: number }[] = [];
     for (const { p, n } of index) {
-      if (cat && p.category_id !== cat) continue;
+      if (catSet && !(p.category_id && catSet.has(p.category_id))) continue;
       if (p.barcode && p.barcode.startsWith(text)) scored.push({ p, s: 0 });
       else if (words.every((w) => n.includes(w))) scored.push({ p, s: n.startsWith(text) ? 1 : n.split(" ").some((w) => w.startsWith(words[0])) ? 2 : 3 });
     }
     scored.sort((a, b) => a.s - b.s || Number(b.p.is_active) - Number(a.p.is_active) || a.p.name.localeCompare(b.p.name, "tr"));
     return scored.slice(0, 60).map((x) => x.p);
-  }, [products, index, dq, cat]);
+  }, [products, index, dq, catSet]);
 
   const submitSearch = () => {
     const v = q.trim();
@@ -458,16 +467,32 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
             <button onClick={() => setCat("")} className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold ${!cat ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}>
               {q ? "Tümü" : "Stoktakiler"}
             </button>
-            {categories.map((c) => (
+            {topCats.map((c) => (
               <button
                 key={c.id}
-                onClick={() => setCat(c.id === cat ? "" : c.id)}
-                className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold ${cat === c.id ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}
+                onClick={() => setCat(c.id === activeTop ? "" : c.id)}
+                className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold ${activeTop === c.id ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}
               >
                 {c.emoji} {c.name}
               </button>
             ))}
           </div>
+          {subCats.length > 0 && (
+            <div className="no-scrollbar -mt-1 flex gap-1.5 overflow-x-auto pb-1 pl-2">
+              <button onClick={() => setCat(activeTop)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${cat === activeTop ? "bg-brand text-white" : "bg-white ring-1 ring-line"}`}>
+                Hepsi
+              </button>
+              {subCats.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setCat(c.id)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-bold ${cat === c.id ? "bg-brand text-white" : "bg-white ring-1 ring-line"}`}
+                >
+                  ↳ {c.name}
+                </button>
+              ))}
+            </div>
+          )}
 
           {!products && !loadErr && (
             <p className="flex items-center gap-2 rounded-2xl bg-white p-6 text-muted ring-1 ring-line">

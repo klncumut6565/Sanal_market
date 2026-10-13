@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { getCategories, getMemberCatalog, getProducts, getStoreSettings } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
 import { VoicePromo } from "@/components/shop/VoicePromo";
+import { topLevel, withDescendants } from "@/lib/categoryTree";
 
 export default async function HomePage() {
   const [categories, products, s] = await Promise.all([getCategories(), getProducts(), getStoreSettings()]);
@@ -40,7 +41,7 @@ export default async function HomePage() {
         <section>
           <h2 className="mb-3 text-lg font-extrabold">Kategoriler</h2>
           <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
-            {categories.map((c) => (
+            {topLevel(categories).map((c) => (
               <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
                 <span className="grid aspect-square w-full place-items-center rounded-xl bg-brand-soft text-3xl">{c.emoji ?? "🛒"}</span>
                 <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
@@ -57,8 +58,9 @@ export default async function HomePage() {
       {deals.length > 0 && <Section title="Fırsat ürünleri 🔥" products={deals} />}
       {featured.length > 0 && <Section title="Çok satanlar" products={featured} />}
 
-      {categories.map((c) => {
-        const list = products.filter((p) => p.category_id === c.id).slice(0, 10);
+      {topLevel(categories).map((c) => {
+        const ids = withDescendants(categories, c.id);
+        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 10);
         if (list.length === 0) return null;
         return <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} />;
       })}
@@ -81,7 +83,7 @@ async function MemberSections() {
     <>
       <section>
         <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
-          {categories.map((c) => (
+          {topLevel(categories).map((c) => (
             <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
               <span className="grid aspect-square w-full place-items-center rounded-xl bg-brand-soft text-3xl">{c.emoji ?? "🛒"}</span>
               <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
@@ -89,8 +91,9 @@ async function MemberSections() {
           ))}
         </div>
       </section>
-      {categories.map((c) => {
-        const list = products.filter((p) => p.category_id === c.id).slice(0, 10);
+      {topLevel(categories).map((c) => {
+        const ids = withDescendants(categories, c.id);
+        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 10);
         return list.length ? <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} /> : null;
       })}
     </>

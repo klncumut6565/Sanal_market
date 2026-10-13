@@ -51,7 +51,10 @@ async function ProductContent({ params }: Props) {
       <div className="rounded-3xl bg-white p-4 ring-1 ring-line sm:p-6">
         {cat && (
           <Link href={`/kategori/${cat.slug}`} className="mb-3 inline-flex items-center text-sm font-semibold text-muted hover:text-brand">
-            <ChevronLeft size={16} /> {cat.name}
+            <ChevronLeft size={16} /> {(() => {
+              const parent = cat.parent_id ? cats.find((c) => c.id === cat.parent_id) : null;
+              return parent ? `${parent.name} › ${cat.name}` : cat.name;
+            })()}
           </Link>
         )}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ChevronLeft, Loader2, Plus, Save, ScanBarcode, Trash2 } from "lucide-react";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { useHidScanner } from "@/lib/hidScanner";
+import { categoryOptions } from "@/lib/categoryTree";
 import { createClient } from "@/lib/supabase/client";
 import { quickAddProducts, type QuickRow } from "@/app/admin/actions";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
@@ -55,7 +56,12 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
   const [summary, setSummary] = useState<string | null>(null);
   const [scanRow, setScanRow] = useState<number | null>(null);
   const tableRef = useRef<HTMLTableElement>(null);
-  const catByName = useMemo(() => new Map(categories.map((c) => [c.name.toLocaleLowerCase("tr"), c.id])), [categories]);
+  const catOpts = useMemo(() => categoryOptions(categories), [categories]);
+  // Excel'den yapıştırmada kategori adı veya "Ana › Alt" yazımı
+  const catByName = useMemo(
+    () => new Map(catOpts.flatMap((o) => [[o.label.toLocaleLowerCase("tr"), o.id], [o.cat.name.toLocaleLowerCase("tr"), o.id]] as [string, string][])),
+    [catOpts],
+  );
 
   const update = useCallback((i: number, patch: Partial<Row>) => {
     setRows((rs) => {
@@ -217,8 +223,8 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
           Varsayılan kategori
           <select value={defCat} onChange={(e) => applyDefaultCat(e.target.value)} className="input w-auto py-2">
             <option value="">— Seç —</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {catOpts.map((o) => (
+              <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>
             ))}
           </select>
         </label>
@@ -256,8 +262,8 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
                           className="h-9 w-full rounded-lg border border-transparent bg-transparent px-1.5 hover:border-line focus:border-brand focus:outline-none"
                         >
                           <option value="">—</option>
-                          {categories.map((cat) => (
-                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          {catOpts.map((o) => (
+                            <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>
                           ))}
                         </select>
                       ) : (

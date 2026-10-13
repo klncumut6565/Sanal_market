@@ -114,13 +114,17 @@ export const getMemberCatalog = cache(async (): Promise<{ categories: Category[]
   const { data: all } = await sb.rpc("shop_categories");
   const cats = ((all ?? []) as Category[]).filter((c) => c.visibility && c.visibility !== "herkes");
   if (!cats.length) return empty;
-  const { data: prods } = await sb
-    .from("products")
-    .select(PRODUCT_COLS)
-    .eq("is_active", true)
-    .in("category_id", cats.map((c) => c.id))
-    .order("sort_order")
-    .order("name");
+  const { data: prods } = await fetchAll((f, t) =>
+    sb
+      .from("products")
+      .select(PRODUCT_COLS)
+      .eq("is_active", true)
+      .in("category_id", cats.map((c) => c.id))
+      .order("sort_order")
+      .order("name")
+      .order("id")
+      .range(f, t),
+  );
   return { categories: cats, products: (prods ?? []).map(num) };
 });
 
