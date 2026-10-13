@@ -11,6 +11,7 @@ import { requireAdmin } from "@/lib/data/auth";
 import { CATALOG_TAG, SETTINGS_TAG } from "@/lib/data/catalog";
 import { AREAS_TAG } from "@/lib/data/areas";
 import { slugify } from "@/lib/format";
+import { parseNumTR } from "@/lib/numTR";
 import type { OrderStatus } from "@/lib/types";
 
 export type ActionState = { error?: string; ok?: string };
@@ -444,6 +445,76 @@ export async function ownerGrantByEmail(fd: FormData) {
     if (error) msg = roleMsg(error.message);
   }
   redirect(`/admin/yoneticiler?${msg ? "hata=" + encodeURIComponent(msg) : "ok=verildi"}`);
+}
+
+// ---------------- HIZLI ÜRÜN EKLEME (liste) ----------------
+export type QuickRow = {
+  key: string;
+  barcode: string;
+  name: string;
+  category_id: string;
+  unit_label: string;
+  cost: string;
+  price: string;
+  sale: string;
+  stock: string;
+  critical: string;
+  max: string;
+  active: boolean;
+};
+export type QuickResult = { key: string; ok: boolean; error?: string; note?: string };
+
+/** Liste ekranından gelen satırları tek tek ekler; her satır için sonuç döner (hatalılar eklenmez). */
+export async function quickAddProducts(rows: QuickRow[]): Promise<QuickResult[]> {
+  const { supabase } = await requireAdmin();
+  const out: QuickResult[] = [];
+  let added = 0;
+  for (const r of rows.slice(0, 300)) {
+    const name = r.name.trim().replace(/\s+/g, " ");
+    const price = parseNumTR(r.price);
+    const sale = parseNumTR(r.sale);
+    const cost = parseNumTR(r.cost);
+    let stock = parseNumTR(r.stock);
+    const crit = parseNumTR(r.critical);
+    const max = parseNumTR(r.max);
+    const err = (e: string) => out.push({ key: r.key, ok: false, error: e });
+    if (name.length < 2) { err("Ürün adı girin"); continue; }
+    if (price == null || Number.isNaN(price) || price <= 0) { err("Satış fiyatı geçersiz"); continue; }
+    if (sale != null && (Number.isNaN(sale) || sale < 0 || sale >= price)) { err("İndirimli fiyat satış fiyatından düşük olmalı"); continue; }
+    if (cost != null && (Number.isNaN(cost) || cost < 0)) { err("Alış fiyatı geçersiz"); continue; }
+    if (stock != null && Number.isNaN(stock)) { err("Stok geçersiz"); continue; }
+    let note: string | undefined;
+    if (stock == null) stock = 0;
+    if (stock < 0) { note = "negatif stok 0 alındı"; stock = 0; }
+    const row = {
+      name,
+      slug: slugify(name),
+      category_id: r.category_id || null,
+      unit_label: r.unit_label.trim() || null,
+      barcode: cleanBarcode(r.barcode),
+      price: Math.round(price * 100) / 100,
+      sale_price: sale == null ? null : Math.round(sale * 100) / 100,
+      stock: Math.trunc(stock),
+      critical_stock: crit == null || Number.isNaN(crit) ? 5 : Math.max(0, Math.trunc(crit)),
+      max_per_order: max == null || Number.isNaN(max) ? 20 : Math.max(1, Math.trunc(max)),
+      is_active: r.active,
+      is_featured: false,
+      sort_order: 0,
+    };
+    let res = await supabase.from("products").insert(row).select("id").single();
+    // Aynı ada sahip ürün varsa bağlantı adını (slug) benzersizleştir
+    if (res.error?.code === "23505" && !res.error.message.includes("barcode"))
+      res = await supabase.from("products").insert({ ...row, slug: `${row.slug}-${(row.barcode ?? crypto.randomUUID()).slice(-6)}` }).select("id").single();
+    if (res.error) {
+      err(res.error.code === "23505" && res.error.message.includes("barcode") ? "Bu barkod başka bir üründe kayıtlı" : res.error.message);
+      continue;
+    }
+    if (cost != null) await supabase.from("product_costs").upsert({ product_id: res.data.id, cost_price: cost, updated_at: new Date().toISOString() });
+    out.push({ key: r.key, ok: true, note });
+    added++;
+  }
+  if (added) updateTag(CATALOG_TAG);
+  return out;
 }
 
 // ---------------- KURYE ----------------

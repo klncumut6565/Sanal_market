@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ScanBarcode } from "lucide-react";
+import { Plus, ScanBarcode, Rows3 } from "lucide-react";
 import { requireAdmin } from "@/lib/data/auth";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
@@ -54,6 +54,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         <h1 className="text-2xl font-black">Ürünler & stok</h1>
         <div className="flex gap-2">
           <Link href="/admin/barkod" className="btn-ghost py-2.5"><ScanBarcode size={18} /> Barkodla güncelle</Link>
+          <Link href="/admin/urunler/hizli" className="btn-ghost py-2.5"><Rows3 size={18} /> Hızlı ekle (liste)</Link>
           <Link href="/admin/urunler/yeni" className="btn-primary py-2.5"><Plus size={18} /> Yeni ürün</Link>
         </div>
       </div>
