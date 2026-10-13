@@ -34,16 +34,31 @@ export async function loadOrderMsg(sb: SupabaseClient, orderId: string): Promise
 /** Kurye mesajı metni (yönetici bildirimiyle aynı; panel bağlantısı yerine harita). */
 export const courierText = (o: OrderMsg) => `🛵 KURYE — ${textBody(o, true)}`;
 
+type CourierCfg = { courier_phone: string | null; courier_apikey: string | null; backup_phone: string | null; callmebot_apikey: string | null };
+
+/** Kuryenin CallMeBot anahtarı; girilmemişse ve kurye numarası yedek numarayla aynıysa onun anahtarı. */
+export const courierKey = (n: CourierCfg) =>
+  n.courier_apikey?.trim() || (n.courier_phone && n.courier_phone === n.backup_phone ? n.callmebot_apikey : null) || null;
+
+export async function loadCourierCfg(sb: SupabaseClient): Promise<CourierCfg | null> {
+  const { data } = await sb.from("notify_settings").select("courier_phone, courier_apikey, backup_phone, callmebot_apikey").eq("id", 1).maybeSingle();
+  return (data as CourierCfg | null) ?? null;
+}
+
+export async function sendToCourier(n: CourierCfg, text: string) {
+  return sendWhatsAppChain({ phone: n.courier_phone, backupPhone: null, apikey: courierKey(n), text });
+}
+
 export async function notifyCourier(sb: SupabaseClient, orderId: string): Promise<string | null> {
-  const { data: n } = await sb.from("notify_settings").select("courier_phone, courier_apikey").eq("id", 1).maybeSingle();
+  const n = await loadCourierCfg(sb);
   if (!n?.courier_phone) return null;
   const o = await loadOrderMsg(sb, orderId);
   if (!o) return null;
-  const r = await sendWhatsAppChain({ phone: n.courier_phone, backupPhone: null, apikey: n.courier_apikey ?? null, text: courierText(o) });
+  const r = await sendToCourier(n, courierText(o));
   const summary = `#${o.order_no} kurye → ${r}`;
   await Promise.all([
     sb.from("notify_settings").update({ courier_last_result: `${new Date().toLocaleString("tr-TR", { timeZone: "Europe/Istanbul" })} · ${summary}` }).eq("id", 1),
-    sb.from("orders").update({ courier_notified_at: new Date().toISOString() }).eq("id", orderId),
+    /gönderildi/.test(r) ? sb.from("orders").update({ courier_notified_at: new Date().toISOString() }).eq("id", orderId) : null,
   ]);
   console.log("[kurye]", summary);
   return summary;

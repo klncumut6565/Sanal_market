@@ -3,7 +3,7 @@ import { streetKey } from "@/lib/streetSuggest";
 import { normalizeTrMobile } from "@/lib/phone";
 import { after } from "next/server";
 import { cloudTestParams, sendEmail, sendWhatsAppChain } from "@/lib/notify";
-import { notifyCourier } from "@/lib/courier";
+import { courierKey, loadCourierCfg, notifyCourier, sendToCourier } from "@/lib/courier";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
@@ -463,15 +463,15 @@ export async function saveCourierSettings(_: ActionState, fd: FormData): Promise
 
 export async function testCourier(): Promise<ActionState> {
   const { supabase } = await requireAdmin();
-  const { data: n } = await supabase.from("notify_settings").select("courier_phone, courier_apikey").eq("id", 1).single();
+  const n = await loadCourierCfg(supabase);
   if (!n?.courier_phone) return { error: "Önce kurye numarasını kaydet." };
-  const r = await sendWhatsAppChain({
-    phone: n.courier_phone,
-    backupPhone: null,
-    apikey: n.courier_apikey,
-    text: "✅ Sanal Market kurye test mesajı — siparişler hazırlanınca buraya gelecek.",
-  });
-  return /gönderildi/.test(r) ? { ok: r } : { error: r };
+  const r = await sendToCourier(n, "✅ Sanal Market kurye test mesajı — siparişler hazırlanınca buraya gelecek.");
+  if (/gönderildi/.test(r)) return { ok: r };
+  return {
+    error: courierKey(n)
+      ? r
+      : `${r}. Kurye için CallMeBot anahtarı yok: kurye kendi telefonundan CallMeBot'a "I allow callmebot to send me messages" yazıp gelen anahtarı ikinci kutuya girmeli (ya da numarayı Meta alıcı listesine ekle).`,
+  };
 }
 
 // ---------------- KARA LİSTE ----------------
