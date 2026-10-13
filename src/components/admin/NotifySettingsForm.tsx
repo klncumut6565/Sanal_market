@@ -2,7 +2,7 @@
 import { useActionState } from "react";
 import { BellRing, Loader2, Mail, MessageCircle } from "lucide-react";
 import { saveNotifySettings, testNotify, type ActionState } from "@/app/admin/actions";
-import { displayPhone } from "@/lib/phone";
+import { PhoneInput } from "@/components/PhoneInput";
 
 type N = {
   email: string | null;
@@ -34,7 +34,7 @@ export function NotifySettingsForm({ n, hasResendKey, panelOpen, cloud = false }
         </label>
         <label className="block space-y-1">
           <span className="flex items-center gap-1.5 text-sm font-semibold"><MessageCircle size={15} /> Bildirim WhatsApp numarası</span>
-          <input name="whatsapp_phone" type="tel" defaultValue={n.whatsapp_phone ? displayPhone(n.whatsapp_phone) : ""} placeholder="+90 5xx xxx xx xx" className="input" />
+          <PhoneInput name="whatsapp_phone" defaultValue={n.whatsapp_phone ?? ""} />
           {cloud ? (
             <span className="block rounded-lg bg-emerald-50 px-2.5 py-1.5 text-xs font-bold text-emerald-700">✅ Meta WhatsApp API aktif — bildirimler anlık gider (CallMeBot kullanılmaz).</span>
           ) : (
@@ -47,7 +47,7 @@ export function NotifySettingsForm({ n, hasResendKey, panelOpen, cloud = false }
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-semibold">Yedek WhatsApp numarası (CallMeBot)</span>
-          <input name="backup_phone" type="tel" defaultValue={n.backup_phone ? displayPhone(n.backup_phone) : ""} placeholder="+90 541 673 58 63" className="input" />
+          <PhoneInput name="backup_phone" defaultValue={n.backup_phone ?? ""} />
           <span className="block text-xs text-muted">Bildirim yukarıdaki numaraya Meta ile gidemezse bu numaraya CallMeBot ile (birkaç dk gecikmeli) gönderilir. CallMeBot anahtarı bu numaraya ait olmalı.</span>
         </label>
         <details className="rounded-xl bg-bg p-3 text-sm">

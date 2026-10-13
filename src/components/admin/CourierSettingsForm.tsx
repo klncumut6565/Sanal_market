@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { Bike, Loader2 } from "lucide-react";
 import { saveCourierSettings, testCourier, type ActionState } from "@/app/admin/actions";
 import { displayPhone } from "@/lib/phone";
+import { PhoneInput } from "@/components/PhoneInput";
 
 export function CourierSettingsForm({ phone, apikey, lastResult }: { phone: string | null; apikey: string | null; lastResult: string | null }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCourierSettings, {});
@@ -19,7 +20,9 @@ export function CourierSettingsForm({ phone, apikey, lastResult }: { phone: stri
           Siparişte <b>Hazır · Kuryeye ver</b> seçilince sipariş mesajı (ürünler, adres, harita bağlantısı) bu numaraya WhatsApp&apos;tan otomatik gider.
         </p>
         <div className="flex flex-wrap gap-2">
-          <input name="courier_phone" type="tel" defaultValue={phone ? displayPhone(phone) : ""} placeholder="Kurye no: +90 5xx xxx xx xx" className="input min-w-0 flex-1" />
+          <div className="min-w-[220px] flex-1">
+            <PhoneInput name="courier_phone" defaultValue={phone ?? ""} />
+          </div>
           <input name="courier_apikey" defaultValue={apikey ?? ""} placeholder="Kuryenin CallMeBot anahtarı (isteğe bağlı)" autoComplete="off" className="input min-w-0 flex-1 font-mono" />
         </div>
         <div className="flex flex-wrap items-center gap-2">
