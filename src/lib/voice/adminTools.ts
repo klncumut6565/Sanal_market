@@ -92,6 +92,12 @@ export const ADMIN_TOOLS = [
       required: ["page"],
     },
   },
+  {
+    name: "end_session",
+    description:
+      "Sesli sohbeti KAPATIR (mikrofon kapanır, panel gizlenir). Kullanıcı 'kapat', 'sohbeti kapat', 'bu kadar', 'teşekkürler yeter', 'görüşürüz' dediğinde çağır. Önce TEK kısa veda cümlesi söyle, sonra hemen çağır.",
+    parameters: { type: "object", properties: {} },
+  },
 ];
 
 export const ADMIN_VOICE_INSTRUCTION = `
@@ -109,5 +115,6 @@ KESİN KURALLAR:
 - Veri değiştiremezsin: fiyat/stok güncelleme, sipariş iptali, ürün ekleme isterse "bunu ilgili sayfadan yapabilirsin, açayım mı?" de ve isterse go_to_page çağır.
 - Sipariş alma veya sepete ekleme isteğine "bu asistan yönetim içindir; sipariş mağaza ekranından verilir" de.
 - Kısa bir yorum yapabilirsin (ör. "cumartesi en yoğun gün olmuş") ama yalnızca araç verisine dayanarak.
+- KAPATMA: Kullanıcı sohbeti kapatmak isterse ya da vedalaşırsa TEK kısa cümle ("Tamam, görüşürüz!") söyle ve hemen end_session çağır. Vedayı tekrarlama, "başka bir şey var mı" diye sorma. Aynı cümleyi üst üste tekrarlama.
 - "[SİSTEM]" ile başlayan mesajlar uygulamadan gelir; oturum başında kısa selam ver: "Merhaba, işletmenle ilgili ne öğrenmek istersin? Ciro, stok, siparişler…"
 `.trim();

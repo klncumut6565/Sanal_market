@@ -13,7 +13,15 @@ const MAX_OTURUM_MS = 10 * 60_000;
 const SESSIZLIK_MS = 120_000;
 const SES_ESIGI_RMS = 500;
 
-export function useAdminVoice() {
+const trN = (t: string) => t.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, " ").trim();
+const icerir = (t: string, list: string[]) => {
+  const n = ` ${trN(t)} `;
+  return list.some((k) => n.includes(` ${k}`));
+};
+const ASIST_VEDA = ["görüşürüz", "hoşça kal", "hoşçakal", "güle güle", "iyi günler", "iyi akşamlar", "iyi çalışmalar", "kapatıyorum"];
+const KULLANICI_KAPAT = ["kapat", "kapatabilirsin", "bu kadar", "yeter", "görüşürüz", "hoşça kal", "hoşçakal", "teşekkürler", "sağ ol", "sağol"];
+
+export function useAdminVoice(onEnded?: () => void) {
   const router = useRouter();
   const [state, setState] = useState<VoiceState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -44,6 +52,14 @@ export function useAdminVoice() {
     [set],
   );
 
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => {
+    onEndedRef.current = onEnded;
+  }, [onEnded]);
+  const lastUser = useRef("");
+  /** Kapanış: mikrofon hemen kapanır, son konuşma bitince oturum kapanır */
+  const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
+
   const cleanup = useCallback(async () => {
     timers.current.forEach(clearInterval);
     timers.current = [];
@@ -59,8 +75,31 @@ export function useAdminVoice() {
   }, []);
 
   const stop = useCallback(async () => {
+    ending.current = null;
     await cleanup();
     set("idle");
+  }, [cleanup, set]);
+
+  const finishSession = useCallback(() => {
+    if (ending.current || !providerRef.current) return;
+    ending.current = { since: Date.now(), turnDone: false };
+    micRef.current?.stop();
+    micRef.current = null;
+    const t = setInterval(() => {
+      const e = ending.current;
+      if (!e) return clearInterval(t);
+      const waited = Date.now() - e.since;
+      const playing = playbackRef.current?.isPlaying() ?? false;
+      if ((e.turnDone && !playing && waited > 800) || waited > 10_000) {
+        clearInterval(t);
+        ending.current = null;
+        void cleanup().then(() => {
+          set("idle");
+          onEndedRef.current?.();
+        });
+      }
+    }, 300);
+    timers.current.push(t);
   }, [cleanup, set]);
 
   const start = useCallback(async () => {
@@ -71,6 +110,8 @@ export function useAdminVoice() {
     setActions([]);
     userBuf.current = "";
     asstBuf.current = "";
+    lastUser.current = "";
+    ending.current = null;
     set("connecting");
 
     const runTool = createAdminToolRunner({
@@ -99,13 +140,24 @@ export function useAdminVoice() {
           setUserText(userBuf.current);
           go("user_speaking");
         } else {
-          if (userBuf.current) userBuf.current = "";
+          if (userBuf.current) {
+            lastUser.current = userBuf.current;
+            userBuf.current = "";
+          }
           asstBuf.current += e.text;
           setAssistantText(asstBuf.current);
         }
       });
       provider.onTurnComplete(() => {
+        if (userBuf.current) lastUser.current = userBuf.current;
         userBuf.current = "";
+        if (ending.current) ending.current.turnDone = true;
+        else if (icerir(lastUser.current, KULLANICI_KAPAT) && icerir(asstBuf.current, ASIST_VEDA)) {
+          // Yedek: araç çağrılmadan vedalaştıysa da kapat
+          finishSession();
+          const e2 = ending.current as { turnDone: boolean } | null;
+          if (e2) e2.turnDone = true;
+        }
         if (!playback.isPlaying()) go("listening");
       });
       provider.onAudio((chunk) => playback.enqueue(chunk));
@@ -127,6 +179,10 @@ export function useAdminVoice() {
       });
       provider.onGoAway(() => {});
       provider.onToolCall(async (name, args) => {
+        if (name === "end_session") {
+          finishSession();
+          return { ok: true, closing: true, note: "Oturum kapanıyor; veda ettiysen başka bir şey söyleme." };
+        }
         go("tool_calling");
         try {
           return await runTool(name, args);
@@ -171,7 +227,7 @@ export function useAdminVoice() {
       setError(hataTurkce(e));
       set("error");
     }
-  }, [cleanup, go, router, set]);
+  }, [cleanup, go, router, set, finishSession]);
 
   useEffect(() => () => void cleanup(), [cleanup]);
 

@@ -26,7 +26,8 @@ const EXAMPLES = [
 
 export function AdminVoiceAssistant() {
   const [open, setOpen] = useState(false);
-  const v = useAdminVoice();
+  // "Sohbeti kapat" denince asistan kendini kapatır ve panel gizlenir
+  const v = useAdminVoice(() => setOpen(false));
   const active = v.state !== "idle" && v.state !== "error";
 
   const openIt = () => {
