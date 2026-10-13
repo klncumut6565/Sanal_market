@@ -1,4 +1,5 @@
 import "server-only";
+import { fetchAll } from "./fetchAll";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { cacheLife, cacheTag } from "next/cache";
@@ -58,12 +59,10 @@ export async function getProducts(): Promise<Product[]> {
   cacheTag(CATALOG_TAG);
   cacheLife("minutes");
   if (!hasSupabase) return [];
-  const { data, error } = await createPublicClient()
-    .from("products")
-    .select(PRODUCT_COLS)
-    .eq("is_active", true)
-    .order("sort_order")
-    .order("name");
+  const sb = createPublicClient();
+  const { data, error } = await fetchAll((f, t) =>
+    sb.from("products").select(PRODUCT_COLS).eq("is_active", true).order("sort_order").order("name").order("id").range(f, t),
+  );
   if (error) console.error("[katalog] ürünler alınamadı:", error.message);
   return (data ?? []).map(num);
 }

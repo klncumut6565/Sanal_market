@@ -1,6 +1,7 @@
 "use client";
 // Yönetim paneli sesli asistanının araçları — tarayıcıda, admin oturumuyla (RLS) salt okunur sorgular.
 import { createClient } from "@/lib/supabase/client";
+import { fetchAll } from "@/lib/data/fetchAll";
 import { fetchDiscounts } from "./discounts";
 import { calcMargin } from "@/lib/margin";
 import { addDays, businessDateOf, businessDateStart, hoursState, isYmd, reportRanges } from "@/lib/hours";
@@ -244,7 +245,9 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
     }
 
     if (name === "get_stock_status") {
-      const { data, error } = await sb.from("products").select("name,stock,critical_stock,unit_label").eq("is_active", true).order("stock").limit(5000);
+      const { data, error } = await fetchAll((f, t) =>
+        sb.from("products").select("name,stock,critical_stock,unit_label").eq("is_active", true).order("stock").order("id").range(f, t),
+      );
       if (error) return { error: error.message };
       const rows = data ?? [];
       const out = rows.filter((p) => p.stock <= 0);

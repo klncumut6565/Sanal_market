@@ -1,16 +1,18 @@
 // İndirimdeki ürünler — her iki sesli asistan için ortak sorgu.
 import type { createClient } from "@/lib/supabase/client";
+import { fetchAll } from "@/lib/data/fetchAll";
 
 type Sb = ReturnType<typeof createClient>;
 
 export async function fetchDiscounts(sb: Sb, opts: { includeInactive?: boolean; query?: string; limit?: number; categoryIds?: Set<string> } = {}) {
-  let q = sb
-    .from("products")
-    .select("id,name,unit_label,price,sale_price,stock,is_active,category_id,categories(name)")
-    .not("sale_price", "is", null)
-    .limit(1000);
-  if (!opts.includeInactive) q = q.eq("is_active", true);
-  const { data, error } = await q;
+  const { data, error } = await fetchAll((f, t) => {
+    let q = sb
+      .from("products")
+      .select("id,name,unit_label,price,sale_price,stock,is_active,category_id,categories(name)")
+      .not("sale_price", "is", null);
+    if (!opts.includeInactive) q = q.eq("is_active", true);
+    return q.order("id").range(f, t);
+  });
   if (error) return { error: error.message };
   const term = (opts.query ?? "").trim().toLocaleLowerCase("tr");
   const rows = (data ?? [])

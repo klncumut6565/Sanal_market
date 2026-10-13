@@ -1,6 +1,7 @@
 "use client";
 // Sesli asistan araçlarının tarayıcıda çalıştırılması (ürün arama, sepet işlemleri).
 import { createClient } from "@/lib/supabase/client";
+import { fetchAll } from "@/lib/data/fetchAll";
 import { useCart, cartTotals, lineUnit } from "@/store/cart";
 import { hoursState } from "@/lib/hours";
 import type { Product } from "@/lib/types";
@@ -179,7 +180,7 @@ export function createMarketToolRunner(deps: {
     if (name === "list_categories") {
       const [cats, { data: prods }] = await Promise.all([
         shopCategories(sb),
-        sb.from("products").select("category_id").eq("is_active", true).gt("stock", 0),
+        fetchAll((f, t) => sb.from("products").select("category_id").eq("is_active", true).gt("stock", 0).order("id").range(f, t)),
       ]);
       const categories = cats.map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
       return { count: categories.length, categories, note: "Kategorilerin hepsini adlarıyla say." };

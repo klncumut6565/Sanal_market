@@ -10,16 +10,19 @@ import { InlineCategorySelect } from "@/components/admin/InlineCategorySelect";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { Suspense } from "react";
+import { fetchAll } from "@/lib/data/fetchAll";
+
+const PAGE = 100;
 
 export const metadata = { title: "Ürünler" };
 
-export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string }> }) {
+export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string; s?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const [{ data: products }, { data: categories }, { data: costs }] = await Promise.all([
-    supabase.from("products").select("*").order("name"),
+    fetchAll((f, t) => supabase.from("products").select("*").order("name").order("id").range(f, t)),
     supabase.from("categories").select("*").order("sort_order"),
-    supabase.from("product_costs").select("product_id,cost_price"),
+    fetchAll((f, t) => supabase.from("product_costs").select("product_id,cost_price").order("product_id").range(f, t)),
   ]);
   const costOf = new Map((costs ?? []).map((c) => [c.product_id as string, Number(c.cost_price)]));
   const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
@@ -47,6 +50,16 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   }
   if (sp.marj === "dusuk") list.sort((a, b) => (marginOf(a)?.marginPct ?? 0) - (marginOf(b)?.marginPct ?? 0));
   // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
+  const pageCount = Math.max(1, Math.ceil(list.length / PAGE));
+  const pageNo = Math.min(pageCount, Math.max(1, Number(sp.s) || 1));
+  const shown = list.slice((pageNo - 1) * PAGE, pageNo * PAGE);
+  const pageHref = (n: number) => {
+    const u = new URLSearchParams();
+    for (const [k, v] of Object.entries(sp)) if (v && k !== "s") u.set(k, v);
+    if (n > 1) u.set("s", String(n));
+    const qs = u.toString();
+    return `/admin/urunler${qs ? `?${qs}` : ""}`;
+  };
   const withCost = ((products ?? []) as Product[]).filter((p) => p.is_active && costOf.has(p.id));
   const avgMargin = withCost.length ? withCost.reduce((a, p) => a + (marginOf(p)?.marginPct ?? 0), 0) / withCost.length : null;
 
@@ -81,7 +94,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         <button className="btn-ghost">Filtrele</button>
       </form>
       <p className="text-sm text-muted">
-        Alış fiyatı girilmiş ürün: <b className="text-ink">{withCost.length}</b>
+        {q || sp.kategori || sp.stok || sp.marj ? "Bulunan" : "Toplam"} ürün: <b className="text-ink">{list.length}</b>
+        {" "}· Alış fiyatı girilmiş ürün: <b className="text-ink">{withCost.length}</b>
         {avgMargin != null && (
           <>
             {" "}· Ortalama kâr marjı: <b className="text-ink">{pctTR(Math.round(avgMargin * 10) / 10)}</b>
@@ -95,9 +109,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
             <tr><th className="w-10 py-3 pl-3 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {list.map((p, i) => (
+            {shown.map((p, i) => (
               <tr key={p.id} className={p.is_active ? "" : "opacity-55"}>
-                <td className="py-3 pl-3 text-right text-xs font-bold tabular-nums text-muted">{i + 1}</td>
+                <td className="py-3 pl-3 text-right text-xs font-bold tabular-nums text-muted">{(pageNo - 1) * PAGE + i + 1}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
@@ -189,6 +203,25 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         </table>
         {list.length === 0 && <p className="p-6 text-center text-muted">Ürün bulunamadı.</p>}
       </div>
+      {pageCount > 1 && (
+        <nav className="flex flex-wrap items-center justify-center gap-1.5 text-sm">
+          {pageNo > 1 && <Link href={pageHref(pageNo - 1)} className="btn-ghost px-3 py-1.5">← Önceki</Link>}
+          {Array.from({ length: pageCount }, (_, k) => k + 1)
+            .filter((n) => n === 1 || n === pageCount || Math.abs(n - pageNo) <= 2)
+            .map((n, k, arr) => (
+              <span key={n} className="flex items-center gap-1.5">
+                {k > 0 && n - arr[k - 1] > 1 && <span className="text-muted">…</span>}
+                <Link href={pageHref(n)} className={`grid h-9 min-w-9 place-items-center rounded-lg px-2 font-bold ${n === pageNo ? "bg-brand text-white" : "bg-white ring-1 ring-line hover:ring-brand"}`}>
+                  {n}
+                </Link>
+              </span>
+            ))}
+          {pageNo < pageCount && <Link href={pageHref(pageNo + 1)} className="btn-ghost px-3 py-1.5">Sonraki →</Link>}
+          <span className="ml-2 text-muted">
+            {(pageNo - 1) * PAGE + 1}–{Math.min(pageNo * PAGE, list.length)} / {list.length}
+          </span>
+        </nav>
+      )}
     </div>
   );
 }

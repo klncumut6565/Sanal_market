@@ -21,6 +21,7 @@ export function LiveSearchInput({ placeholder, param = "q", className = "" }: { 
       const next = new URLSearchParams(sp.toString());
       if (value.trim()) next.set(param, value.trim());
       else next.delete(param);
+      next.delete("s"); // yeni aramada ilk sayfaya dön
       const qs = next.toString();
       start(() => router.replace(qs ? `${path}?${qs}` : path, { scroll: false }));
     }, 250);

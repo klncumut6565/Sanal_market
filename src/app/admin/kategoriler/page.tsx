@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/data/auth";
+import { fetchAll } from "@/lib/data/fetchAll";
 import { CategoryRowForm } from "@/components/admin/CategoryRowForm";
 import type { Category } from "@/lib/types";
 
@@ -8,7 +9,7 @@ export default async function CategoriesAdmin() {
   const { supabase } = await requireAdmin();
   const [{ data: cats }, { data: counts }] = await Promise.all([
     supabase.from("categories").select("*").order("sort_order").order("name"),
-    supabase.from("products").select("category_id"),
+    fetchAll((f, t) => supabase.from("products").select("category_id").order("id").range(f, t)),
   ]);
   const countMap = new Map<string, number>();
   for (const r of counts ?? []) if (r.category_id) countMap.set(r.category_id, (countMap.get(r.category_id) ?? 0) + 1);
