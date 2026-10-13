@@ -26,8 +26,18 @@ const SES_ESIGI_RMS = 500;
 /** Ödeme ekranı sipariş tamamlanınca bu olayı yayar; açık sesli oturum teşekkür eder. */
 export const ORDER_DONE_EVENT = "sesli-asistan:siparis-tamamlandi";
 
+const trN = (t: string) => t.toLocaleLowerCase("tr").replace(/[^a-z0-9çğıöşü]+/g, " ").trim();
+/** Asistanın veda cümlesi */
+const ASIST_VEDA = ["görüşürüz", "hoşça kal", "hoşçakal", "güle güle", "iyi günler", "iyi akşamlar", "iyi geceler", "kendine iyi bak", "bay bay"];
+/** Müşterinin bitirme/veda sözü */
+const MUSTERI_VEDA = [...ASIST_VEDA, "kapat", "kapatabilirsin", "bu kadar", "başka bir şey yok", "başka yok", "teşekkürler", "teşekkür ederim", "sağ ol", "sağol"];
+const icerir = (t: string, list: string[]) => {
+  const n = ` ${trN(t)} `;
+  return list.some((k) => n.includes(` ${k}`));
+};
 
-export function useMarketVoice(settings: VoiceSettings) {
+
+export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const router = useRouter();
   const [state, setState] = useState<VoiceState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -47,10 +57,15 @@ export function useMarketVoice(settings: VoiceSettings) {
   const proposalRef = useRef<CartProposal | null>(null);
   const userTurn = useRef(0);
   const lastAsst = useRef("");
+  const lastUser = useRef("");
+  /** Kapanış başladı: mikrofon kapalı, son konuşma bitince oturum kapanır */
+  const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
   const settingsRef = useRef(settings);
+  const onEndedRef = useRef(onEnded);
   useEffect(() => {
     settingsRef.current = settings;
-  }, [settings]);
+    onEndedRef.current = onEnded;
+  }, [settings, onEnded]);
 
   const set = useCallback((s: VoiceState) => {
     stateRef.current = s;
@@ -103,8 +118,32 @@ export function useMarketVoice(settings: VoiceSettings) {
   }, []);
 
   const stop = useCallback(async () => {
+    ending.current = null;
     await cleanup();
     set("idle");
+  }, [cleanup, set]);
+
+  /** Sohbeti asistan tarafında bitir: mikrofonu hemen kapat (veda döngüsü olmasın), veda sesi bitince kapat. */
+  const finishSession = useCallback(() => {
+    if (ending.current || !providerRef.current) return;
+    ending.current = { since: Date.now(), turnDone: false };
+    micRef.current?.stop();
+    micRef.current = null;
+    const t = setInterval(() => {
+      const e = ending.current;
+      if (!e) return clearInterval(t);
+      const waited = Date.now() - e.since;
+      const playing = playbackRef.current?.isPlaying() ?? false;
+      if ((e.turnDone && !playing && waited > 800) || waited > 12_000) {
+        clearInterval(t);
+        ending.current = null;
+        void cleanup().then(() => {
+          set("idle");
+          onEndedRef.current?.();
+        });
+      }
+    }, 300);
+    timers.current.push(t);
   }, [cleanup, set]);
 
   const start = useCallback(async () => {
@@ -116,6 +155,8 @@ export function useMarketVoice(settings: VoiceSettings) {
     userBuf.current = "";
     asstBuf.current = "";
     proposalRef.current = null;
+    ending.current = null;
+    lastUser.current = "";
     set("connecting");
 
     const provider = new GeminiLiveProvider(MARKET_TOOLS, MARKET_VOICE_INSTRUCTION);
@@ -143,14 +184,27 @@ export function useMarketVoice(settings: VoiceSettings) {
           setUserText(userBuf.current);
           go("user_speaking");
         } else {
-          if (userBuf.current) userBuf.current = "";
+          if (userBuf.current) {
+            lastUser.current = userBuf.current;
+            userBuf.current = "";
+          }
           asstBuf.current += e.text;
           lastAsst.current = asstBuf.current;
           setAssistantText(asstBuf.current);
         }
       });
       provider.onTurnComplete(() => {
+        if (userBuf.current) lastUser.current = userBuf.current;
         userBuf.current = "";
+        const asst = asstBuf.current;
+        if (ending.current) {
+          ending.current.turnDone = true;
+        } else if (asst && icerir(asst, ASIST_VEDA) && icerir(lastUser.current, MUSTERI_VEDA)) {
+          // Yedek: araç çağrılmadan vedalaştıysa da kapat (karşılıklı "görüşürüz" döngüsünü keser)
+          finishSession();
+          const e2 = ending.current as { turnDone: boolean } | null;
+          if (e2) e2.turnDone = true;
+        }
         if (!playback.isPlaying()) go("listening");
       });
       provider.onAudio((chunk) => playback.enqueue(chunk));
@@ -172,6 +226,10 @@ export function useMarketVoice(settings: VoiceSettings) {
       });
       provider.onGoAway(() => {});
       provider.onToolCall(async (name, args) => {
+        if (name === "end_session") {
+          finishSession();
+          return { ok: true, closing: true, note: "Oturum kapanıyor. Veda ettiysen başka bir şey söyleme." };
+        }
         go("tool_calling");
         try {
           return await runTool(name, args);
@@ -226,7 +284,7 @@ export function useMarketVoice(settings: VoiceSettings) {
       setError(hataTurkce(e));
       set("error");
     }
-  }, [cleanup, go, runTool, set]);
+  }, [cleanup, go, runTool, set, finishSession]);
 
   useEffect(() => () => void cleanup(), [cleanup]);
 
@@ -235,12 +293,14 @@ export function useMarketVoice(settings: VoiceSettings) {
     const h = (e: Event) => {
       const d = (e as CustomEvent<{ orderNo?: number; total?: number }>).detail ?? {};
       providerRef.current?.sendText(
-        `[SİSTEM] Sipariş tamamlandı. Sipariş no: ${d.orderNo ?? "-"}${d.total != null ? `, toplam ${d.total.toFixed(2)} TL` : ""}. Müşteriye içtenlikle teşekkür et.`,
+        `[SİSTEM] Sipariş tamamlandı. Sipariş no: ${d.orderNo ?? "-"}${d.total != null ? `, toplam ${d.total.toFixed(2)} TL` : ""}. Tek cümleyle teşekkür et ve end_session çağır.`,
       );
+      // Teşekkürden sonra oturum her durumda kapanır (mikrofon hemen kapanır)
+      finishSession();
     };
     window.addEventListener(ORDER_DONE_EVENT, h);
     return () => window.removeEventListener(ORDER_DONE_EVENT, h);
-  }, []);
+  }, [finishSession]);
 
   return { state, error, userText, assistantText, actions, start, stop };
 }

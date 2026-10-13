@@ -33,7 +33,8 @@ const EXAMPLES = ["Domatesten 2 kilo ekle", "Beyaz peynir hangi markalar var?", 
 export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   const [open, setOpen] = useState(false);
   const [needConsent, setNeedConsent] = useState(false);
-  const v = useMarketVoice(settings);
+  // Asistan sohbeti kendisi bitirince (veda / sipariş tamamlandı) pencere kapanır
+  const v = useMarketVoice(settings, () => setOpen(false));
   const vStart = v.start;
   const ready = useCartHydrated();
   const hasCart = useCart((s) => s.lines.length > 0);
