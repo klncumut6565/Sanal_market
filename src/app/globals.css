@@ -45,6 +45,15 @@ body {
   scrollbar-width: none;
 }
 
+/* İnce, yalnızca üzerine gelince belirginleşen kaydırma çubuğu (kategori menüsü) */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+.thin-scrollbar:hover {
+  scrollbar-color: color-mix(in srgb, currentColor 25%, transparent) transparent;
+}
+
 .input {
   @apply w-full rounded-xl border border-line bg-white px-3.5 py-2.5 text-[15px] outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/15;
 }
