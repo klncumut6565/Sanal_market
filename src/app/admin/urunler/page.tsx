@@ -60,6 +60,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       (!catFilter || (!!p.category_id && catFilter.has(p.category_id))) &&
       (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
       (sp.stok !== "mukerrer" || !!dupOf(p)) &&
+      (sp.stok !== "barkodsuz" || !p.barcode?.trim()) &&
       (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
       (sp.marj !== "girilmemis" || !costOf.has(p.id)),
   );
@@ -122,6 +123,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           <option value="">Tüm stoklar</option>
           <option value="kritik">Kritik stok</option>
           <option value="mukerrer">Mükerrer şüphesi (aynı ad / barkod)</option>
+          <option value="barkodsuz">Barkodsuz ürünler</option>
         </select>
         <select name="marj" defaultValue={sp.marj ?? ""} className="input max-w-52">
           <option value="">Tüm marjlar</option>
@@ -168,7 +170,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           </thead>
           <tbody className="divide-y divide-line">
             {shown.map((p, i) => (
-              <tr key={p.id} className={p.is_active ? "" : "opacity-55"}>
+              <tr key={p.id} className={`${p.is_active ? "" : "opacity-55"} ${p.barcode?.trim() ? "" : "bg-yellow-50"}`} title={p.barcode?.trim() ? undefined : "Barkodsuz ürün"}>
                 <td className="py-3 pl-3"><RowCheckbox id={p.id} /></td>
                 <td className="py-3 pl-2 text-right text-xs font-bold tabular-nums text-muted">{(pageNo - 1) * PAGE + i + 1}</td>
                 <td className="p-3">
@@ -176,7 +178,10 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
                     <div>
                       <p className="font-bold">{p.name}</p>
-                      <p className="text-xs text-muted">{p.unit_label}{p.barcode ? ` · ${p.barcode}` : ""}</p>
+                      <p className="text-xs text-muted">
+                        {p.unit_label}
+                        {p.barcode?.trim() ? ` · ${p.barcode}` : <span className="font-bold text-yellow-700">{p.unit_label ? " · " : ""}Barkod yok</span>}
+                      </p>
                       {(() => {
                         const d = dupOf(p);
                         if (!d) return null;
