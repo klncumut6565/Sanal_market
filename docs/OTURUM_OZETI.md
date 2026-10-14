@@ -214,3 +214,5 @@
 - 2026-10-14: Mağaza ana sayfa ürün sıraları (Fırsat, Çok satanlar, her kategori, ürün sayfasında benzerler) bilgisayarda ‹ › oklarıyla kayar (components/shop/ScrollRow.tsx: başta sol ok gizli, sonda sağ ok gizli, bir ekran genişliği yumuşak kaydırma; telefonda parmakla kaymaya devam). Kategori sıralarında 10 yerine 20 ürün + sonda "Tümünü gör" kartı. Kart genişliği lg 4 / xl ~5 / 2xl ~6 görünür.
 
 - 2026-10-14: Ana sayfa "Kategoriler" kutuları da tek sıra + ‹ › oklarıyla kayan yapıya geçti (CategoryTiles → ScrollRow arrowTop=top-1/2). Görünür kutu: telefon ~4, sm 5, lg 6, xl ~8.5, 2xl ~10; telefonda parmakla kayar. Üyeye özel kategoriler de aynı yapıda.
+
+- 2026-10-14: Ana sayfa kategori sıralarında "Tümü (N ürün)" — kategori + alt kategorilerindeki toplam ürün sayısı; sıranın sonundaki kart "Tümünü gör (N)". (Kategori sayfası başlığında zaten "N ürün" yazıyordu.)

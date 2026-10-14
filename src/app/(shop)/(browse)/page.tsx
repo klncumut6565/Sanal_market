@@ -56,9 +56,9 @@ export default async function HomePage() {
 
       {topLevel(categories).map((c) => {
         const ids = withDescendants(categories, c.id);
-        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 20);
-        if (list.length === 0) return null;
-        return <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} />;
+        const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
+        if (all.length === 0) return null;
+        return <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={all.slice(0, 20)} total={all.length} />;
       })}
 
       {products.length === 0 && (
@@ -82,25 +82,26 @@ async function MemberSections() {
       </section>
       {topLevel(categories).map((c) => {
         const ids = withDescendants(categories, c.id);
-        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 20);
-        return list.length ? <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} /> : null;
+        const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
+        return all.length ? <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={all.slice(0, 20)} total={all.length} /> : null;
       })}
     </>
   );
 }
 
-function Section({ title, href, products }: { title: string; href?: string; products: Awaited<ReturnType<typeof getProducts>> }) {
+function Section({ title, href, products, total }: { title: string; href?: string; products: Awaited<ReturnType<typeof getProducts>>; total?: number }) {
+  const n = total ?? products.length;
   return (
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="text-lg font-extrabold">{title}</h2>
         {href && (
           <Link href={href} className="flex items-center text-sm font-bold text-brand">
-            Tümü <ChevronRight size={16} />
+            Tümü ({n.toLocaleString("tr-TR")} ürün) <ChevronRight size={16} />
           </Link>
         )}
       </div>
-      <ProductRow products={products} moreHref={href} />
+      <ProductRow products={products} moreHref={href} moreLabel={`Tümünü gör (${n.toLocaleString("tr-TR")})`} />
     </section>
   );
 }

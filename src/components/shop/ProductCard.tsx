@@ -50,7 +50,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
   );
 }
 
-export function ProductRow({ products, moreHref }: { products: Product[]; moreHref?: string }) {
+export function ProductRow({ products, moreHref, moreLabel = "Tümünü gör" }: { products: Product[]; moreHref?: string; moreLabel?: string }) {
   const cell = "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-[23%] xl:w-[18.5%] 2xl:w-[15.6%]";
   return (
     <ScrollRow>
@@ -62,7 +62,7 @@ export function ProductRow({ products, moreHref }: { products: Product[]; moreHr
       {moreHref && (
         <Link href={moreHref} className={`${cell} flex flex-col items-center justify-center gap-2 rounded-2xl bg-white font-bold text-brand ring-1 ring-line hover:ring-brand`}>
           <span className="grid h-12 w-12 place-items-center rounded-full bg-brand-soft text-2xl">›</span>
-          Tümünü gör
+          {moreLabel}
         </Link>
       )}
     </ScrollRow>
