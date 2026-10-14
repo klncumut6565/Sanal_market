@@ -9,6 +9,7 @@ import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { InlineCategorySelect } from "@/components/admin/InlineCategorySelect";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
+import { AutoSubmitSelect } from "@/components/admin/AutoSubmitSelect";
 import { Suspense } from "react";
 import { fetchAll } from "@/lib/data/fetchAll";
 import { fold, matchWords } from "@/lib/trFold";
@@ -18,7 +19,7 @@ const PAGE = 100;
 
 export const metadata = { title: "Ürünler" };
 
-export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string; s?: string }> }) {
+export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string; s?: string; sira?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const [{ data: products }, { data: categories }, { data: costs }] = await Promise.all([
@@ -55,6 +56,13 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
     list.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, "tr"));
   }
   if (sp.marj === "dusuk") list.sort((a, b) => (marginOf(a)?.marginPct ?? 0) - (marginOf(b)?.marginPct ?? 0));
+  // Sıralama seçimi (seçilirse arama/marj sıralamasının yerine geçer); fiyat = geçerli satış fiyatı (indirimliyse indirimli)
+  const priceOf = (p: Product) => Number(p.sale_price ?? p.price);
+  const byName = (a: Product, b: Product) => a.name.localeCompare(b.name, "tr");
+  if (sp.sira === "fiyat-artan") list.sort((a, b) => priceOf(a) - priceOf(b) || byName(a, b));
+  else if (sp.sira === "fiyat-azalan") list.sort((a, b) => priceOf(b) - priceOf(a) || byName(a, b));
+  else if (sp.sira === "ad-za") list.sort((a, b) => byName(b, a));
+  else if (!q && sp.marj !== "dusuk") list.sort(byName);
   // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
   const pageCount = Math.max(1, Math.ceil(list.length / PAGE));
   const pageNo = Math.min(pageCount, Math.max(1, Number(sp.s) || 1));
@@ -97,6 +105,12 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           <option value="dusuk">Düşük marj / zarar (%10 altı)</option>
           <option value="girilmemis">Alış fiyatı girilmemiş</option>
         </select>
+        <AutoSubmitSelect name="sira" defaultValue={sp.sira ?? ""} className="input max-w-52" aria-label="Sıralama">
+          <option value="">Sırala: Ada göre (A → Z)</option>
+          <option value="ad-za">Sırala: Ada göre (Z → A)</option>
+          <option value="fiyat-artan">Sırala: Fiyat (ucuzdan pahalıya)</option>
+          <option value="fiyat-azalan">Sırala: Fiyat (pahalıdan ucuza)</option>
+        </AutoSubmitSelect>
         <button className="btn-ghost">Filtrele</button>
       </form>
       <p className="text-sm text-muted">
