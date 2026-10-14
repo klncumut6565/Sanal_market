@@ -34,6 +34,8 @@ export type Product = {
   is_active: boolean;
   is_featured: boolean;
   sort_order: number;
+  /** Ad/barkod/fiyat/birim/görsel/açıklama en son ne zaman değişti (stok değişimi saymaz) */
+  info_updated_at?: string;
 };
 
 export type StoreSettings = {

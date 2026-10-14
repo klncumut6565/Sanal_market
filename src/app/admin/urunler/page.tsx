@@ -23,6 +23,7 @@ export const metadata = { title: "Ürünler" };
 export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string; s?: string; sira?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
+  const now = new Date().getTime();
   const [{ data: products }, { data: categories }, { data: costs }] = await Promise.all([
     fetchAll((f, t) => supabase.from("products").select("*").order("name").order("id").range(f, t)),
     supabase.from("categories").select("*").order("sort_order"),
@@ -63,6 +64,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   if (sp.sira === "fiyat-artan") list.sort((a, b) => priceOf(a) - priceOf(b) || byName(a, b));
   else if (sp.sira === "fiyat-azalan") list.sort((a, b) => priceOf(b) - priceOf(a) || byName(a, b));
   else if (sp.sira === "ad-za") list.sort((a, b) => byName(b, a));
+  else if (sp.sira === "eski") list.sort((a, b) => (a.info_updated_at ?? "").localeCompare(b.info_updated_at ?? "") || byName(a, b));
+  else if (sp.sira === "yeni") list.sort((a, b) => (b.info_updated_at ?? "").localeCompare(a.info_updated_at ?? "") || byName(a, b));
   else if (!q && sp.marj !== "dusuk") list.sort(byName);
   // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
   const pageCount = Math.max(1, Math.ceil(list.length / PAGE));
@@ -111,6 +114,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           <option value="ad-za">Sırala: Ada göre (Z → A)</option>
           <option value="fiyat-artan">Sırala: Fiyat (ucuzdan pahalıya)</option>
           <option value="fiyat-azalan">Sırala: Fiyat (pahalıdan ucuza)</option>
+          <option value="eski">Sırala: Güncelleme (en eski önce)</option>
+          <option value="yeni">Sırala: Güncelleme (en yeni önce)</option>
         </AutoSubmitSelect>
         <button className="btn-ghost">Filtrele</button>
       </form>
@@ -130,9 +135,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         names={Object.fromEntries(shown.map((p) => [p.id, p.name]))}
       >
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-line">
-        <table className="w-full min-w-[1060px] text-sm">
+        <table className="w-full min-w-[1160px] text-sm">
           <thead className="bg-bg text-left text-xs uppercase text-muted">
-            <tr><th className="w-8 py-3 pl-3"><SelectPageCheckbox /></th><th className="w-10 py-3 pl-2 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
+            <tr><th className="w-8 py-3 pl-3"><SelectPageCheckbox /></th><th className="w-10 py-3 pl-2 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th title="Ad, barkod, fiyat, birim veya görselin en son değiştiği tarih (stok değişimi sayılmaz)">Güncelleme</th><th>Durum</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-line">
             {shown.map((p, i) => (
@@ -210,6 +215,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                   </form>
                 </td>
                 <td>
+                  <UpdatedAge iso={p.info_updated_at} now={now} />
+                </td>
+                <td>
                   <form action={quickUpdateProduct}>
                     <input type="hidden" name="id" value={p.id} />
                     <input type="hidden" name="toggle_active" value={p.is_active ? "0" : "1"} />
@@ -251,5 +259,23 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         </nav>
       )}
     </div>
+  );
+}
+
+const DAY = 86_400_000;
+/** Son bilgi güncellemesi: "bugün / 12 gün önce / 4 ay önce"; 90+ gün turuncu, 180+ gün kırmızı. */
+function UpdatedAge({ iso, now }: { iso?: string; now: number }) {
+  if (!iso) return <span className="text-xs text-muted">—</span>;
+  const t = Date.parse(iso);
+  const days = Math.floor((now - t) / DAY);
+  const rel =
+    days < 1 ? "Bugün" : days < 2 ? "Dün" : days < 31 ? `${days} gün önce` : days < 365 ? `${Math.floor(days / 30)} ay önce` : `${Math.floor(days / 365)} yıl önce`;
+  const tone = days >= 180 ? "bg-red-50 text-red-700 ring-red-200" : days >= 90 ? "bg-amber-50 text-amber-700 ring-amber-200" : "text-muted ring-transparent";
+  const date = new Intl.DateTimeFormat("tr-TR", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "Europe/Istanbul" }).format(new Date(t));
+  return (
+    <span title={`Son güncelleme: ${date}`} className={`inline-block whitespace-nowrap rounded-lg px-2 py-1 text-xs font-semibold ring-1 ${tone}`}>
+      {date}
+      <span className="block text-[11px] font-normal">{rel}</span>
+    </span>
   );
 }
