@@ -41,7 +41,7 @@ export default async function HomePage() {
       {categories.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-extrabold">Kategoriler</h2>
-          <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
+          <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
             {topLevel(categories).map((c) => (
               <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
                 <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl"><CategoryIcon cat={c} imgClass="h-full w-full p-1.5" /></span>
@@ -83,7 +83,7 @@ async function MemberSections() {
   return (
     <>
       <section>
-        <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 xl:grid-cols-6">
+        <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
           {topLevel(categories).map((c) => (
             <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
               <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl"><CategoryIcon cat={c} imgClass="h-full w-full p-1.5" /></span>
