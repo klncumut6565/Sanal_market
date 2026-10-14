@@ -13,7 +13,7 @@ function useActiveSlug() {
 
 export function CategorySidebar({ categories }: { categories: Category[] }) {
   const active = useActiveSlug();
-  const item = "flex items-center gap-2.5 rounded-xl px-3 py-2 text-[14px] font-semibold leading-tight transition";
+  const item = "flex items-center gap-2 rounded-xl px-2 py-1.5 text-[13.5px] font-semibold leading-tight transition";
   const activeCat = categories.find((c) => c.slug === active);
   const openParent = activeCat?.parent_id ?? activeCat?.id;
   const navRef = useRef<HTMLElement>(null);
@@ -32,7 +32,7 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
       aria-label="Kategoriler"
       className="thin-scrollbar sticky top-[84px] max-h-[calc(100dvh-100px)] space-y-0.5 overflow-y-auto overscroll-contain pb-4 pr-1"
     >
-      <p className="sticky top-0 z-10 bg-bg px-3 pb-2 text-xs font-bold uppercase tracking-wider text-muted">Kategoriler</p>
+      <p className="sticky top-0 z-10 bg-bg px-2 pb-2 text-xs font-bold uppercase tracking-wider text-muted">Kategoriler</p>
       <Link href="/" aria-current={active === "" ? "page" : undefined} className={`${item} ${active === "" ? "bg-brand-soft text-brand" : "hover:bg-white"}`}>
         <span className="text-lg">🏠</span> Tümü
       </Link>
@@ -41,16 +41,16 @@ export function CategorySidebar({ categories }: { categories: Category[] }) {
         return (
           <div key={c.id}>
             <Link href={`/kategori/${c.slug}`} aria-current={active === c.slug ? "page" : undefined} className={`${item} ${active === c.slug ? "bg-brand-soft text-brand" : "hover:bg-white"}`}>
-              <CategoryIcon cat={c} className="text-lg" imgClass="h-6 w-6 shrink-0" /> <span className="min-w-0">{c.name}</span>
+              <CategoryIcon cat={c} className="text-lg" imgClass="h-5 w-5 shrink-0" /> <span className="min-w-0">{c.name}</span>
             </Link>
             {openParent === c.id && subs.length > 0 && (
-              <div className="mb-1 ml-6 space-y-0.5 border-l border-line pl-2">
+              <div className="mb-1 ml-4 space-y-0.5 border-l border-line pl-1.5">
                 {subs.map((s) => (
                   <Link
                     key={s.id}
                     href={`/kategori/${s.slug}`}
                     aria-current={active === s.slug ? "page" : undefined}
-                    className={`block rounded-lg px-2.5 py-1.5 text-[13.5px] font-semibold ${active === s.slug ? "bg-brand-soft text-brand" : "text-muted hover:bg-white hover:text-ink"}`}
+                    className={`block rounded-lg px-2 py-1 text-[12.5px] leading-tight font-semibold ${active === s.slug ? "bg-brand-soft text-brand" : "text-muted hover:bg-white hover:text-ink"}`}
                   >
                     {s.name}
                   </Link>

@@ -208,3 +208,5 @@
 - 2026-10-14: Ürünler & stok: barkodsuz ürün satırları sarı zeminli (bg-yellow-50), adın altında "Barkod yok"; Stok filtresine "Barkodsuz ürünler" seçeneği.
 
 - 2026-10-14: Mağaza masaüstü: sağdaki "Sepetim" paneli (CartPanel) kaldırıldı — ürün alanı genişledi (sütun düzeni 220px menü + içerik). Sepete üst çubuktaki sepet düğmesinden (tutar + adet rozeti) gidilir. Ürün ızgarası lg 4 / xl 5 sütun, kategori kutuları lg 6 / xl 8 sütun. Mobil alt sepet çubuğu aynen duruyor. CartPanel bileşeni dosyada duruyor (kullanılmıyor).
+
+- 2026-10-14: Mağaza masaüstü kenar menüsü daraltıldı (220px → 180px, satırlar ve simgeler küçüldü), sayfa genişliği 1320 → 1440px (üst çubuk, alt bilgi, favoriler aynı genişlikte), ürün ızgarası 2xl ekranda 6 sütun.

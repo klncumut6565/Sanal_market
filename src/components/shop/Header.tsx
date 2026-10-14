@@ -10,7 +10,7 @@ export async function Header() {
   const s = await getStoreSettings();
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-      <div className="mx-auto flex max-w-[1320px] flex-wrap items-center gap-3 px-4 py-2.5 lg:flex-nowrap lg:gap-6">
+      <div className="mx-auto flex max-w-[1440px] flex-wrap items-center gap-3 px-4 py-2.5 lg:flex-nowrap lg:gap-6">
         <Link href="/" aria-label={s.store_name}>
           <Brand />
         </Link>
