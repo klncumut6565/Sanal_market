@@ -743,3 +743,25 @@ export async function fetchRemoteImage(url: string): Promise<{ ok: true; base64:
     return { ok: false, error: "Görsel indirilemedi. Görsele sağ tıklayıp 'Resmi kopyala' ile deneyin." };
   }
 }
+
+/** Toplu silme: seçili ürünleri 200'lük parçalar halinde siler. Silinen adedi döndürür. */
+export async function deleteProductsByIds(ids: string[]): Promise<{ ok: boolean; deleted: number; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const clean = [...new Set(ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))];
+  let deleted = 0;
+  for (let i = 0; i < clean.length; i += 200) {
+    const part = clean.slice(i, i + 200);
+    const { error, count } = await supabase.from("products").delete({ count: "exact" }).in("id", part);
+    if (error) {
+      if (deleted) {
+        updateTag(CATALOG_TAG);
+        revalidatePath("/admin/urunler");
+      }
+      return { ok: false, deleted, error: `Ürünler silinemedi (${deleted} silindi): ${error.message}` };
+    }
+    deleted += count ?? part.length;
+  }
+  updateTag(CATALOG_TAG);
+  revalidatePath("/admin/urunler");
+  return { ok: true, deleted };
+}

@@ -10,6 +10,7 @@ import { InlineCategorySelect } from "@/components/admin/InlineCategorySelect";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
 import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { AutoSubmitSelect } from "@/components/admin/AutoSubmitSelect";
+import { BulkSelectProvider, RowCheckbox, SelectPageCheckbox } from "@/components/admin/BulkSelect";
 import { Suspense } from "react";
 import { fetchAll } from "@/lib/data/fetchAll";
 import { fold, matchWords } from "@/lib/trFold";
@@ -123,15 +124,21 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         )}
       </p>
 
+      <BulkSelectProvider
+        pageIds={shown.map((p) => p.id)}
+        allIds={(q || sp.kategori || sp.stok || sp.marj) && list.length <= 3000 ? list.map((p) => p.id) : null}
+        names={Object.fromEntries(shown.map((p) => [p.id, p.name]))}
+      >
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-line">
         <table className="w-full min-w-[1060px] text-sm">
           <thead className="bg-bg text-left text-xs uppercase text-muted">
-            <tr><th className="w-10 py-3 pl-3 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
+            <tr><th className="w-8 py-3 pl-3"><SelectPageCheckbox /></th><th className="w-10 py-3 pl-2 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th>Durum</th><th /></tr>
           </thead>
           <tbody className="divide-y divide-line">
             {shown.map((p, i) => (
               <tr key={p.id} className={p.is_active ? "" : "opacity-55"}>
-                <td className="py-3 pl-3 text-right text-xs font-bold tabular-nums text-muted">{(pageNo - 1) * PAGE + i + 1}</td>
+                <td className="py-3 pl-3"><RowCheckbox id={p.id} /></td>
+                <td className="py-3 pl-2 text-right text-xs font-bold tabular-nums text-muted">{(pageNo - 1) * PAGE + i + 1}</td>
                 <td className="p-3">
                   <div className="flex items-center gap-3">
                     <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
@@ -223,6 +230,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         </table>
         {list.length === 0 && <p className="p-6 text-center text-muted">Ürün bulunamadı.</p>}
       </div>
+      </BulkSelectProvider>
       {pageCount > 1 && (
         <nav className="flex flex-wrap items-center justify-center gap-1.5 text-sm">
           {pageNo > 1 && <Link href={pageHref(pageNo - 1)} className="btn-ghost px-3 py-1.5">← Önceki</Link>}
