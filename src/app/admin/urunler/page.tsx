@@ -13,7 +13,7 @@ import { AutoSubmitSelect } from "@/components/admin/AutoSubmitSelect";
 import { BulkSelectProvider, RowCheckbox, SelectPageCheckbox } from "@/components/admin/BulkSelect";
 import { Suspense } from "react";
 import { fetchAll } from "@/lib/data/fetchAll";
-import { fold, matchWords } from "@/lib/trFold";
+import { barcodeKey, fold, matchWords, nameKey } from "@/lib/trFold";
 import { categoryOptions, withDescendants } from "@/lib/categoryTree";
 
 const PAGE = 100;
@@ -36,6 +36,22 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const catOpts = treeOpts.map((o) => ({ id: o.id, name: o.label }));
   const catFilter = sp.kategori ? withDescendants(cats, sp.kategori) : null;
   // Türkçe karakter ve büyük/küçük harf duyarsız, kelime bazlı ("yeni raki 70" → YENİ RAKI 70CL)
+  // Mükerrer şüphesi: aynı ad (yazım farkı yok sayılır) veya aynı barkod (baştaki 0 / boşluk farkı yok sayılır)
+  const allProducts = (products ?? []) as Product[];
+  const nameCount = new Map<string, number>();
+  const bcCount = new Map<string, number>();
+  for (const p of allProducts) {
+    const nk = nameKey(p.name);
+    if (nk.length >= 3) nameCount.set(nk, (nameCount.get(nk) ?? 0) + 1);
+    const bk = barcodeKey(p.barcode);
+    if (bk) bcCount.set(bk, (bcCount.get(bk) ?? 0) + 1);
+  }
+  const dupOf = (p: Product) => {
+    const n = (nameCount.get(nameKey(p.name)) ?? 1) - 1;
+    const b = (bcCount.get(barcodeKey(p.barcode)) ?? 1) - 1;
+    return n > 0 || b > 0 ? { n, b } : null;
+  };
+  const dupGroups = new Set(allProducts.filter((p) => dupOf(p)).map((p) => nameKey(p.name))).size;
   const rawQ = (sp.q ?? "").trim();
   const q = fold(rawQ);
   const list = ((products ?? []) as Product[]).filter(
@@ -43,6 +59,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       (!q || matchWords(p.name, rawQ) || (p.barcode ?? "").includes(rawQ.replace(/\s/g, ""))) &&
       (!catFilter || (!!p.category_id && catFilter.has(p.category_id))) &&
       (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
+      (sp.stok !== "mukerrer" || !!dupOf(p)) &&
       (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
       (sp.marj !== "girilmemis" || !costOf.has(p.id)),
   );
@@ -66,6 +83,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   else if (sp.sira === "ad-za") list.sort((a, b) => byName(b, a));
   else if (sp.sira === "eski") list.sort((a, b) => (a.info_updated_at ?? "").localeCompare(b.info_updated_at ?? "") || byName(a, b));
   else if (sp.sira === "yeni") list.sort((a, b) => (b.info_updated_at ?? "").localeCompare(a.info_updated_at ?? "") || byName(a, b));
+  else if (sp.stok === "mukerrer") list.sort((a, b) => nameKey(a.name).localeCompare(nameKey(b.name)) || barcodeKey(a.barcode).localeCompare(barcodeKey(b.barcode)));
   else if (!q && sp.marj !== "dusuk") list.sort(byName);
   // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
   const pageCount = Math.max(1, Math.ceil(list.length / PAGE));
@@ -103,6 +121,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         <select name="stok" defaultValue={sp.stok ?? ""} className="input max-w-44">
           <option value="">Tüm stoklar</option>
           <option value="kritik">Kritik stok</option>
+          <option value="mukerrer">Mükerrer şüphesi (aynı ad / barkod)</option>
         </select>
         <select name="marj" defaultValue={sp.marj ?? ""} className="input max-w-52">
           <option value="">Tüm marjlar</option>
@@ -122,6 +141,14 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       <p className="text-sm text-muted">
         {q || sp.kategori || sp.stok || sp.marj ? "Bulunan" : "Toplam"} ürün: <b className="text-ink">{list.length}</b>
         {" "}· Alış fiyatı girilmiş ürün: <b className="text-ink">{withCost.length}</b>
+        {dupGroups > 0 && sp.stok !== "mukerrer" && (
+          <>
+            {" "}·{" "}
+            <Link href="/admin/urunler?stok=mukerrer" className="font-bold text-amber-700 underline">
+              ⚠ Mükerrer şüphesi: {dupGroups} grup
+            </Link>
+          </>
+        )}
         {avgMargin != null && (
           <>
             {" "}· Ortalama kâr marjı: <b className="text-ink">{pctTR(Math.round(avgMargin * 10) / 10)}</b>
@@ -150,6 +177,18 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     <div>
                       <p className="font-bold">{p.name}</p>
                       <p className="text-xs text-muted">{p.unit_label}{p.barcode ? ` · ${p.barcode}` : ""}</p>
+                      {(() => {
+                        const d = dupOf(p);
+                        if (!d) return null;
+                        return (
+                          <Link
+                            href={`/admin/urunler?stok=mukerrer&q=${encodeURIComponent(d.b > 0 ? (p.barcode ?? "") : p.name)}`}
+                            className="mt-0.5 inline-block rounded-md bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200"
+                          >
+                            ⚠ {d.b > 0 ? `Aynı barkod: ${d.b + 1} kayıt` : `Aynı adla ${d.n + 1} kayıt`}
+                          </Link>
+                        );
+                      })()}
                     </div>
                   </div>
                 </td>

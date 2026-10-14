@@ -5,6 +5,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { ClipboardPaste, ImagePlus, Loader2, ScanBarcode, X } from "lucide-react";
 import { compressImage } from "@/lib/imageCompress";
 import { BarcodeScanner } from "./BarcodeScanner";
+import { DuplicateHint } from "./DuplicateHint";
 import { useHidScanner } from "@/lib/hidScanner";
 import { createClient } from "@/lib/supabase/client";
 import { fetchRemoteImage, saveProduct, type ActionState } from "@/app/admin/actions";
@@ -39,6 +40,7 @@ export function ProductForm({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [barcode, setBarcode] = useState(product?.barcode ?? initialBarcode ?? "");
+  const [nameS, setNameS] = useState(product?.name ?? "");
   const [scanning, setScanning] = useState(false);
   // El barkod okuyucu: form neredeyse okutulan barkod Barkod alanına yazılır (Enter formu göndermez)
   useHidScanner((code) => {
@@ -194,7 +196,7 @@ export function ProductForm({
           {uploadError && <p className="text-xs font-semibold text-brand">{uploadError}</p>}
         </div>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <F label="Ürün adı *" className="sm:col-span-2"><input name="name" required defaultValue={product?.name} className="input" /></F>
+          <F label="Ürün adı *" className="sm:col-span-2"><input name="name" required value={nameS} onChange={(e) => setNameS(e.target.value)} className="input" /></F>
           <F label="Kategori">
             <select name="category_id" defaultValue={product?.category_id ?? ""} className="input">
               <option value="">— Seçin —</option>
@@ -212,6 +214,7 @@ export function ProductForm({
               </button>
             </div>
           </F>
+          <DuplicateHint id={product?.id} barcode={barcode} name={nameS} />
         </div>
       </section>
 

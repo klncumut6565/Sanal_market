@@ -99,8 +99,10 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
   const checkBarcode = async (i: number, code: string) => {
     const c = code.replace(/\s+/g, "");
     if (c.length < 4) return;
-    const { data } = await createClient().from("products").select("name").eq("barcode", c).maybeSingle();
-    setRows((rs) => rs.map((r, k) => (k === i && r.barcode.replace(/\s+/g, "") === c ? { ...r, dup: data?.name ?? undefined } : r)));
+    // Farklı yazımlar da yakalanır (baştaki 0, boşluk, tire)
+    const { data } = await createClient().rpc("find_product_duplicates", { p_id: null, p_barcode: c, p_name: null });
+    const hit = (data as { name: string; match: string }[] | null)?.find((x) => x.match === "barkod");
+    setRows((rs) => rs.map((r, k) => (k === i && r.barcode.replace(/\s+/g, "") === c ? { ...r, dup: hit?.name ?? undefined } : r)));
   };
 
   // Excel / stok programından kopyalanan satırları tabloya dağıt

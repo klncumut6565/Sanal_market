@@ -70,15 +70,14 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
     if (cost == null) await supabase.from("product_costs").delete().eq("product_id", saved.id);
     else await supabase.from("product_costs").upsert({ product_id: saved.id, cost_price: cost, updated_at: new Date().toISOString() });
   }
-  if (error)
-    return {
-      error:
-        error.code === "23505"
-          ? error.message.includes("barcode")
-            ? "Bu barkod başka bir üründe kayıtlı."
-            : "Bu bağlantı adı (slug) zaten kullanılıyor."
-          : error.message,
-    };
+  if (error) {
+    if (error.code === "23505" && error.message.includes("barcode")) {
+      const { data: d } = await supabase.rpc("find_product_duplicates", { p_id: id || null, p_barcode: row.barcode, p_name: null });
+      const other = (d as { name: string; barcode: string; match: string }[] | null)?.find((x) => x.match === "barkod");
+      return { error: other ? `Bu barkod zaten "${other.name}" ürününde kayıtlı (${other.barcode}).` : "Bu barkod başka bir üründe kayıtlı." };
+    }
+    return { error: error.code === "23505" ? "Bu bağlantı adı (slug) zaten kullanılıyor." : error.message };
+  }
 
   updateTag(CATALOG_TAG);
   redirect("/admin/urunler");
