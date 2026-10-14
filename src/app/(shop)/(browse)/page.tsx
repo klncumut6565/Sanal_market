@@ -3,6 +3,8 @@ import Image from "next/image";
 import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
+import { ScrollRow } from "@/components/shop/ScrollRow";
+import type { Category } from "@/lib/types";
 import { Suspense } from "react";
 import { getCategories, getMemberCatalog, getProducts, getStoreSettings } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
@@ -41,14 +43,7 @@ export default async function HomePage() {
       {categories.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-extrabold">Kategoriler</h2>
-          <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-            {topLevel(categories).map((c) => (
-              <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
-                <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl"><CategoryIcon cat={c} imgClass="h-full w-full p-1.5" /></span>
-                <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
-              </Link>
-            ))}
-          </div>
+          <CategoryTiles categories={topLevel(categories)} />
         </section>
       )}
 
@@ -83,14 +78,7 @@ async function MemberSections() {
   return (
     <>
       <section>
-        <div className="grid grid-cols-4 gap-2.5 sm:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8">
-          {topLevel(categories).map((c) => (
-            <Link key={c.id} href={`/kategori/${c.slug}`} className="flex flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand">
-              <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl"><CategoryIcon cat={c} imgClass="h-full w-full p-1.5" /></span>
-              <span className="line-clamp-2 text-[12px] font-bold leading-tight">{c.name}</span>
-            </Link>
-          ))}
-        </div>
+        <CategoryTiles categories={topLevel(categories)} />
       </section>
       {topLevel(categories).map((c) => {
         const ids = withDescendants(categories, c.id);
@@ -114,5 +102,25 @@ function Section({ title, href, products }: { title: string; href?: string; prod
       </div>
       <ProductRow products={products} moreHref={href} />
     </section>
+  );
+}
+
+/** Kategori kutuları tek sırada; bilgisayarda ‹ › oklarıyla, telefonda parmakla kayar. */
+function CategoryTiles({ categories }: { categories: Category[] }) {
+  return (
+    <ScrollRow arrowTop="top-1/2">
+      {categories.map((c) => (
+        <Link
+          key={c.id}
+          href={`/kategori/${c.slug}`}
+          className="flex w-[23%] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand sm:w-[18.6%] lg:w-[15.4%] xl:w-[11.6%] 2xl:w-[10.2%]"
+        >
+          <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl">
+            <CategoryIcon cat={c} imgClass="h-full w-full p-1.5" />
+          </span>
+          <span className="line-clamp-2 min-h-[2lh] text-[12px] font-bold leading-tight">{c.name}</span>
+        </Link>
+      ))}
+    </ScrollRow>
   );
 }

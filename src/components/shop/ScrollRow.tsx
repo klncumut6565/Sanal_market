@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /** Yatay kayan ürün sırası. Bilgisayarda solda/sağda ‹ › okları ile bir ekran kaydırır; telefonda parmakla kayar. */
-export function ScrollRow({ children }: { children: React.ReactNode }) {
+export function ScrollRow({ children, arrowTop = "top-[38%]" }: { children: React.ReactNode; arrowTop?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const [edge, setEdge] = useState({ left: false, right: false });
 
@@ -30,7 +30,7 @@ export function ScrollRow({ children }: { children: React.ReactNode }) {
     if (el) el.scrollBy({ left: dir * el.clientWidth * 0.9, behavior: "smooth" });
   };
   const btn =
-    "absolute top-[38%] z-10 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-ink shadow-lg ring-1 ring-line transition hover:bg-brand hover:text-white lg:grid";
+    `absolute ${arrowTop} z-10 hidden h-11 w-11 -translate-y-1/2 place-items-center rounded-full bg-white text-ink shadow-lg ring-1 ring-line transition hover:bg-brand hover:text-white lg:grid`;
 
   return (
     <div className="relative">
