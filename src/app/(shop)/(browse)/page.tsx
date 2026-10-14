@@ -61,7 +61,7 @@ export default async function HomePage() {
 
       {topLevel(categories).map((c) => {
         const ids = withDescendants(categories, c.id);
-        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 10);
+        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 20);
         if (list.length === 0) return null;
         return <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} />;
       })}
@@ -94,7 +94,7 @@ async function MemberSections() {
       </section>
       {topLevel(categories).map((c) => {
         const ids = withDescendants(categories, c.id);
-        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 10);
+        const list = products.filter((p) => !!p.category_id && ids.has(p.category_id)).slice(0, 20);
         return list.length ? <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={list} /> : null;
       })}
     </>
@@ -112,7 +112,7 @@ function Section({ title, href, products }: { title: string; href?: string; prod
           </Link>
         )}
       </div>
-      <ProductRow products={products} />
+      <ProductRow products={products} moreHref={href} />
     </section>
   );
 }

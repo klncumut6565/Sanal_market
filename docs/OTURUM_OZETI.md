@@ -210,3 +210,5 @@
 - 2026-10-14: Mağaza masaüstü: sağdaki "Sepetim" paneli (CartPanel) kaldırıldı — ürün alanı genişledi (sütun düzeni 220px menü + içerik). Sepete üst çubuktaki sepet düğmesinden (tutar + adet rozeti) gidilir. Ürün ızgarası lg 4 / xl 5 sütun, kategori kutuları lg 6 / xl 8 sütun. Mobil alt sepet çubuğu aynen duruyor. CartPanel bileşeni dosyada duruyor (kullanılmıyor).
 
 - 2026-10-14: Mağaza masaüstü kenar menüsü daraltıldı (220px → 180px, satırlar ve simgeler küçüldü), sayfa genişliği 1320 → 1440px (üst çubuk, alt bilgi, favoriler aynı genişlikte), ürün ızgarası 2xl ekranda 6 sütun.
+
+- 2026-10-14: Mağaza ana sayfa ürün sıraları (Fırsat, Çok satanlar, her kategori, ürün sayfasında benzerler) bilgisayarda ‹ › oklarıyla kayar (components/shop/ScrollRow.tsx: başta sol ok gizli, sonda sağ ok gizli, bir ekran genişliği yumuşak kaydırma; telefonda parmakla kaymaya devam). Kategori sıralarında 10 yerine 20 ürün + sonda "Tümünü gör" kartı. Kart genişliği lg 4 / xl ~5 / 2xl ~6 görünür.

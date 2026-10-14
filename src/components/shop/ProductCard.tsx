@@ -5,6 +5,7 @@ import { AddToCart } from "./AddToCart";
 import { Price } from "./Price";
 import { ProductImage } from "./ProductImage";
 import { FavoriteButton } from "./FavoriteButton";
+import { ScrollRow } from "./ScrollRow";
 
 export function ProductCard({ product }: { product: Product }) {
   const off = discountRate(product);
@@ -49,14 +50,21 @@ export function ProductGrid({ products }: { products: Product[] }) {
   );
 }
 
-export function ProductRow({ products }: { products: Product[] }) {
+export function ProductRow({ products, moreHref }: { products: Product[]; moreHref?: string }) {
+  const cell = "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-[23%] xl:w-[18.5%] 2xl:w-[15.6%]";
   return (
-    <div className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 pb-1 lg:mx-0 lg:px-0">
+    <ScrollRow>
       {products.map((p) => (
-        <div key={p.id} className="w-[44%] shrink-0 snap-start sm:w-[30%] xl:w-[23%]">
+        <div key={p.id} className={cell}>
           <ProductCard product={p} />
         </div>
       ))}
-    </div>
+      {moreHref && (
+        <Link href={moreHref} className={`${cell} flex flex-col items-center justify-center gap-2 rounded-2xl bg-white font-bold text-brand ring-1 ring-line hover:ring-brand`}>
+          <span className="grid h-12 w-12 place-items-center rounded-full bg-brand-soft text-2xl">›</span>
+          Tümünü gör
+        </Link>
+      )}
+    </ScrollRow>
   );
 }
