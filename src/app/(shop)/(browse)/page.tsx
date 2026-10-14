@@ -1,12 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
-import { CategoryIcon } from "@/components/shop/CategoryIcon";
+import { CategoryArt } from "@/components/shop/CategoryIcon";
 import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { ScrollRow } from "@/components/shop/ScrollRow";
 import type { Category } from "@/lib/types";
 import { Suspense } from "react";
-import { getCategories, getMemberCatalog, getProducts, getStoreSettings } from "@/lib/data/catalog";
+import { getCategories, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
 import { VoicePromo } from "@/components/shop/VoicePromo";
 import { topLevel, withDescendants } from "@/lib/categoryTree";
@@ -43,7 +43,10 @@ export default async function HomePage() {
       {categories.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-extrabold">Kategoriler</h2>
-          <CategoryTiles categories={topLevel(categories)} />
+          {/* Üyeye özel kategoriler aynı sıraya katılır (sıralama korunur) */}
+          <Suspense fallback={<CategoryTiles categories={topLevel(categories)} />}>
+            <AllCategoryTiles categories={categories} />
+          </Suspense>
         </section>
       )}
 
@@ -71,15 +74,17 @@ export default async function HomePage() {
   );
 }
 
+async function AllCategoryTiles({ categories }: { categories: Category[] }) {
+  const member = (await getMemberCatalog()).categories;
+  return <CategoryTiles categories={topLevel(mergeCategories(categories, member))} />;
+}
+
 /** Oturuma göre ek kategoriler — normal kategoriler gibi, ayrı etiket olmadan gösterilir. */
 async function MemberSections() {
   const { categories, products } = await getMemberCatalog();
   if (!categories.length) return null;
   return (
     <>
-      <section>
-        <CategoryTiles categories={topLevel(categories)} />
-      </section>
       {topLevel(categories).map((c) => {
         const ids = withDescendants(categories, c.id);
         const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
@@ -114,10 +119,10 @@ function CategoryTiles({ categories }: { categories: Category[] }) {
         <Link
           key={c.id}
           href={`/kategori/${c.slug}`}
-          className="flex w-[23%] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl bg-white p-2.5 text-center ring-1 ring-line transition hover:ring-brand sm:w-[18.6%] lg:w-[15.4%] xl:w-[11.6%] 2xl:w-[10.2%]"
+          className="group flex w-[23%] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl bg-white p-2 text-center ring-1 ring-line transition hover:shadow-md hover:ring-brand sm:w-[18.6%] lg:w-[15.4%] xl:w-[11.6%] 2xl:w-[10.2%]"
         >
-          <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-brand-soft text-3xl">
-            <CategoryIcon cat={c} imgClass="h-full w-full p-1.5" />
+          <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-gradient-to-b from-[#fff6ef] to-[#ffe9d9]">
+            <CategoryArt cat={c} />
           </span>
           <span className="line-clamp-2 min-h-[2lh] text-[12px] font-bold leading-tight">{c.name}</span>
         </Link>
