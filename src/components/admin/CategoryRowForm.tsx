@@ -53,8 +53,8 @@ export function CategoryRowForm({
       if (!r.ok) setImgErr(r.error ?? "Kaydedilemedi");
     }
   };
-  const fromBlob = (b: Blob) => applyImage(uploadImageBlob(b, "kategori", 400));
-  const fromUrl = (u: string) => applyImage(uploadImageFromUrl(u, "kategori", 400));
+  const fromBlob = (b: Blob) => applyImage(uploadImageBlob(b, "kategori", 640));
+  const fromUrl = (u: string) => applyImage(uploadImageFromUrl(u, "kategori", 640));
   return (
     <div>
       <form action={action} className="flex flex-wrap items-center gap-2" key={category ? undefined : state.ok}>
@@ -66,8 +66,8 @@ export function CategoryRowForm({
         <div
           tabIndex={0}
           role="button"
-          aria-label="Kategori görseli — tıklayıp yapıştırın"
-          title="Tıkla ve Ctrl+V ile görsel yapıştır, ya da görseli buraya sürükle"
+          aria-label="Kategori kapak fotoğrafı — tıklayıp yapıştırın"
+          title="Ana sayfadaki kategori kutusunun kapak fotoğrafı. Tıkla ve Ctrl+V ile yapıştır ya da sürükle. (Kenar menüsünde emoji kullanılır.)"
           onPaste={(e) => {
             const x = imageFromPaste(e.clipboardData);
             if (!x) return;
@@ -90,12 +90,12 @@ export function CategoryRowForm({
             <Loader2 size={18} className="animate-spin text-brand" />
           ) : imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="" className="h-full w-full object-contain p-1" />
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
           ) : (
             <span className="text-center text-[9px] font-semibold leading-tight text-muted">
-              görsel
+              kapak
               <br />
-              yapıştır
+              fotoğrafı
             </span>
           )}
         </div>
@@ -116,7 +116,7 @@ export function CategoryRowForm({
             <ClipboardPaste size={14} />
           </button>
           {imageUrl && (
-            <button type="button" title="Görseli kaldır (emoji kullanılır)" onClick={() => void applyImage(null, true)} className="grid h-6 w-6 place-items-center rounded-md text-muted hover:bg-bg hover:text-red-600">
+            <button type="button" title="Kapak fotoğrafını kaldır (3D simge kullanılır)" onClick={() => void applyImage(null, true)} className="grid h-6 w-6 place-items-center rounded-md text-muted hover:bg-bg hover:text-red-600">
               <X size={14} />
             </button>
           )}

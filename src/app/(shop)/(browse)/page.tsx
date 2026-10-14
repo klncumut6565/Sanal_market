@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { CategoryArt } from "@/components/shop/CategoryIcon";
+import { CategoryCardBody } from "@/components/shop/CategoryIcon";
 import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { ScrollRow } from "@/components/shop/ScrollRow";
@@ -114,17 +114,14 @@ function Section({ title, href, products, total }: { title: string; href?: strin
 /** Kategori kutuları tek sırada; bilgisayarda ‹ › oklarıyla, telefonda parmakla kayar. */
 function CategoryTiles({ categories }: { categories: Category[] }) {
   return (
-    <ScrollRow arrowTop="top-1/2">
+    <ScrollRow arrowTop="top-[40%]">
       {categories.map((c) => (
         <Link
           key={c.id}
           href={`/kategori/${c.slug}`}
-          className="group flex w-[23%] shrink-0 snap-start flex-col items-center gap-1.5 rounded-2xl bg-white p-2 text-center ring-1 ring-line transition hover:shadow-md hover:ring-brand sm:w-[18.6%] lg:w-[15.4%] xl:w-[11.6%] 2xl:w-[10.2%]"
+          className="group block w-[42%] shrink-0 snap-start overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.06)] ring-1 ring-line transition hover:shadow-lg hover:ring-brand/40 sm:w-[30%] lg:w-[23%] xl:w-[18.6%] 2xl:w-[15.6%]"
         >
-          <span className="grid aspect-square w-full place-items-center overflow-hidden rounded-xl bg-gradient-to-b from-[#fff6ef] to-[#ffe9d9]">
-            <CategoryArt cat={c} />
-          </span>
-          <span className="line-clamp-2 min-h-[2lh] text-[12px] font-bold leading-tight">{c.name}</span>
+          <CategoryCardBody cat={c} />
         </Link>
       ))}
     </ScrollRow>
