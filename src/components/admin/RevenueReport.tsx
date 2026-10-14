@@ -103,7 +103,10 @@ export async function RevenueReport({ supabase, openTime, from, to }: { supabase
 
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-extrabold">Ciro</h2>
+      <div className="flex items-baseline justify-between gap-2">
+        <h2 className="text-lg font-extrabold">Online sipariş cirosu</h2>
+        <Link href="/admin/rapor" className="text-sm font-bold text-brand">Kâr raporu (online / mağaza ayrı) →</Link>
+      </div>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
         {cards.map((c) => (
           <Link key={c.label} href={`/admin?${c.q}#rapor`} className="rounded-2xl bg-white p-3.5 ring-1 ring-line hover:ring-brand">

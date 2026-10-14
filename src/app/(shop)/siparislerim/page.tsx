@@ -7,6 +7,7 @@ import { STATUS_LABEL, formatDate, formatTL } from "@/lib/format";
 import type { Order } from "@/lib/types";
 import { signOut } from "@/app/giris/actions";
 import { DeviceOrders } from "./DeviceOrders";
+import { ReorderButton } from "@/components/shop/ReorderButton";
 
 export const metadata = { title: "Siparişlerim" };
 
@@ -59,14 +60,15 @@ async function AccountOrders() {
       ) : (
         <ul className="space-y-2">
           {orders.map((o) => (
-            <li key={o.id}>
-              <Link href={`/siparis/${o.id}`} className="flex items-center justify-between rounded-2xl bg-white p-4 ring-1 ring-line hover:ring-brand">
-                <span>
+            <li key={o.id} className="rounded-2xl bg-white p-4 ring-1 ring-line hover:ring-brand">
+              <div className="flex items-center justify-between gap-2">
+                <Link href={`/siparis/${o.id}`} className="min-w-0 flex-1">
                   <b>#{o.order_no}</b> <span className="text-sm text-muted">· {formatDate(o.created_at)}</span>
                   <span className="block text-sm font-semibold text-brand">{STATUS_LABEL[o.status]}</span>
-                </span>
-                <span className="flex items-center gap-1 font-bold">{formatTL(o.total)} <ChevronRight size={18} /></span>
-              </Link>
+                </Link>
+                <ReorderButton orderId={o.id} compact />
+                <Link href={`/siparis/${o.id}`} className="flex items-center gap-1 font-bold">{formatTL(o.total)} <ChevronRight size={18} /></Link>
+              </div>
             </li>
           ))}
         </ul>

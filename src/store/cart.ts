@@ -20,6 +20,8 @@ export type CartLine = {
 type CartState = {
   lines: CartLine[];
   add: (p: Product) => void;
+  /** Ürünü belirtilen adet kadar ekler (stok / sipariş sınırıyla kırpılır). Eklenen adedi döndürür. */
+  addQty: (p: Product, qty: number) => number;
   setQty: (id: string, qty: number) => void;
   remove: (id: string) => void;
   clear: () => void;
@@ -27,8 +29,35 @@ type CartState = {
 
 export const useCart = create<CartState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       lines: [],
+      addQty: (p, qty) => {
+        const max = Math.max(0, Math.min(p.stock, p.max_per_order));
+        const existing = get().lines.find((l) => l.id === p.id);
+        const before = existing?.qty ?? 0;
+        const next = Math.min(before + Math.max(0, Math.floor(qty)), max);
+        if (next <= before) return 0;
+        set((s) => ({
+          lines: existing
+            ? s.lines.map((l) => (l.id === p.id ? { ...l, price: p.price, sale_price: p.sale_price, max, qty: next } : l))
+            : [
+                ...s.lines,
+                {
+                  id: p.id,
+                  slug: p.slug,
+                  name: p.name,
+                  unit_label: p.unit_label,
+                  price: p.price,
+                  sale_price: p.sale_price,
+                  image_url: p.image_url,
+                  emoji: p.emoji,
+                  max,
+                  qty: next,
+                },
+              ],
+        }));
+        return next - before;
+      },
       add: (p) =>
         set((s) => {
           const max = Math.max(0, Math.min(p.stock, p.max_per_order));

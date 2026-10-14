@@ -37,8 +37,8 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
   const low = (lowStock.data ?? []).filter((p) => p.stock <= p.critical_stock);
 
   const stats = [
-    { label: "İş günü siparişi", value: String(todays.length) },
-    { label: "İş günü cirosu", value: formatTL(revenue) },
+    { label: "İş günü online sipariş", value: String(todays.length) },
+    { label: "İş günü online ciro", value: formatTL(revenue) },
     {
       label: newCount ? `Bekleyen sipariş · ${newCount} onay bekliyor` : "Bekleyen sipariş",
       value: String(open.count ?? 0),

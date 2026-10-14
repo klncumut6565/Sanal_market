@@ -10,6 +10,7 @@ import { AutoRefresh } from "@/components/AutoRefresh";
 import { waLink } from "@/lib/whatsapp";
 import { displayPhone } from "@/lib/phone";
 import { getStoreSettings } from "@/lib/data/catalog";
+import { ReorderButton } from "@/components/shop/ReorderButton";
 
 export const metadata = { title: "Sipariş takibi" };
 
@@ -129,6 +130,9 @@ async function OrderContent({ params, searchParams }: Props) {
         >
           WhatsApp&apos;tan bize yaz
         </a>
+      )}
+      {items.some((i) => !i.removed && i.product_id) && (
+        <ReorderButton items={items.map((i) => ({ product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, removed: i.removed }))} />
       )}
       <Link href="/" className="btn-ghost w-full">Alışverişe devam et</Link>
     </div>
