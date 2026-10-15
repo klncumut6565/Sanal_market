@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Loader2, Mic, MicOff, X } from "lucide-react";
 import { useMarketVoice, type VoiceSettings } from "@/lib/voice/useMarketVoice";
 import { useCart, useCartHydrated } from "@/store/cart";
+import { VoiceProducts } from "./VoiceProducts";
 
 const STATUS: Record<string, string> = {
   idle: "",
@@ -143,6 +144,8 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
             </div>
 
             {v.assistantText && <p className="rounded-2xl bg-white/10 p-3 text-sm leading-relaxed">{v.assistantText}</p>}
+
+            {v.shown && <VoiceProducts title={v.shown.title} items={v.shown.items} />}
 
             {v.actions.length > 0 && (
               <ul className="space-y-1">

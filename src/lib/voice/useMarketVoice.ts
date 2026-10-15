@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
-import { createMarketToolRunner, closedNote, loadCustomerContext, type CartProposal } from "./marketToolRunner";
+import { createMarketToolRunner, closedNote, loadCustomerContext, type CartProposal, type ShownProduct } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture } from "./audioStream";
 import { hataTurkce } from "./hatalar";
@@ -44,6 +44,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const [userText, setUserText] = useState("");
   const [assistantText, setAssistantText] = useState("");
   const [actions, setActions] = useState<VoiceAction[]>([]);
+  const [shown, setShown] = useState<{ title: string; items: ShownProduct[] } | null>(null);
 
   const providerRef = useRef<GeminiLiveProvider | null>(null);
   const micRef = useRef<MicCapture | null>(null);
@@ -90,6 +91,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         getSettings: () => settingsRef.current,
         navigate: (p) => router.push(p),
         log,
+        show: (title, items) => setShown(items.length ? { title, items } : null),
         gate: {
           get: () => proposalRef.current,
           set: (p) => {
@@ -152,6 +154,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
     setUserText("");
     setAssistantText("");
     setActions([]);
+    setShown(null);
     userBuf.current = "";
     asstBuf.current = "";
     proposalRef.current = null;
@@ -302,5 +305,5 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
     return () => window.removeEventListener(ORDER_DONE_EVENT, h);
   }, [finishSession]);
 
-  return { state, error, userText, assistantText, actions, start, stop };
+  return { state, error, userText, assistantText, actions, shown, start, stop };
 }

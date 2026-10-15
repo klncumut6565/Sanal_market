@@ -117,6 +117,8 @@ function cartLabel(p: Product, qty: number) {
   return `${qty} × ${p.name}${p.unit_label ? ` (${p.unit_label})` : ""}`;
 }
 
+export type ShownProduct = Product & { proposedQty?: number };
+
 const PRODUCT_COLS = "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,emoji,is_active,is_featured,sort_order";
 const num = (p: Product): Product => ({ ...p, price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price) });
 
@@ -125,8 +127,11 @@ export function createMarketToolRunner(deps: {
   navigate: (path: string) => void;
   log: (text: string, kind: VoiceAction["kind"]) => void;
   gate: CartGate;
+  /** Asistanın bahsettiği ürünleri panelde görselleriyle göster */
+  show?: (title: string, items: ShownProduct[]) => void;
 }) {
   const { getSettings, navigate, log, gate } = deps;
+  const show = deps.show ?? (() => {});
   return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
     const sb = createClient();
     const cart = useCart.getState();
@@ -141,6 +146,7 @@ export function createMarketToolRunner(deps: {
       const catName = new Map(cats.map((c) => [c.id, c.name]));
       const list = ((data ?? []) as Product[]).map(num).sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0)).slice(0, 8);
       if (!list.length) return { results: [], note: "Bu aramayla eşleşen ürün yok." };
+      show(`“${q}” için bulunanlar`, list);
       return {
         results: list.map((p) => ({
           product_id: p.id,
@@ -160,6 +166,12 @@ export function createMarketToolRunner(deps: {
       const allowed = new Set((await shopCategories(sb)).map((c) => c.id));
       const r = await fetchDiscounts(sb, { query: args.query ? String(args.query) : undefined, limit: 15, categoryIds: allowed });
       if ("error" in r) return r;
+      if (r.products.length) {
+        const ids = r.products.map((p) => p.product_id);
+        const { data: rows } = await sb.from("products").select(PRODUCT_COLS).in("id", ids);
+        const byId = new Map(((rows ?? []) as Product[]).map((p) => [p.id, num(p)]));
+        show("İndirimdeki ürünler", ids.map((id) => byId.get(id)).filter((p): p is Product => !!p));
+      }
       // Müşteriye stok adedi gösterme; yalnızca var/yok
       return {
         ...r,
@@ -215,7 +227,7 @@ export function createMarketToolRunner(deps: {
       if (!cat) return { error: "Bu adla kategori bulunamadı.", categories: all.map((c) => c.name) };
       const { data: prods } = await sb
         .from("products")
-        .select("id,name,unit_label,price,sale_price,stock")
+        .select(PRODUCT_COLS)
         .eq("is_active", true)
         .eq("category_id", cat.id)
         .order("sort_order")
@@ -229,6 +241,7 @@ export function createMarketToolRunner(deps: {
         sale_price: p.sale_price == null ? null : Number(p.sale_price),
         available: p.stock > 0,
       }));
+      show(cat.name, ((prods ?? []) as Product[]).map(num).sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0)).slice(0, 24));
       return {
         category: cat.name,
         products_in_stock: list.filter((p) => p.available).length,
@@ -271,6 +284,7 @@ export function createMarketToolRunner(deps: {
         return { ok: false, error: "Önerilecek uygun ürün yok.", problems };
       }
       gate.set({ items, turnSeq: gate.currentTurn(), reply: "" });
+      show("Sepete eklensin mi?", items.map((i) => ({ ...i.product, proposedQty: i.qty })));
       log(`❓ Onay bekleniyor: ${items.map((i) => cartLabel(i.product, i.qty)).join(", ")}`, "info");
       const total = items.reduce((t, i) => t + (i.product.sale_price ?? i.product.price) * i.qty, 0);
       return {
