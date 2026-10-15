@@ -210,7 +210,6 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         }
         if (!playback.isPlaying()) go("listening");
       });
-      provider.onAudio((chunk) => playback.enqueue(chunk));
       provider.onInterrupted(() => {
         playback.clear();
         go("listening");
@@ -257,6 +256,17 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       providerRef.current = provider;
       playbackRef.current = playback;
 
+      // Asistan önce konuşsun: selamlama mikrofon açılmadan, bağlantı kurulur kurulmaz istenir
+      // (mikrofondaki ilk gürültü modelin "müşteri konuşuyor" diye beklemesine yol açmasın).
+      let greeted = false;
+      const markGreeted = () => {
+        greeted = true;
+      };
+      provider.onAudio((chunk) => {
+        markGreeted();
+        playback.enqueue(chunk);
+      });
+      provider.sendText("[SİSTEM] Oturum başladı. Müşteriyi selamla.");
       lastSpeech.current = Date.now();
       // Gürültü kapısı + hoparlör yankısı koruması (audioStream.createNoiseGate)
       const gate = createNoiseGate(SES_ESIGI_RMS);
@@ -266,8 +276,11 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         providerRef.current?.sendAudio(g.out);
       });
       set("listening");
-      // Asistan önce konuşsun: selamlama
-      provider.sendText("[SİSTEM] Oturum başladı. Müşteriyi selamla.");
+      // Yedek: 2,5 sn içinde asistan konuşmadıysa ve müşteri de konuşmadıysa selamlamayı yeniden iste
+      const greetRetry = setTimeout(() => {
+        if (!greeted && !userBuf.current && providerRef.current === provider) provider.sendText("[SİSTEM] Şimdi selamlamayı yap, müşteriyi bekleme.");
+      }, 2500);
+      timers.current.push(greetRetry as unknown as ReturnType<typeof setInterval>);
 
       const started = Date.now();
       timers.current.push(
