@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/data/auth";
 import { isRecent } from "@/lib/hours";
 import { SettingsForm } from "@/components/admin/SettingsForm";
 import { NotifySettingsForm } from "@/components/admin/NotifySettingsForm";
+import { DailyReportCard } from "@/components/admin/DailyReportCard";
 import type { StoreSettings } from "@/lib/types";
 
 export const metadata = { title: "Ayarlar" };
@@ -19,6 +20,7 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-black">Market ayarları</h1>
       <SettingsForm settings={data as StoreSettings} />
       {notify && <NotifySettingsForm n={notify} hasResendKey={!!process.env.RESEND_API_KEY?.trim()} panelOpen={isRecent(notify.admin_last_seen, 120_000)} cloud={!!(process.env.WHATSAPP_TOKEN?.trim() && process.env.WHATSAPP_PHONE_NUMBER_ID?.trim())} />}
+      {notify && <DailyReportCard enabled={notify.daily_report_enabled ?? true} lastResult={notify.daily_report_last_result ?? null} lastAt={notify.daily_report_last_at ?? null} />}
     </div>
   );
 }

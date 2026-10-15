@@ -4,6 +4,8 @@ import { normalizeTrMobile } from "@/lib/phone";
 import { after } from "next/server";
 import { sendPush } from "@/lib/push/server";
 import { cloudTestParams, sendEmail, sendWhatsAppChain, windowOpenFor } from "@/lib/notify";
+import { runDailyReport } from "@/lib/dailyReport";
+import { addDays, businessDateOf } from "@/lib/hours";
 import { COURIER_REMINDER, courierKey, loadCourierCfg, notifyCourier, sendToCourier } from "@/lib/courier";
 import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
@@ -763,4 +765,24 @@ export async function deleteProductsByIds(ids: string[]): Promise<{ ok: boolean;
   updateTag(CATALOG_TAG);
   revalidatePath("/admin/urunler");
   return { ok: true, deleted };
+}
+
+// ---------------- GÜN SONU RAPORU ----------------
+export async function setDailyReportEnabled(on: boolean): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.from("notify_settings").update({ daily_report_enabled: on }).eq("id", 1);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/ayarlar");
+  return { ok: true };
+}
+
+/** Raporu şimdi gönder: "bugun" = süren iş günü (şu ana kadar), "dun" = biten son iş günü. */
+export async function sendDailyReportNow(which: "bugun" | "dun"): Promise<{ ok: boolean; status: string; text?: string }> {
+  const { supabase } = await requireAdmin();
+  const { data: h } = await supabase.from("store_settings").select("open_time").eq("id", 1).maybeSingle();
+  const openT = (h?.open_time as string | undefined)?.slice(0, 5) ?? "10:00";
+  const today = businessDateOf(Date.now(), openT);
+  const r = await runDailyReport(supabase, { secret: null, force: true, day: which === "dun" ? addDays(today, -1) : today });
+  revalidatePath("/admin/ayarlar");
+  return r;
 }
