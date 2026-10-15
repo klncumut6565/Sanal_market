@@ -67,6 +67,33 @@ export const MARKET_TOOLS = [
     },
   },
   {
+    name: "build_budget_basket",
+    description:
+      "Bütçeye göre hazır sepet ÖNERİR (eklemez). '200 lirayı geçmeyecek kahvaltılık sepet hazırla', '500 TL'lik haftalık alışveriş', '150 liraya mangal malzemesi' gibi isteklerde kullan. " +
+      "items = sepete girmesi uygun ürün TÜRLERİ, ÖNEM SIRASIYLA (bütçe yetmezse sondakiler çıkarılır). Kahvaltı için ör: beyaz peynir, zeytin, yumurta, ekmek, domates, salatalık, tereyağı, reçel, çay. " +
+      "Müşterinin söylediği özel istekleri ve hatırlanan tercihlerini (marka/tür) query'ye yaz, istemediklerini koyma. Kişi sayısı söylenirse quantity'yi buna göre ver. " +
+      "Araç her tür için stoktaki uygun ürünü seçip toplamı bütçeye sığdırır ve ONAY_BEKLENIYOR önerisi oluşturur; sonra müşteriye 'Sepete eklensin mi?' diye sor.",
+    parameters: {
+      type: "object",
+      properties: {
+        budget_tl: { type: "number", description: "Toplam bütçe (TL)" },
+        items: {
+          type: "array",
+          description: "Ürün türleri, önem sırasıyla (en fazla 12)",
+          items: {
+            type: "object",
+            properties: {
+              query: { type: "string", description: "Ürün türü/adı (yalın hâl), ör. 'beyaz peynir'" },
+              quantity: { type: "integer", description: "Adet/paket (varsayılan 1)" },
+            },
+            required: ["query"],
+          },
+        },
+      },
+      required: ["budget_tl", "items"],
+    },
+  },
+  {
     name: "confirm_cart_items",
     description:
       "Bekleyen öneriyi sepete EKLER. YALNIZCA propose_cart_items'tan sonra müşteri 'evet', 'ekle', 'olur', 'tamam' gibi AÇIK bir onay verdiğinde çağır. " +
@@ -160,6 +187,7 @@ KESİN KURALLAR:
 - YALNIZCA araçların döndürdüğü ürün ve kategorilerden bahset; bunlar müşterinin ekranında gördükleriyle aynıdır. Araç sonucunda olmayan bir ürün/kategori sorulursa yalnızca "Şu an sitemizde bu ürün yok" de ve benzer bir ürün öner. ASLA "üyelere/onaylı müşterilere özel", "yetkin yok", "hesabına kapalı" gibi bir açıklama yapma; müşteri hakkında sınıflandırma ima etme.
 - Alkollü içki 22:00–06:00 arası yasal olarak satılamaz; bu saatlerde alkol eklenmek istenirse yalnızca bu saat kuralını söyle.
 - Genel bir tür/reyon sorulursa ("alkol ne var", "temizlik ürünleri", "içecek öner") search_products sonuç vermezse list_category_products ile o kategoriye de bak; "yok" demeden önce mutlaka ikisini de dene.
+- BÜTÇELİ SEPET: Müşteri bir tutar söyleyip hazır sepet isterse ("200 lirayı geçmeyecek kahvaltılık", "500 TL'lik haftalık alışveriş") build_budget_basket çağır. Tutar belli değilse önce sor. Sonuçtaki toplamı ve kalan tutarı söyle; bütçe yüzünden çıkarılan ya da markette olmayan tür varsa belirt. Bu da bir ÖNERİDİR: "Sepete eklensin mi?" diye sor; evet derse confirm_cart_items. Müşteri bir ürünü değiştirmek isterse yeniden build_budget_basket ya da propose_cart_items ile öner.
 - Müşteri "sepetimde ne var", "toplam ne kadar" derse get_cart çağır.
 - Müşteri tavsiye isterse (ör. kahvaltılık, makarna yanına ne alayım) search_products ile stoktaki ürünleri bul ve 2-3 tanesini öner; zorlamadan, kısa.
 - Minimum sipariş tutarı veya ücretsiz teslimata az kaldıysa bunu bir kez kibarca hatırlatabilirsin.

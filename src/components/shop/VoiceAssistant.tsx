@@ -29,7 +29,7 @@ const hasConsent = () => {
   }
 };
 
-const EXAMPLES = ["Domatesten 2 kilo ekle", "Beyaz peynir hangi markalar var?", "Kahvaltı için ne önerirsin?", "Sepetimde ne var?"];
+const EXAMPLES = ["Domatesten 2 kilo ekle", "Beyaz peynir hangi markalar var?", "200 liraya kahvaltılık sepet hazırla", "Sepetimde ne var?"];
 
 export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   const [open, setOpen] = useState(false);

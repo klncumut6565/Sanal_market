@@ -9,6 +9,8 @@ import type { VoiceSettings, VoiceAction } from "./useMarketVoice";
 import { fetchDiscounts } from "./discounts";
 import { shopCategories, visibleIn } from "@/lib/shopCategories";
 import { halusinasyonMu, kisaYankiMi, yankiMi } from "./halusinasyon";
+import { pickBudgetBasket, type BudgetSlot } from "./budgetBasket";
+import { matchWords } from "@/lib/trFold";
 
 /** Sepet onayı: öneri bekletilir, müşterinin SONRAKİ konuşmasında açık "evet" aranır. */
 export type CartProposal = {
@@ -139,7 +141,7 @@ export function createMarketToolRunner(deps: {
 }) {
   const { getSettings, navigate, log, gate } = deps;
   const show = deps.show ?? (() => {});
-  return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
+  const run = async (name: string, args: Record<string, unknown>): Promise<unknown> => {
     const sb = createClient();
     const cart = useCart.getState();
     const s = getSettings();
@@ -333,6 +335,46 @@ export function createMarketToolRunner(deps: {
       };
     }
 
+    if (name === "build_budget_basket") {
+      const budget = Number(String(args.budget_tl ?? "").replace(",", "."));
+      if (!Number.isFinite(budget) || budget < 20 || budget > 20_000) return { error: "Bütçe anlaşılamadı; kaç lira olduğunu sor." };
+      const raw = Array.isArray(args.items) ? (args.items as Record<string, unknown>[]) : [];
+      const wanted = raw
+        .map((it) => ({ query: String(it?.query ?? "").trim().slice(0, 40), qty: Math.max(1, Math.min(10, Math.trunc(Number(it?.quantity) || 1))) }))
+        .filter((w) => w.query.length >= 2)
+        .slice(0, 12);
+      if (!wanted.length) return { error: "Sepete girecek ürün türlerini (ör. peynir, zeytin, yumurta) items olarak ver." };
+      const inCart = new Set(cart.lines.map((l) => l.id));
+      const byId = new Map<string, Product>();
+      const slots: BudgetSlot[] = await Promise.all(
+        wanted.map(async (w) => {
+          let { data } = await sb.rpc("search_products", { q: w.query });
+          if (!data?.length && w.query.includes(" ")) ({ data } = await sb.rpc("search_products", { q: w.query.split(/\s+/).pop() }));
+          const all = ((data ?? []) as Product[]).map(num).filter((p) => p.is_active && p.stock >= w.qty && Math.min(p.stock, p.max_per_order) >= w.qty && !inCart.has(p.id));
+          const strict = all.filter((p) => matchWords(p.name, w.query));
+          const list = (strict.length ? strict : all).slice(0, 12);
+          list.forEach((p) => byId.set(p.id, p));
+          return { query: w.query, qty: w.qty, options: list.map((p) => ({ id: p.id, name: p.name, unit: p.sale_price ?? p.price })).sort((a, b) => a.unit - b.unit) };
+        }),
+      );
+      // Aynı ürün iki türe birden seçilmesin
+      const seen = new Set<string>();
+      for (const sl of slots) sl.options = sl.options.filter((o) => !seen.has(o.id) && (seen.add(o.id), true));
+      const r = pickBudgetBasket(slots, budget);
+      if (!r.picks.length) return { error: "Bu bütçeyle uygun ürün bulunamadı.", not_found: r.notFound, dropped: r.dropped };
+      const proposal = (await run("propose_cart_items", { items: r.picks.map((p) => ({ product_id: p.option.id, quantity: p.qty })) })) as Record<string, unknown>;
+      if (proposal?.ok) show(`${Math.round(budget)} TL bütçeli sepet — eklensin mi?`, r.picks.map((p) => ({ ...byId.get(p.option.id)!, proposedQty: p.qty })));
+      return {
+        ...proposal,
+        budget_tl: budget,
+        basket_total_tl: r.total,
+        remaining_tl: Math.round((budget - r.total) * 100) / 100,
+        left_out_for_budget: r.dropped.length ? r.dropped : undefined,
+        not_found_in_store: r.notFound.length ? r.notFound : undefined,
+        next: "Sepeti kısaca özetle: kaç ürün, toplam ve bütçeden kalan; bütçe yüzünden çıkarılan veya markette olmayan tür varsa söyle. Ürünlerin tamamını tek tek okuma, 'ekranda görebilirsin' de. Sonra 'Sepete eklensin mi?' diye sor ve bekle.",
+      };
+    }
+
     if (name === "confirm_cart_items") {
       const pend = gate.get();
       if (!pend) return { ok: false, added: [], error: "Bekleyen öneri yok. Önce propose_cart_items çağır ve müşteriye sor." };
@@ -453,5 +495,6 @@ export function createMarketToolRunner(deps: {
     }
 
     return { error: "Bilinmeyen araç." };
-    }
+  };
+  return run;
 }

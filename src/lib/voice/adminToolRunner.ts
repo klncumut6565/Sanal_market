@@ -7,12 +7,13 @@ import { calcMargin } from "@/lib/margin";
 import { addDays, businessDateOf, businessDateStart, hoursState, isYmd, reportRanges } from "@/lib/hours";
 import { shortDay, tlv, type AdminVisual, type ProductChange } from "./adminVisual";
 import { fold } from "@/lib/trFold";
+import { formatTL } from "@/lib/format";
 import { applyProductChange } from "@/app/admin/voiceActions";
 
 const EVET = /(^|\s)(evet|onayl|onay|tamam|olur|uygula|yap|kaydet|doğru|aynen|tabi|tabii)/;
 const HAYIR = /(hayır|hayir|vazgeç|vazgec|iptal|yapma|dur |bekle|olmaz|yanlış)/;
 const CHANGE_TTL = 3 * 60_000;
-const ynTL = (n: number | null) => (n == null ? "yok" : tlv(n).replace(/\s?₺$/, " ₺"));
+const ynTL = (n: number | null) => (n == null ? "yok" : formatTL(n));
 const numArg = (v: unknown) => {
   if (v == null || v === "") return undefined;
   const n = Number(String(v).replace(",", "."));
