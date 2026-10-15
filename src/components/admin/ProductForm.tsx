@@ -23,11 +23,14 @@ export function ProductForm({
   product,
   categories,
   initialBarcode,
+  initial,
   cost,
 }: {
   product?: Product;
   categories: Category[];
   initialBarcode?: string;
+  /** Fotoğraftan tanıma gibi yerlerden gelen ön doldurma (yalnızca yeni üründe) */
+  initial?: { name?: string; unit_label?: string; category_id?: string; image_url?: string };
   cost?: number | null;
 }) {
   const [priceS, setPriceS] = useState(product?.price != null ? String(product.price) : "");
@@ -36,11 +39,11 @@ export function ProductForm({
   const mNormal = calcMargin(num(priceS), num(costS));
   const mSale = num(saleS) != null ? calcMargin(num(saleS), num(costS)) : null;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveProduct, {});
-  const [imageUrl, setImageUrl] = useState(product?.image_url ?? "");
+  const [imageUrl, setImageUrl] = useState(product?.image_url ?? initial?.image_url ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [barcode, setBarcode] = useState(product?.barcode ?? initialBarcode ?? "");
-  const [nameS, setNameS] = useState(product?.name ?? "");
+  const [nameS, setNameS] = useState(product?.name ?? initial?.name ?? "");
   const [scanning, setScanning] = useState(false);
   // El barkod okuyucu: form neredeyse okutulan barkod Barkod alanına yazılır (Enter formu göndermez)
   useHidScanner((code) => {
@@ -198,12 +201,12 @@ export function ProductForm({
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <F label="Ürün adı *" className="sm:col-span-2"><input name="name" required value={nameS} onChange={(e) => setNameS(e.target.value)} className="input" /></F>
           <F label="Kategori">
-            <select name="category_id" defaultValue={product?.category_id ?? ""} className="input">
+            <select name="category_id" defaultValue={product?.category_id ?? initial?.category_id ?? ""} className="input">
               <option value="">— Seçin —</option>
               {categoryOptions(categories).map((o) => <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>)}
             </select>
           </F>
-          <F label="Birim (ör. 1 kg, 500 g, 1 L)"><input name="unit_label" defaultValue={product?.unit_label ?? ""} className="input" /></F>
+          <F label="Birim (ör. 1 kg, 500 g, 1 L)"><input name="unit_label" defaultValue={product?.unit_label ?? initial?.unit_label ?? ""} className="input" /></F>
           <F label="Emoji (görsel yoksa)"><input name="emoji" defaultValue={product?.emoji ?? ""} maxLength={4} className="input" /></F>
           <F label="Bağlantı adı (slug)"><input name="slug" defaultValue={product?.slug ?? ""} placeholder="Boşsa addan üretilir" className="input" /></F>
           <F label="Barkod" className="sm:col-span-2">

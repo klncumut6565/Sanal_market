@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Plus, ScanBarcode, Rows3 } from "lucide-react";
+import { Camera, Plus, ScanBarcode, Rows3 } from "lucide-react";
 import { requireAdmin } from "@/lib/data/auth";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
@@ -61,6 +61,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
       (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
       (sp.stok !== "mukerrer" || !!dupOf(p)) &&
       (sp.stok !== "barkodsuz" || !p.barcode?.trim()) &&
+      (sp.stok !== "gorselsiz" || !p.image_url) &&
       (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
       (sp.marj !== "girilmemis" || !costOf.has(p.id)),
   );
@@ -104,8 +105,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-black">Ürünler & stok</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href="/admin/barkod" className="btn-ghost py-2.5"><ScanBarcode size={18} /> Barkodla güncelle</Link>
+          <Link href="/admin/urunler/foto" className="btn-ghost py-2.5"><Camera size={18} /> Fotoğrafla tanı</Link>
           <Link href="/admin/urunler/hizli" className="btn-ghost py-2.5"><Rows3 size={18} /> Hızlı ekle (liste)</Link>
           <Link href="/admin/urunler/yeni" className="btn-primary py-2.5"><Plus size={18} /> Yeni ürün</Link>
         </div>
@@ -124,6 +126,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           <option value="kritik">Kritik stok</option>
           <option value="mukerrer">Mükerrer şüphesi (aynı ad / barkod)</option>
           <option value="barkodsuz">Barkodsuz ürünler</option>
+          <option value="gorselsiz">Görseli olmayanlar</option>
         </select>
         <select name="marj" defaultValue={sp.marj ?? ""} className="input max-w-52">
           <option value="">Tüm marjlar</option>
