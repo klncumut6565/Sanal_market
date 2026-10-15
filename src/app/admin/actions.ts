@@ -786,3 +786,12 @@ export async function sendDailyReportNow(which: "bugun" | "dun"): Promise<{ ok: 
   revalidatePath("/admin/ayarlar");
   return r;
 }
+
+// ---------------- WHATSAPP SİPARİŞ BOTU ----------------
+export async function setWaBotEnabled(on: boolean): Promise<{ ok: boolean; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const { error } = await supabase.from("notify_settings").update({ wa_bot_enabled: on }).eq("id", 1);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath("/admin/ayarlar");
+  return { ok: true };
+}

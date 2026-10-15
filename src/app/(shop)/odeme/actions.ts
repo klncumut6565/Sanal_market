@@ -1,9 +1,7 @@
 "use server";
 import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createPublicClient } from "@/lib/supabase/public";
-import { sendPush } from "@/lib/push/server";
-import { notifyNewOrder } from "@/lib/notify";
+import { notifyOrderPlaced } from "@/lib/orderNotify";
 import { orderErrorMessage } from "@/lib/format";
 import { normalizeTrMobile } from "@/lib/phone";
 import type { PaymentMethod } from "@/lib/types";
@@ -90,30 +88,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (error) return { ok: false, error: orderErrorMessage(error.message) };
   const row = (Array.isArray(data) ? data[0] : data) as { order_id: string; access_token: string; order_no: number } | undefined;
   if (!row) return { ok: false, error: orderErrorMessage("") };
-  // Yönetim paneli kapalıysa işletmeye e-posta + WhatsApp (yanıtı geciktirmeden)
-  after(async () => {
-    // Telefon bildirimi (yönetici): panel açık olsa da gönderilir
-    try {
-      await sendPush("admin", {
-        title: `🛒 Yeni sipariş #${row.order_no}`,
-        body: `${input.name.trim()} · dokun, siparişi aç`,
-        url: `/admin/siparisler/${row.order_id}`,
-        tag: `siparis-${row.order_no}`,
-      });
-    } catch (e) {
-      console.error("[push]", e);
-    }
-  });
-  after(async () => {
-    try {
-      const sb = createPublicClient();
-      const { data: payload, error: claimErr } = await sb.rpc("claim_order_notification", { p_order_id: row.order_id, p_token: row.access_token });
-      if (claimErr) console.error("[bildirim] claim:", claimErr.message);
-      const summary = payload ? await notifyNewOrder(payload) : null;
-      if (summary) await sb.rpc("record_notification_result", { p_order_id: row.order_id, p_token: row.access_token, p_result: summary });
-    } catch (e) {
-      console.error("[bildirim]", e);
-    }
-  });
+  // Yönetici telefon bildirimi + (panel kapalıysa) e-posta/WhatsApp — yanıtı geciktirmeden
+  after(() => notifyOrderPlaced(row, input.name.trim()));
   return { ok: true, id: row.order_id, token: row.access_token, orderNo: Number(row.order_no) };
 }

@@ -2,9 +2,13 @@
 //  GET  → doğrulama (hub.verify_token = WHATSAPP_VERIFY_TOKEN)
 //  POST → gelen mesajlar (24 saatlik ücretsiz pencereyi açar) + mesaj durumları.
 //         Teslim edilemeyen ("failed") bildirimler CallMeBot ile yedek numaraya gönderilir.
-import { connection, type NextRequest } from "next/server";
+import { after, connection, type NextRequest } from "next/server";
 import { createPublicClient } from "@/lib/supabase/public";
 import { sendWhatsApp } from "@/lib/notify";
+import { handleBotMessage, type InboundMessage } from "@/lib/waBot";
+
+// Bot cevabı (yapay zekâ + araçlar) birkaç saniye sürebilir
+export const maxDuration = 60;
 
 const secret = () => process.env.WHATSAPP_VERIFY_TOKEN?.trim() || "";
 
@@ -29,7 +33,15 @@ async function validSignature(raw: string, header: string | null) {
 
 type Change = {
   value?: {
-    messages?: { from?: string }[];
+    messages?: {
+      from?: string;
+      id?: string;
+      type?: string;
+      text?: { body?: string };
+      button?: { text?: string };
+      interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } };
+    }[];
+    contacts?: { wa_id?: string; profile?: { name?: string } }[];
     statuses?: { id?: string; status?: string; errors?: { code?: number; title?: string; message?: string }[] }[];
   };
 };
@@ -47,10 +59,22 @@ export async function POST(req: NextRequest) {
     return new Response("ok");
   }
   const inbound: string[] = [];
+  const botMsgs: InboundMessage[] = [];
   const failed: { id: string; error: string }[] = [];
   for (const e of body.entry ?? [])
     for (const c of e.changes ?? []) {
-      for (const m of c.value?.messages ?? []) if (m.from) inbound.push(m.from);
+      for (const m of c.value?.messages ?? []) {
+        if (!m.from) continue;
+        inbound.push(m.from);
+        if (m.id)
+          botMsgs.push({
+            from: m.from,
+            id: m.id,
+            type: m.type ?? "",
+            name: c.value?.contacts?.find((k) => k.wa_id === m.from)?.profile?.name,
+            text: m.text?.body ?? m.button?.text ?? m.interactive?.button_reply?.title ?? m.interactive?.list_reply?.title,
+          });
+      }
       for (const s of c.value?.statuses ?? [])
         if (s.status === "failed" && s.id) {
           const er = s.errors?.[0];
@@ -58,6 +82,8 @@ export async function POST(req: NextRequest) {
         }
     }
 
+  // WhatsApp sipariş botu: Meta'ya hemen 200 dön, cevabı arkada hazırla (aynı mesaj tekrar gelirse veritabanı eler)
+  for (const m of botMsgs) after(() => handleBotMessage(m).catch((e) => console.error("[wa bot]", e)));
   const { data, error } = await createPublicClient().rpc("wa_ingest", { p_secret: secret(), p_inbound: inbound, p_failed: failed });
   if (error) {
     console.error("[whatsapp webhook]", error.message);
