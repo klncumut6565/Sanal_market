@@ -5,7 +5,19 @@ import { fetchAll } from "@/lib/data/fetchAll";
 import { fetchDiscounts } from "./discounts";
 import { calcMargin } from "@/lib/margin";
 import { addDays, businessDateOf, businessDateStart, hoursState, isYmd, reportRanges } from "@/lib/hours";
-import { shortDay, tlv, type AdminVisual } from "./adminVisual";
+import { shortDay, tlv, type AdminVisual, type ProductChange } from "./adminVisual";
+import { fold } from "@/lib/trFold";
+import { applyProductChange } from "@/app/admin/voiceActions";
+
+const EVET = /(^|\s)(evet|onayl|onay|tamam|olur|uygula|yap|kaydet|doğru|aynen|tabi|tabii)/;
+const HAYIR = /(hayır|hayir|vazgeç|vazgec|iptal|yapma|dur |bekle|olmaz|yanlış)/;
+const CHANGE_TTL = 3 * 60_000;
+const ynTL = (n: number | null) => (n == null ? "yok" : tlv(n).replace(/\s?₺$/, " ₺"));
+const numArg = (v: unknown) => {
+  if (v == null || v === "") return undefined;
+  const n = Number(String(v).replace(",", "."));
+  return Number.isFinite(n) ? n : NaN;
+};
 
 type Sb = ReturnType<typeof createClient>;
 type Settings = {
@@ -160,8 +172,46 @@ function costInfo(p: { price: number; sale_price: number | null; product_costs?:
   return { cost_price: cost, unit_profit_tl: m?.profit, margin_pct: m?.marginPct, markup_pct: m?.markupPct };
 }
 
-export function createAdminToolRunner(deps: { navigate: (path: string) => void; log: (text: string) => void; show?: (v: AdminVisual[]) => void }) {
+export function createAdminToolRunner(deps: {
+  navigate: (path: string) => void;
+  log: (text: string) => void;
+  show?: (v: AdminVisual[]) => void;
+  /** Onay bekleyen değişikliği panelde gösterir (null = kaldır) */
+  setChange?: (c: ProductChange | null) => void;
+  /** Kullanıcının en son söylediği cümle (sesli onay kontrolü için) */
+  lastUserText?: () => string;
+}) {
   const show = deps.show ?? (() => {});
+  let pending: ProductChange | null = null;
+  const publish = (c: ProductChange | null) => {
+    pending = c;
+    deps.setChange?.(c ? { ...c } : null);
+  };
+
+  /** Ekrandaki butondan ya da sesli onaydan sonra çağrılır — gerçek değişikliği yapan tek yer */
+  async function confirmPending(id?: string): Promise<{ ok: boolean; message: string }> {
+    const c = pending;
+    if (!c || (id && c.id !== id) || c.status !== "bekliyor") return { ok: false, message: "Onay bekleyen değişiklik yok." };
+    if (Date.now() - c.createdAt > CHANGE_TTL) {
+      publish({ ...c, status: "iptal", error: "Süresi doldu" });
+      return { ok: false, message: "Önerinin süresi doldu (3 dk). Değişikliği yeniden iste." };
+    }
+    publish({ ...c, status: "uygulaniyor" });
+    const r = await applyProductChange(c.productId, c.expect, c.patch);
+    if (!r.ok) {
+      publish({ ...c, status: "hata", error: r.error });
+      return { ok: false, message: r.error };
+    }
+    publish({ ...c, status: "uygulandi" });
+    deps.log(`✅ ${c.name}: ${c.rows.map((x) => `${x.label} ${x.before} → ${x.after}`).join(", ")}`);
+    return { ok: true, message: `${c.name} güncellendi: ${c.rows.map((x) => `${x.label} ${x.after}`).join(", ")}` };
+  }
+  function cancelPending(id?: string) {
+    const c = pending;
+    if (!c || (id && c.id !== id) || c.status !== "bekliyor") return false;
+    publish({ ...c, status: "iptal" });
+    return true;
+  }
   let settings: Settings | null = null;
   const sb = createClient();
   const getSettings = async () => {
@@ -187,7 +237,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
     return settings;
   };
 
-  return async (name: string, args: Record<string, unknown>): Promise<unknown> => {
+  const run = async (name: string, args: Record<string, unknown>): Promise<unknown> => {
     const s = await getSettings();
     const period = String(args.period ?? "");
     const start = args.start ? String(args.start) : undefined;
@@ -614,6 +664,91 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
       };
     }
 
+    if (name === "propose_product_change") {
+      const q = String(args.product ?? "").trim().slice(0, 60);
+      if (q.length < 2) return { error: "Hangi ürün? Ürün adını söyle." };
+      const setStock = numArg(args.set_stock);
+      const addStock = numArg(args.add_stock);
+      const setPrice = numArg(args.set_price);
+      const setSale = numArg(args.set_sale_price);
+      const removeSale = args.remove_sale === true;
+      const setActive = typeof args.set_active === "boolean" ? args.set_active : undefined;
+      if ([setStock, addStock, setPrice, setSale].some((n) => Number.isNaN(n))) return { error: "Sayı anlaşılamadı; tekrar sor." };
+      if (setStock == null && addStock == null && setPrice == null && setSale == null && !removeSale && setActive == null)
+        return { error: "Ne değişecek? Stok, fiyat, indirimli fiyat ya da satış durumu söyle." };
+
+      const { data, error } = await sb.rpc("admin_search_products", { q, lim: 8 });
+      if (error) return { error: error.message };
+      const rows = (data ?? []) as { id: string; name: string; unit_label: string | null; price: number; sale_price: number | null; stock: number; is_active: boolean; barcode: string | null }[];
+      if (!rows.length) return { error: `“${q}” adında ürün bulunamadı. Farklı bir adla dene.` };
+      const exact = rows.filter((r) => fold(r.name) === fold(q) || r.barcode === q.replace(/\s/g, ""));
+      const p = exact.length === 1 ? exact[0] : rows.length === 1 ? rows[0] : null;
+      if (!p) {
+        show([{ kind: "table", title: `“${q}” — hangisi?`, columns: ["Ürün", "Fiyat", "Stok"], rows: rows.map((r) => [r.name, tlv(Number(r.sale_price ?? r.price)), String(r.stock)]) }]);
+        return { ambiguous: true, choices: rows.map((r) => r.name), note: "Birden çok ürün var. Hangisi olduğunu sor; sonra product alanına TAM adını yazarak tekrar çağır." };
+      }
+      const before = { price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price), stock: p.stock, is_active: p.is_active };
+      const patch: ProductChange["patch"] = {};
+      const out: ProductChange["rows"] = [];
+      if (setStock != null || addStock != null) {
+        const st = setStock != null ? Math.round(setStock) : before.stock + Math.round(addStock!);
+        if (st < 0) return { error: `Stok eksiye düşemez (şu an ${before.stock}).` };
+        patch.stock = st;
+        out.push({ label: "Stok", before: String(before.stock), after: String(st) });
+      }
+      if (setPrice != null) {
+        if (setPrice <= 0) return { error: "Fiyat sıfırdan büyük olmalı." };
+        patch.price = Math.round(setPrice * 100) / 100;
+        out.push({ label: "Fiyat", before: ynTL(before.price), after: ynTL(patch.price) });
+      }
+      if (setSale != null || removeSale) {
+        const sale = removeSale ? null : Math.round(setSale! * 100) / 100;
+        const base = patch.price ?? before.price;
+        if (sale != null && (sale <= 0 || sale >= base)) return { error: `İndirimli fiyat normal fiyattan (${ynTL(base)}) düşük olmalı.` };
+        patch.sale_price = sale;
+        out.push({ label: "İndirimli fiyat", before: ynTL(before.sale_price), after: ynTL(sale) });
+      } else if (patch.price != null && before.sale_price != null && before.sale_price >= patch.price) {
+        patch.sale_price = null;
+        out.push({ label: "İndirimli fiyat", before: ynTL(before.sale_price), after: "kaldırılır (yeni fiyattan yüksek)" });
+      }
+      if (setActive != null && setActive !== before.is_active) {
+        patch.is_active = setActive;
+        out.push({ label: "Satış durumu", before: before.is_active ? "satışta" : "kapalı", after: setActive ? "satışta" : "kapalı" });
+      }
+      if (!out.length) return { error: "Bu değerler zaten aynı; değişecek bir şey yok." };
+      if (pending?.status === "bekliyor") cancelPending();
+      publish({
+        id: crypto.randomUUID(),
+        productId: p.id,
+        name: p.name,
+        rows: out,
+        expect: before,
+        patch,
+        status: "bekliyor",
+        createdAt: Date.now(),
+        proposedAfter: deps.lastUserText?.() ?? "",
+      });
+      return {
+        pending: true,
+        product: p.name,
+        changes: out.map((x) => `${x.label}: ${x.before} → ${x.after}`),
+        note: "HENÜZ UYGULANMADI. Değişikliği kısaca oku ve 'Onaylıyor musun?' diye sor. Kullanıcı 'evet' derse confirm_product_change, 'hayır' derse cancel_product_change çağır. Ekranda da Onayla butonu var.",
+      };
+    }
+
+    if (name === "confirm_product_change") {
+      if (!pending || pending.status !== "bekliyor") return { error: "Onay bekleyen değişiklik yok." };
+      const said = (deps.lastUserText?.() ?? "").toLocaleLowerCase("tr");
+      if (!said || said === pending.proposedAfter.toLocaleLowerCase("tr") || !EVET.test(said) || HAYIR.test(said))
+        return { error: "Kullanıcıdan açık bir 'evet' duymadım. Değişikliği uygulamadım; tekrar 'Onaylıyor musun?' diye sor ya da ekrandaki Onayla butonunu göster." };
+      const r = await confirmPending();
+      return r.ok ? { ok: true, done: r.message, note: "Uygulandı; kısaca 'Tamam, güncellendi' de." } : { error: r.message };
+    }
+
+    if (name === "cancel_product_change") {
+      return cancelPending() ? { ok: true, note: "Vazgeçildi, hiçbir şey değişmedi." } : { error: "Bekleyen değişiklik yok." };
+    }
+
     if (name === "go_to_page") {
       const path = PAGES[String(args.page)];
       if (!path) return { error: "Bilinmeyen sayfa." };
@@ -624,4 +759,5 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
 
     return { error: "Bilinmeyen araç." };
   };
+  return Object.assign(run, { confirmPending, cancelPending });
 }

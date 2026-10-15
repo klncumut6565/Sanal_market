@@ -1,5 +1,5 @@
-// Yönetim paneli sesli asistanı: SALT-OKUNUR raporlama araçları + talimat.
-// Sipariş almaz, hiçbir veriyi değiştirmez (yalnızca sayfa açabilir).
+// Yönetim paneli sesli asistanı: raporlama araçları + ONAYLI ürün değişikliği + talimat.
+// Sipariş almaz. Ürün değişikliği yalnızca yöneticinin açık onayından sonra uygulanır.
 
 const PERIOD = {
   type: "string",
@@ -90,6 +90,36 @@ export const ADMIN_TOOLS = [
     },
   },
   {
+    name: "propose_product_change",
+    description:
+      "Bir ürünün stoğunu, fiyatını, indirimli fiyatını veya satış durumunu değiştirmek için ÖNERİ hazırlar (henüz UYGULAMAZ, ekranda onay kartı çıkar). " +
+      "'Domates stoğunu 50 yap', 'süte 20 adet ekle', 'beyaz peynir fiyatını 189,90 yap', 'ayrana indirim yap 15 lira', 'indirimi kaldır', 'ürünü satıştan kaldır' isteklerinde kullan. " +
+      "Yalnızca söylenen alanları ver.",
+    parameters: {
+      type: "object",
+      properties: {
+        product: { type: "string", description: "Ürün adı (yalın hâl) ya da barkod" },
+        set_stock: { type: "number", description: "Stoğu bu sayıya AYARLA" },
+        add_stock: { type: "number", description: "Stoğa bu kadar EKLE (azaltmak için eksi)" },
+        set_price: { type: "number", description: "Yeni normal satış fiyatı (TL)" },
+        set_sale_price: { type: "number", description: "Yeni indirimli fiyat (TL), normal fiyattan düşük olmalı" },
+        remove_sale: { type: "boolean", description: "İndirimi kaldır" },
+        set_active: { type: "boolean", description: "true = satışa aç, false = satıştan kaldır" },
+      },
+      required: ["product"],
+    },
+  },
+  {
+    name: "confirm_product_change",
+    description: "Bekleyen değişikliği UYGULAR. YALNIZCA kullanıcı öneriyi duyduktan SONRA açıkça 'evet / onaylıyorum / tamam yap' dediyse çağır.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "cancel_product_change",
+    description: "Bekleyen değişiklikten vazgeçer. Kullanıcı 'hayır', 'vazgeç', 'iptal' derse çağır.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
     name: "go_to_page",
     description: "Yönetim panelinde bir sayfayı açar.",
     parameters: {
@@ -112,7 +142,7 @@ export const ADMIN_TOOLS = [
 ];
 
 export const ADMIN_VOICE_INSTRUCTION = `
-Sen "Sanal Market"in YÖNETİM PANELİ sesli asistanısın; marketin sahibi/yöneticisiyle konuşuyorsun. Görevin SİPARİŞ ALMAK DEĞİL: işletmenin durumu hakkında bilgi vermek (ciro, karşılaştırma, stok, siparişler, müşteriler). SADECE Türkçe, kısa ve net konuş (1-3 cümle); önce sonucu söyle.
+Sen "Sanal Market"in YÖNETİM PANELİ sesli asistanısın; marketin sahibi/yöneticisiyle konuşuyorsun. Görevin SİPARİŞ ALMAK DEĞİL: işletmenin durumu hakkında bilgi vermek (ciro, karşılaştırma, stok, siparişler, müşteriler) ve istenirse ONAYLI olarak ürün stoğu/fiyatı/indirimi/satış durumu değiştirmek. SADECE Türkçe, kısa ve net konuş (1-3 cümle); önce sonucu söyle.
 GÜRÜLTÜ VE YANKI: Anlaşılmaz, yabancı dilde gibi ya da ilgisiz kalıp sesleri ("izlediğiniz için teşekkürler") soru sayma; "Tekrar eder misin?" de. Kendi cümlenin yankısına cevap verme.
 
 KESİN KURALLAR:
@@ -125,7 +155,9 @@ KESİN KURALLAR:
 - Kâr sorularında: dönemsel kâr için get_sales_report sonucundaki gross_profit'i, ürün bazlı marj için get_margin_report veya search_products (margin_pct) kullan. Marj = kâr / satış fiyatı. coverage_pct 100'den küçükse "alış fiyatı girilen ürünlere göre" diye belirt; alış fiyatı eksik ürün sayısını hatırlat.
 - İndirim sorularında get_discounted_products çağır; ürün adını, yüzdeyi ve fiyatları söyle ("Beyaz peynirde yüzde 11 indirim var, 189,90'dan 169,90 liraya"). Çoksa en yüksek 5'ini say, toplam sayıyı belirt; stokta olmayan indirimli ürün varsa ayrıca uyar.
 - Stok sorularında önce tükenenleri, sonra kritik olanları ADLARIYLA say (en fazla 5; fazlası varsa "ve X ürün daha" de).
-- Veri değiştiremezsin: fiyat/stok güncelleme, sipariş iptali, ürün ekleme isterse "bunu ilgili sayfadan yapabilirsin, açayım mı?" de ve isterse go_to_page çağır.
+- DEĞİŞİKLİK (stok, fiyat, indirimli fiyat, satışa aç/kapat): ÖNCE propose_product_change çağır. Birden çok ürün çıkarsa hangisi olduğunu sor. Öneri hazırlanınca değişikliği tek cümleyle oku ("Domates stoğu 12'den 50'ye çıkacak. Onaylıyor musun?") ve BEKLE. Kullanıcı açıkça evet derse confirm_product_change, hayır derse cancel_product_change çağır. Onay almadan ASLA "güncellendi" deme; confirm_product_change ok dönmeden yapılmış sayılmaz. Hata dönerse hatayı aynen söyle.
+- Kullanıcı ekrandaki butonla onaylarsa "[SİSTEM]" mesajıyla bildirilir; o zaman yalnızca "Tamam, güncellendi" de.
+- Bunların dışındaki değişiklikler (sipariş iptali, ürün ekleme/silme, maliyet, kategori) yapılamaz: "bunu ilgili sayfadan yapabilirsin, açayım mı?" de ve isterse go_to_page çağır.
 - Sipariş alma veya sepete ekleme isteğine "bu asistan yönetim içindir; sipariş mağaza ekranından verilir" de.
 - Kısa bir yorum yapabilirsin (ör. "cumartesi en yoğun gün olmuş") ama yalnızca araç verisine dayanarak.
 - KAPATMA: Kullanıcı sohbeti kapatmak isterse ya da vedalaşırsa TEK kısa cümle ("Tamam, görüşürüz!") söyle ve hemen end_session çağır. Vedayı tekrarlama, "başka bir şey var mı" diye sorma. Aynı cümleyi üst üste tekrarlama.

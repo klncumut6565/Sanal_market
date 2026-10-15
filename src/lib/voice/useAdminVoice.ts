@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createAdminToolRunner } from "./adminToolRunner";
-import type { AdminVisual } from "./adminVisual";
+import type { AdminVisual, ProductChange } from "./adminVisual";
 import { ADMIN_TOOLS, ADMIN_VOICE_INSTRUCTION } from "./adminTools";
 import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate } from "./audioStream";
@@ -30,6 +30,8 @@ export function useAdminVoice(onEnded?: () => void) {
   const [assistantText, setAssistantText] = useState("");
   const [actions, setActions] = useState<{ id: number; text: string }[]>([]);
   const [visuals, setVisuals] = useState<AdminVisual[]>([]);
+  const [change, setChange] = useState<ProductChange | null>(null);
+  const runnerRef = useRef<ReturnType<typeof createAdminToolRunner> | null>(null);
 
   const providerRef = useRef<GeminiLiveProvider | null>(null);
   const micRef = useRef<MicCapture | null>(null);
@@ -111,6 +113,7 @@ export function useAdminVoice(onEnded?: () => void) {
     setAssistantText("");
     setActions([]);
     setVisuals([]);
+    setChange(null);
     userBuf.current = "";
     asstBuf.current = "";
     lastUser.current = "";
@@ -121,7 +124,10 @@ export function useAdminVoice(onEnded?: () => void) {
       navigate: (p) => router.push(p),
       log: (text) => setActions((a) => [...a.slice(-4), { id: ++actionId.current, text }]),
       show: (v) => setVisuals(v),
+      setChange,
+      lastUserText: () => (userBuf.current || lastUser.current).trim(),
     });
+    runnerRef.current = runTool;
     const provider = new GeminiLiveProvider(ADMIN_TOOLS, ADMIN_VOICE_INSTRUCTION);
     const playback = new AudioPlaybackQueue();
     try {
@@ -246,5 +252,14 @@ export function useAdminVoice(onEnded?: () => void) {
 
   useEffect(() => () => void cleanup(), [cleanup]);
 
-  return { state, error, userText, assistantText, actions, visuals, start, stop };
+  /** Ekrandaki Onayla / Vazgeç butonları */
+  const confirmChange = useCallback(async (id: string) => {
+    const r = await runnerRef.current?.confirmPending(id);
+    if (r) providerRef.current?.sendText(r.ok ? `[SİSTEM] Kullanıcı değişikliği ekrandan onayladı ve uygulandı (${r.message}). Yalnızca kısaca "Tamam, güncellendi" de.` : `[SİSTEM] Değişiklik uygulanamadı: ${r.message}. Bunu kısaca söyle.`);
+  }, []);
+  const cancelChange = useCallback((id: string) => {
+    if (runnerRef.current?.cancelPending(id)) providerRef.current?.sendText("[SİSTEM] Kullanıcı değişiklikten ekrandan vazgeçti. Kısaca 'Tamam, vazgeçtim' de.");
+  }, []);
+
+  return { state, error, userText, assistantText, actions, visuals, change, confirmChange, cancelChange, start, stop };
 }

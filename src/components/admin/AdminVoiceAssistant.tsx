@@ -1,8 +1,9 @@
 "use client";
-// Yönetim paneli sesli asistanı: ciro, karşılaştırma, stok, açık siparişler, müşteriler (salt okunur).
+// Yönetim paneli sesli asistanı: ciro, karşılaştırma, stok, açık siparişler, müşteriler + onaylı stok/fiyat değişikliği.
 import { AdminVisuals } from "./AdminVisuals";
 import { useState } from "react";
-import { BarChart3, Loader2, Mic, MicOff, X } from "lucide-react";
+import { BarChart3, Check, Loader2, Mic, MicOff, X } from "lucide-react";
+import type { ProductChange } from "@/lib/voice/adminVisual";
 import { useAdminVoice } from "@/lib/voice/useAdminVoice";
 
 const STATUS: Record<string, string> = {
@@ -23,6 +24,7 @@ const EXAMPLES = [
   "Stoklarımız ne durumda?",
   "Bu ay en çok ne sattık?",
   "Bekleyen sipariş var mı?",
+  "Domates stoğunu 50 yap",
 ];
 
 export function AdminVoiceAssistant() {
@@ -96,6 +98,8 @@ export function AdminVoiceAssistant() {
 
             {v.assistantText && <p className="max-h-32 overflow-y-auto rounded-2xl bg-white/10 p-3 text-sm leading-relaxed">{v.assistantText}</p>}
 
+            {v.change && <ChangeCard c={v.change} onOk={() => void v.confirmChange(v.change!.id)} onNo={() => v.cancelChange(v.change!.id)} />}
+
             <AdminVisuals visuals={v.visuals} />
 
             {v.actions.length > 0 && (
@@ -131,10 +135,55 @@ export function AdminVoiceAssistant() {
                 </button>
               )}
             </div>
-            <p className="text-center text-[11px] opacity-60">Yalnızca bilgi verir; veri değiştirmez, sipariş almaz.</p>
+            <p className="text-center text-[11px] opacity-60">Stok/fiyat değişikliği yalnızca senin onayınla uygulanır. Sipariş almaz.</p>
           </div>
         </div>
       )}
     </>
+  );
+}
+
+const CH_STATUS: Record<ProductChange["status"], string> = {
+  bekliyor: "Onayın bekleniyor",
+  uygulaniyor: "Uygulanıyor…",
+  uygulandi: "✅ Uygulandı",
+  iptal: "Vazgeçildi — hiçbir şey değişmedi",
+  hata: "Uygulanamadı",
+};
+
+/** Asistanın hazırladığı değişiklik: ekrandan da onaylanabilir */
+function ChangeCard({ c, onOk, onNo }: { c: ProductChange; onOk: () => void; onNo: () => void }) {
+  const wait = c.status === "bekliyor";
+  return (
+    <div className={`rounded-2xl p-3 ring-2 ${wait ? "bg-amber-400/15 ring-amber-300" : c.status === "uygulandi" ? "bg-emerald-400/15 ring-emerald-300" : "bg-white/[0.07] ring-white/10"}`}>
+      <p className="text-xs font-bold uppercase tracking-wide text-white/60">Değişiklik önerisi</p>
+      <p className="mt-0.5 font-black">{c.name}</p>
+      <table className="mt-2 w-full text-sm">
+        <tbody>
+          {c.rows.map((r) => (
+            <tr key={r.label}>
+              <td className="py-0.5 pr-2 text-white/70">{r.label}</td>
+              <td className="py-0.5 tabular-nums text-white/60 line-through">{r.before}</td>
+              <td className="px-1.5 text-white/50">→</td>
+              <td className="py-0.5 font-bold tabular-nums">{r.after}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className={`mt-2 text-xs font-bold ${c.status === "hata" ? "text-red-200" : "text-white/80"}`}>
+        {CH_STATUS[c.status]}
+        {c.error ? `: ${c.error}` : ""}
+      </p>
+      {wait && (
+        <div className="mt-2 flex gap-2">
+          <button onClick={onOk} className="btn-primary flex-1 py-2 text-sm">
+            <Check size={16} /> Onayla
+          </button>
+          <button onClick={onNo} className="flex-1 rounded-xl bg-white/15 py-2 text-sm font-bold">
+            Vazgeç
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
