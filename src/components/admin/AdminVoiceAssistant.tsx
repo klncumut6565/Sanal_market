@@ -1,5 +1,6 @@
 "use client";
 // Yönetim paneli sesli asistanı: ciro, karşılaştırma, stok, açık siparişler, müşteriler (salt okunur).
+import { AdminVisuals } from "./AdminVisuals";
 import { useState } from "react";
 import { BarChart3, Loader2, Mic, MicOff, X } from "lucide-react";
 import { useAdminVoice } from "@/lib/voice/useAdminVoice";
@@ -60,7 +61,7 @@ export function AdminVoiceAssistant() {
       )}
 
       {open && (
-        <div className="fixed inset-x-0 bottom-0 z-[60] p-3 sm:inset-x-auto sm:left-4 sm:w-96 lg:left-[246px]">
+        <div className={`fixed inset-x-0 bottom-0 z-[60] p-3 sm:inset-x-auto sm:left-4 lg:left-[246px] ${v.visuals.length ? "sm:w-[26rem]" : "sm:w-96"}`}>
           <div className="space-y-3 rounded-3xl bg-ink p-4 text-white shadow-2xl">
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 font-black">
@@ -93,7 +94,9 @@ export function AdminVoiceAssistant() {
               </div>
             </div>
 
-            {v.assistantText && <p className="max-h-48 overflow-y-auto rounded-2xl bg-white/10 p-3 text-sm leading-relaxed">{v.assistantText}</p>}
+            {v.assistantText && <p className="max-h-32 overflow-y-auto rounded-2xl bg-white/10 p-3 text-sm leading-relaxed">{v.assistantText}</p>}
+
+            <AdminVisuals visuals={v.visuals} />
 
             {v.actions.length > 0 && (
               <ul className="space-y-1">

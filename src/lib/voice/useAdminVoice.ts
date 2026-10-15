@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createAdminToolRunner } from "./adminToolRunner";
+import type { AdminVisual } from "./adminVisual";
 import { ADMIN_TOOLS, ADMIN_VOICE_INSTRUCTION } from "./adminTools";
 import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture } from "./audioStream";
@@ -28,6 +29,7 @@ export function useAdminVoice(onEnded?: () => void) {
   const [userText, setUserText] = useState("");
   const [assistantText, setAssistantText] = useState("");
   const [actions, setActions] = useState<{ id: number; text: string }[]>([]);
+  const [visuals, setVisuals] = useState<AdminVisual[]>([]);
 
   const providerRef = useRef<GeminiLiveProvider | null>(null);
   const micRef = useRef<MicCapture | null>(null);
@@ -108,6 +110,7 @@ export function useAdminVoice(onEnded?: () => void) {
     setUserText("");
     setAssistantText("");
     setActions([]);
+    setVisuals([]);
     userBuf.current = "";
     asstBuf.current = "";
     lastUser.current = "";
@@ -117,6 +120,7 @@ export function useAdminVoice(onEnded?: () => void) {
     const runTool = createAdminToolRunner({
       navigate: (p) => router.push(p),
       log: (text) => setActions((a) => [...a.slice(-4), { id: ++actionId.current, text }]),
+      show: (v) => setVisuals(v),
     });
     const provider = new GeminiLiveProvider(ADMIN_TOOLS, ADMIN_VOICE_INSTRUCTION);
     const playback = new AudioPlaybackQueue();
@@ -231,5 +235,5 @@ export function useAdminVoice(onEnded?: () => void) {
 
   useEffect(() => () => void cleanup(), [cleanup]);
 
-  return { state, error, userText, assistantText, actions, start, stop };
+  return { state, error, userText, assistantText, actions, visuals, start, stop };
 }

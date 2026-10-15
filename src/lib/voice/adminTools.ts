@@ -12,7 +12,7 @@ export const ADMIN_TOOLS = [
   {
     name: "get_sales_report",
     description:
-      "Ciro raporu: toplam ciro, sipariş sayısı, ortalama sepet, iptal sayısı ve ÖNCEKİ dönemle karşılaştırma (yüzde değişim). " +
+      "ONLINE sipariş ciro raporu (mağaza kasası hariç): toplam ciro, sipariş sayısı, ortalama sepet, iptal sayısı ve ÖNCEKİ dönemle karşılaştırma (yüzde değişim). " +
       "'Bu haftaki ciro', 'geçen haftaya göre yüzde kaç', 'dün ne kadar sattık', 'bu ay nasıl gidiyor' sorularında kullan.",
     parameters: {
       type: "object",
@@ -21,6 +21,17 @@ export const ADMIN_TOOLS = [
         start: { type: "string", description: "ozel dönem başlangıcı YYYY-AA-GG" },
         end: { type: "string", description: "ozel dönem bitişi YYYY-AA-GG (dahil)" },
       },
+      required: ["period"],
+    },
+  },
+  {
+    name: "get_store_sales_report",
+    description:
+      "MAĞAZA (kasa / satış ekranı) satış raporu: net satış, fiş sayısı, nakit/kart, indirim, brüt kâr, en çok satanlar, önceki dönemle karşılaştırma. " +
+      "Online siparişlerden AYRIDIR; ikisini asla toplama. 'Kasada bugün ne sattık', 'mağaza satışı' sorularında kullan. Kullanıcı genel 'ciro' sorarsa iki raporu da al ve AYRI AYRI söyle.",
+    parameters: {
+      type: "object",
+      properties: { period: PERIOD, start: { type: "string" }, end: { type: "string" } },
       required: ["period"],
     },
   },
@@ -105,6 +116,8 @@ Sen "Sanal Market"in YÖNETİM PANELİ sesli asistanısın; marketin sahibi/yön
 GÜRÜLTÜ VE YANKI: Anlaşılmaz, yabancı dilde gibi ya da ilgisiz kalıp sesleri ("izlediğiniz için teşekkürler") soru sayma; "Tekrar eder misin?" de. Kendi cümlenin yankısına cevap verme.
 
 KESİN KURALLAR:
+- EKRAN: Araç sonuçları panelde GRAFİK ve TABLO olarak gösterilir. Rakamları tek tek okuma; en önemli 1-2 sonucu ve dikkat çeken noktayı söyle, "ayrıntılar ekranda" de.
+- ONLINE / MAĞAZA AYRIMI: get_sales_report yalnızca online siparişleri, get_store_sales_report yalnızca mağaza kasasını verir. İkisini asla toplama; genel "ciro" sorulursa ikisini de al ve ayrı ayrı söyle.
 - Sayı, tutar, yüzde, ürün veya müşteri hakkında konuşmadan ÖNCE MUTLAKA ilgili aracı çağır. ASLA tahmin etme, uydurma, yuvarlama yapma; araç sonucundaki değeri aynen söyle.
 - Tutarları doğal söyle: "on iki bin dört yüz elli lira". Yüzdeyi "yüzde 18 daha iyi" / "yüzde 7 daha düşük" diye söyle.
 - Karşılaştırmada araç "compare_to_date" (aynı gün sayısına göre) verdiyse onu kullan ve bunu belirt: "geçen haftanın aynı günlerine göre". İstenirse önceki dönemin tamamını da söyle.

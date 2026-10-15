@@ -5,6 +5,7 @@ import { fetchAll } from "@/lib/data/fetchAll";
 import { fetchDiscounts } from "./discounts";
 import { calcMargin } from "@/lib/margin";
 import { addDays, businessDateOf, businessDateStart, hoursState, isYmd, reportRanges } from "@/lib/hours";
+import { shortDay, tlv, type AdminVisual } from "./adminVisual";
 
 type Sb = ReturnType<typeof createClient>;
 type Settings = {
@@ -159,7 +160,8 @@ function costInfo(p: { price: number; sale_price: number | null; product_costs?:
   return { cost_price: cost, unit_profit_tl: m?.profit, margin_pct: m?.marginPct, markup_pct: m?.markupPct };
 }
 
-export function createAdminToolRunner(deps: { navigate: (path: string) => void; log: (text: string) => void }) {
+export function createAdminToolRunner(deps: { navigate: (path: string) => void; log: (text: string) => void; show?: (v: AdminVisual[]) => void }) {
+  const show = deps.show ?? (() => {});
   let settings: Settings | null = null;
   const sb = createClient();
   const getSettings = async () => {
@@ -210,13 +212,33 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         byDay.set(d, (byDay.get(d) ?? 0) + Number(o.total));
       }
       const best = [...byDay.entries()].sort((a, b) => b[1] - a[1])[0];
+      const gp = await grossProfit(sb, p.cur, s.open_time);
+      const cmp = td ?? pv;
+      const vis: AdminVisual[] = [
+        {
+          kind: "kpis",
+          title: `Online siparişler · ${p.cur.label}`,
+          items: [
+            { label: "Ciro", value: tlv(c.revenue_tl), delta: pct(c.revenue_tl, cmp.revenue_tl), hint: `${cmp.period}: ${tlv(cmp.revenue_tl)}` },
+            { label: "Sipariş", value: String(c.orders), delta: pct(c.orders, cmp.orders) },
+            { label: "Ort. sepet", value: tlv(c.avg_basket_tl) },
+            { label: "Brüt kâr", value: "profit_tl" in gp && gp.profit_tl != null ? tlv(gp.profit_tl) : "—", hint: "margin_pct" in gp ? `%${gp.margin_pct}` : undefined },
+          ],
+        },
+      ];
+      if (p.cur.from !== p.cur.to) {
+        const days: { label: string; value: number }[] = [];
+        for (let d = p.cur.from; d <= p.cur.to && days.length < 31; d = addDays(d, 1)) days.push({ label: shortDay(d), value: r2(byDay.get(d) ?? 0) });
+        vis.push({ kind: "bars", title: "Günlük ciro", unit: "tl", items: days });
+      }
+      show(vis);
       return {
         current: c,
         compare_previous: { ...pv, revenue_change_pct: pct(c.revenue_tl, pv.revenue_tl), orders_change_pct: pct(c.orders, pv.orders) },
         compare_to_date: td ? { ...td, revenue_change_pct: pct(c.revenue_tl, td.revenue_tl), orders_change_pct: pct(c.orders, td.orders) } : undefined,
         best_day: best && byDay.size > 1 ? { date: best[0], revenue_tl: r2(best[1]) } : undefined,
-        gross_profit: await grossProfit(sb, p.cur, s.open_time),
-        note: "Ciro = iptal edilmeyen siparişlerin toplamı (teslimat ücreti dahil). Gün = iş günü (açılıştan ertesi kapanışa).",
+        gross_profit: gp,
+        note: "YALNIZCA ONLINE siparişler (mağaza kasası hariç; onun için get_store_sales_report). Ciro = iptal edilmeyen siparişlerin toplamı (teslimat ücreti dahil). Gün = iş günü (açılıştan ertesi kapanışa).",
       };
     }
 
@@ -241,6 +263,7 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         m.set(i.product_name, x);
       }
       const list = [...m.values()].sort((a, b) => b.qty - a.qty || b.revenue - a.revenue).slice(0, limit);
+      show([{ kind: "bars", title: `En çok satanlar (online) · ${p.cur.label}`, unit: "adet", items: list.map((x) => ({ label: x.name, value: x.qty, sub: tlv(x.revenue) })) }]);
       return { period: p.cur.label, top_by_quantity: list.map((x) => ({ ...x, revenue: r2(x.revenue) })) };
     }
 
@@ -252,6 +275,28 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
       const rows = data ?? [];
       const out = rows.filter((p) => p.stock <= 0);
       const crit = rows.filter((p) => p.stock > 0 && p.stock <= p.critical_stock);
+      show([
+        {
+          kind: "kpis",
+          title: "Stok durumu",
+          items: [
+            { label: "Aktif ürün", value: rows.length.toLocaleString("tr-TR") },
+            { label: "Tükenen", value: String(out.length) },
+            { label: "Kritik", value: String(crit.length) },
+          ],
+        },
+        ...(out.length + crit.length
+          ? [
+              {
+                kind: "table" as const,
+                title: "Tükenen ve kritik ürünler",
+                columns: ["Ürün", "Stok"],
+                rows: [...out, ...crit].slice(0, 25).map((p) => [p.name, p.stock <= 0 ? "Tükendi" : `${p.stock} / ${p.critical_stock}`]),
+                alert: [...out, ...crit].slice(0, 25).map((p) => p.stock <= 0),
+              },
+            ]
+          : []),
+      ]);
       return {
         active_products: rows.length,
         out_of_stock_count: out.length,
@@ -279,6 +324,19 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         cost_price: number | null;
       }[];
       if (!rows.length) return { results: [], note: "Bu adla ürün yok. Farklı bir kelimeyle (ör. yalnız marka) tekrar ara." };
+      show([
+        {
+          kind: "table",
+          title: `“${q}” araması`,
+          columns: ["Ürün", "Fiyat", "Stok", "Marj"],
+          rows: rows.map((p) => {
+            const price = Number(p.sale_price ?? p.price);
+            const m = p.cost_price == null ? null : calcMargin(price, Number(p.cost_price));
+            return [`${p.name}${p.is_active ? "" : " (pasif)"}`, tlv(price), String(p.stock), m ? `%${m.marginPct}` : "—"];
+          }),
+          alert: rows.map((p) => p.stock <= p.critical_stock),
+        },
+      ]);
       return {
         results: rows.map((p) => ({
           name: p.name,
@@ -311,6 +369,30 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         const mins = age(stageStart);
         return { order_no: o.order_no, status: o.status, minutes_in_stage: mins, late: mins > target, customer: o.customer_name, total: Number(o.total) };
       });
+      const ST: Record<string, string> = { alindi: "Alındı", hazirlaniyor: "Hazırlanıyor", yolda: "Yolda" };
+      show([
+        {
+          kind: "kpis",
+          title: "Açık siparişler",
+          items: [
+            { label: "Alındı", value: String(rows.filter((r) => r.status === "alindi").length) },
+            { label: "Hazırlanıyor", value: String(rows.filter((r) => r.status === "hazirlaniyor").length) },
+            { label: "Yolda", value: String(rows.filter((r) => r.status === "yolda").length) },
+            { label: "Gecikmiş", value: String(rows.filter((r) => r.late).length) },
+          ],
+        },
+        ...(rows.length
+          ? [
+              {
+                kind: "table" as const,
+                title: "Siparişler",
+                columns: ["No", "Aşama", "Süre", "Tutar"],
+                rows: rows.slice(0, 15).map((r) => [`#${r.order_no}`, ST[r.status] ?? r.status, `${r.minutes_in_stage} dk`, tlv(r.total)]),
+                alert: rows.slice(0, 15).map((r) => r.late),
+              },
+            ]
+          : []),
+      ]);
       return {
         open_count: rows.length,
         by_status: {
@@ -348,6 +430,18 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
         newCount = phones.filter((ph) => !old.has(ph)).length;
       }
       const top = [...by.values()].sort((a, b) => b.spent - a.spent).slice(0, 5).map((x) => ({ ...x, spent: r2(x.spent) }));
+      show([
+        {
+          kind: "kpis",
+          title: `Müşteriler (online) · ${p.cur.label}`,
+          items: [
+            { label: "Müşteri", value: String(by.size) },
+            { label: "Yeni", value: String(newCount) },
+            { label: "Tekrar gelen", value: String(by.size - newCount) },
+          ],
+        },
+        ...(top.length ? [{ kind: "bars" as const, title: "En çok harcayanlar", unit: "tl" as const, items: top.map((x) => ({ label: x.name, value: x.spent, sub: `${x.orders} sipariş` })) }] : []),
+      ]);
       return { period: p.cur.label, customers: by.size, new_customers: newCount, returning_customers: by.size - newCount, top_customers: top };
     }
 
@@ -374,6 +468,31 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
       const withCost = rows.filter((r) => r.cost_price != null) as { name: string; margin_pct: number; unit_profit_tl: number; cost_price: number }[];
       const sorted = [...withCost].sort((a, b) => a.margin_pct - b.margin_pct);
       const q = args.query ? String(args.query).toLocaleLowerCase("tr") : "";
+      const loss = sorted.filter((r) => r.unit_profit_tl < 0);
+      const avg = withCost.length ? r2(withCost.reduce((a, r) => a + r.margin_pct, 0) / withCost.length) : null;
+      const pick = q ? withCost.filter((r) => r.name.toLocaleLowerCase("tr").includes(q)).slice(0, 15) : [...loss.slice(0, 10), ...sorted.filter((r) => r.unit_profit_tl >= 0).slice(0, 10 - Math.min(10, loss.length))];
+      show([
+        {
+          kind: "kpis",
+          title: "Kâr marjı",
+          items: [
+            { label: "Ort. marj", value: avg == null ? "—" : `%${avg}` },
+            { label: "Zararına", value: String(loss.length) },
+            { label: "Alışı eksik", value: (rows.length - withCost.length).toLocaleString("tr-TR") },
+          ],
+        },
+        ...(pick.length
+          ? [
+              {
+                kind: "table" as const,
+                title: q ? `“${q}” marjları` : "En düşük marjlı ürünler",
+                columns: ["Ürün", "Alış", "Kâr", "Marj"],
+                rows: pick.map((r) => [r.name, tlv(r.cost_price), tlv(r.unit_profit_tl), `%${r.margin_pct}`]),
+                alert: pick.map((r) => r.unit_profit_tl < 0),
+              },
+            ]
+          : []),
+      ]);
       return {
         active_products: rows.length,
         with_cost: withCost.length,
@@ -387,7 +506,112 @@ export function createAdminToolRunner(deps: { navigate: (path: string) => void; 
     }
 
     if (name === "get_discounted_products") {
-      return fetchDiscounts(sb, { includeInactive: args.include_inactive === true, query: args.query ? String(args.query) : undefined, limit: 30 });
+      const r = await fetchDiscounts(sb, { includeInactive: args.include_inactive === true, query: args.query ? String(args.query) : undefined, limit: 30 });
+      if (!("error" in r) && r.products.length)
+        show([
+          {
+            kind: "table",
+            title: `İndirimdeki ürünler (${r.count})`,
+            columns: ["Ürün", "Normal", "İndirimli", "%"],
+            rows: r.products.slice(0, 25).map((p) => [p.name, tlv(p.price), tlv(p.sale_price), `%${p.discount_pct}`]),
+            alert: r.products.slice(0, 25).map((p) => !p.in_stock),
+          },
+        ]);
+      return r;
+    }
+
+    if (name === "get_store_sales_report") {
+      const p = periodRanges(period, s.open_time, start, end);
+      if ("error" in p) return p;
+      const load = async (rg: Range) => {
+        const { data, error } = await fetchAll((f, t) =>
+          sb
+            .from("pos_sales")
+            .select("created_at,total,discount,payment,cash_amount,card_amount,change_due,cost_total,voided_at,pos_sale_items(product_name,quantity,line_total,cost_price)")
+            .gte("created_at", businessDateStart(rg.from, s.open_time))
+            .lt("created_at", businessDateStart(addDays(rg.to, 1), s.open_time))
+            .order("created_at")
+            .range(f, t),
+        );
+        if (error) throw new Error(error.message);
+        return (data ?? []) as unknown as {
+          created_at: string;
+          total: number;
+          discount: number;
+          cash_amount: number;
+          card_amount: number;
+          change_due: number;
+          voided_at: string | null;
+          pos_sale_items: { product_name: string; quantity: number; line_total: number; cost_price: number | null }[];
+        }[];
+      };
+      const [cur, prev] = await Promise.all([load(p.cur), load(p.prevToDate ?? p.prev)]);
+      const agg = (rows: Awaited<ReturnType<typeof load>>) => {
+        const ok = rows.filter((x) => !x.voided_at);
+        let costed = 0;
+        let cost = 0;
+        let disc = 0;
+        for (const x of ok) {
+          disc += Number(x.discount);
+          for (const i of x.pos_sale_items)
+            if (i.cost_price != null) {
+              costed += Number(i.line_total);
+              cost += Number(i.cost_price) * Number(i.quantity);
+            }
+        }
+        const net = ok.reduce((a, x) => a + Number(x.total), 0);
+        return {
+          receipts: ok.length,
+          net_sales_tl: r2(net),
+          avg_receipt_tl: ok.length ? r2(net / ok.length) : 0,
+          cash_tl: r2(ok.reduce((a, x) => a + Number(x.cash_amount) - Number(x.change_due), 0)),
+          card_tl: r2(ok.reduce((a, x) => a + Number(x.card_amount), 0)),
+          discount_tl: r2(disc),
+          gross_profit_tl: costed ? r2(costed - cost - disc) : null,
+          voided: rows.length - ok.length,
+        };
+      };
+      const c = agg(cur);
+      const pv = agg(prev);
+      const byDay = new Map<string, number>();
+      const top = new Map<string, { name: string; qty: number; revenue: number }>();
+      for (const x of cur) {
+        if (x.voided_at) continue;
+        const d = businessDateOf(new Date(x.created_at).getTime(), s.open_time);
+        byDay.set(d, (byDay.get(d) ?? 0) + Number(x.total));
+        for (const i of x.pos_sale_items) {
+          const t = top.get(i.product_name) ?? { name: i.product_name, qty: 0, revenue: 0 };
+          t.qty += Number(i.quantity);
+          t.revenue += Number(i.line_total);
+          top.set(i.product_name, t);
+        }
+      }
+      const topList = [...top.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+      const vis: AdminVisual[] = [
+        {
+          kind: "kpis",
+          title: `Mağaza (kasa) · ${p.cur.label}`,
+          items: [
+            { label: "Net satış", value: tlv(c.net_sales_tl), delta: pct(c.net_sales_tl, pv.net_sales_tl), hint: `${(p.prevToDate ?? p.prev).label}: ${tlv(pv.net_sales_tl)}` },
+            { label: "Fiş", value: String(c.receipts), delta: pct(c.receipts, pv.receipts) },
+            { label: "Nakit / Kart", value: `${tlv(c.cash_tl)} / ${tlv(c.card_tl)}` },
+            { label: "Brüt kâr", value: c.gross_profit_tl == null ? "—" : tlv(c.gross_profit_tl) },
+          ],
+        },
+      ];
+      if (p.cur.from !== p.cur.to) {
+        const days: { label: string; value: number }[] = [];
+        for (let d = p.cur.from; d <= p.cur.to && days.length < 31; d = addDays(d, 1)) days.push({ label: shortDay(d), value: r2(byDay.get(d) ?? 0) });
+        vis.push({ kind: "bars", title: "Günlük kasa satışı", unit: "tl", items: days });
+      }
+      if (topList.length) vis.push({ kind: "bars", title: "Kasada en çok satanlar", unit: "tl", items: topList.map((x) => ({ label: x.name, value: r2(x.revenue), sub: `${x.qty} adet` })) });
+      show(vis);
+      return {
+        current: { period: p.cur.label, ...c },
+        compare: { period: (p.prevToDate ?? p.prev).label, ...pv, net_change_pct: pct(c.net_sales_tl, pv.net_sales_tl) },
+        top_products: topList.map((x) => ({ ...x, revenue: r2(x.revenue) })),
+        note: "YALNIZCA mağaza (kasa) satışları; online siparişlerle TOPLAMA, ayrı söyle.",
+      };
     }
 
     if (name === "go_to_page") {
