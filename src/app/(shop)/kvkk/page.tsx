@@ -77,7 +77,7 @@ export default async function KvkkPage() {
           </li>
           <li>
             Üye girişi yaptıysanız, size adınızla hitap edebilmesi ve önceki alışverişlerinize göre kişisel öneri sunabilmesi için <b>adınız ve geçmiş
-            siparişlerinizdeki ürün adları, adetleri ve tarihleri</b> de asistanın oturumu süresince Google&apos;ın Gemini hizmetine iletilir. Adres,
+            siparişlerinizdeki ürün adları, adetleri ve tarihleri</b> ile asistana söylediğiniz <b>kalıcı alışveriş tercihleri</b> (ör. &quot;sütü tam yağlı alırım&quot;) de asistanın oturumu süresince Google&apos;ın Gemini hizmetine iletilir. Tercihler yalnızca siz söylediğinizde kaydedilir; Siparişlerim sayfasından görüp silebilir veya asistana &quot;bunu unut&quot; diyebilirsiniz. Sağlık, din, siyaset gibi özel nitelikli bilgiler tercih olarak kaydedilmez. Adres,
             telefon ve ödeme bilgileriniz asistana iletilmez. Misafir kullanıcılarda bu bilgiler kullanılmaz.
           </li>
           <li>Google&apos;ın bu verileri işleme ve saklama koşulları, Google&apos;ın Gemini API hizmet şartları ve gizlilik politikasına tabidir.</li>

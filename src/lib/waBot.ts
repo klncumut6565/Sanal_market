@@ -26,6 +26,8 @@ type Customer = {
   payment_method?: "kapida_nakit" | "kapida_pos";
   delivery_slot?: string;
   note?: string;
+  /** Müşterinin kalıcı tercihleri (ör. "Süt: tam yağlı 1 L") */
+  prefs?: string[];
   /** Onay özeti gösterildi: sepet+bilgi imzası (değişirse yeniden özet gerekir) */
   reviewed?: string;
 };
@@ -79,6 +81,12 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "remember_preference",
+    description:
+      "Müşterinin KALICI alışveriş tercihini not eder (sonraki siparişlerde hatırlanır): 'sütü hep tam yağlı alırım' → 'Süt: tam yağlı tercih eder'. Tek seferlik istekleri yazma. Sağlık, din, siyaset gibi hassas bilgileri ASLA yazma. forget=true ile 'about' konusundaki notu siler.",
+    parameters: { type: "object", properties: { note: { type: "string" }, forget: { type: "boolean" }, about: { type: "string" } } },
+  },
   { name: "get_store_info", description: "Çalışma saatleri, açık mı, teslimat ücreti, ücretsiz teslimat sınırı, teslimat saatleri, minimum tutar.", parameters: { type: "object", properties: {} } },
   {
     name: "review_order",
@@ -100,6 +108,7 @@ AKIŞ:
 3) Müşteri "bu kadar / sipariş ver / tamam" derse eksik bilgileri SIRAYLA ve TEK mesajda topla: ad soyad (biliniyorsa sorma), mahalle (find_neighborhood ile doğrula), cadde/sokak, dış kapı no, daire no, ödeme (kapıda nakit / kapıda kart). Teslimat saati varsayılan "en kısa sürede".
 4) Bilgiler tamamsa review_order çağır, dönen özeti AYNEN gönder ve "Onaylıyor musunuz? (EVET yazın)" diye sor.
 5) Müşteri EVET derse place_order çağır; sipariş numarasını ve takip bağlantısını gönder.
+TERCİHLER: Müşteri "hep/her zaman" diye kalıcı bir tercih söylerse remember_preference ile not et ve "Not ettim" de; kayıtlı tercihlerine ürün önerirken uy.
 KURALLAR: Yalnızca Çorlu'da teslimat mahallelerine teslimat var. Ödeme yalnızca kapıda (nakit veya kart). Alkol ve tütün WhatsApp'tan satılmaz; sitede üye girişiyle sipariş verilebileceğini söyle. Market kapalıysa get_store_info ile saatleri söyle. Konu dışı sorulara kısa cevap verip alışverişe dön. Müşterinin telefon numarası zaten biliniyor, sorma.
 Sitemiz: ${SITE}`;
 
@@ -250,6 +259,21 @@ async function runTool(sb: Sb, chat: Chat, name: string, args: Record<string, un
     return { ok: true, customer: { ...c, reviewed: undefined }, missing_info: missing(c) };
   }
 
+  if (name === "remember_preference") {
+    const prefs = chat.customer.prefs ?? [];
+    if (args.forget) {
+      const a = fold(String(args.about ?? ""));
+      const keep = prefs.filter((p) => !a || !fold(p).includes(a));
+      const removed = prefs.length - keep.length;
+      chat.customer.prefs = keep;
+      return { ok: removed > 0, removed };
+    }
+    const note = String(args.note ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
+    if (note.length < 3) return { error: "Not boş." };
+    if (!prefs.some((p) => fold(p) === fold(note))) chat.customer.prefs = [...prefs, note].slice(-15);
+    return { ok: true, saved: note };
+  }
+
   if (name === "get_store_info") {
     const s = await storeInfo(sb);
     const { data: open } = await sb.rpc("store_is_open_now", { p_grace_min: 0 });
@@ -391,6 +415,7 @@ export async function handleBotMessage(m: InboundMessage) {
     `[Bilgi] Müşterinin WhatsApp adı: ${chat.name ?? "bilinmiyor"} (ad soyadı doğrulamadan siparişe yazma).`,
     chat.cart.length ? `[Bilgi] Sepette ${chat.cart.length} çeşit ürün var.` : "",
     chat.customer.neighborhood ? `[Bilgi] Kayıtlı adres: ${addressText(chat.customer)}.` : "",
+    chat.customer.prefs?.length ? `[Bilgi] Hatırlanan tercihleri: ${chat.customer.prefs.join(" | ")}. Ürün önerirken bunlara uy.` : "",
   ]
     .filter(Boolean)
     .join(" ");

@@ -7,6 +7,7 @@ import { STATUS_LABEL, formatDate, formatTL } from "@/lib/format";
 import type { Order } from "@/lib/types";
 import { signOut } from "@/app/giris/actions";
 import { DeviceOrders } from "./DeviceOrders";
+import { deleteAllPrefs, deletePref } from "./actions";
 import { ReorderButton } from "@/components/shop/ReorderButton";
 
 export const metadata = { title: "Siparişlerim" };
@@ -44,7 +45,10 @@ async function AccountOrders() {
   }
   const supabase = await createClient();
   // Yalnızca kendi siparişleri (admin hesabında RLS tüm siparişleri açtığı için filtre şart)
-  const { data } = await supabase.from("orders").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50);
+  const [{ data }, { data: prefs }] = await Promise.all([
+    supabase.from("orders").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(50),
+    supabase.from("customer_prefs").select("id,note,created_at").eq("user_id", user.id).order("created_at"),
+  ]);
   const orders = (data ?? []) as Order[];
   return (
     <>
@@ -55,6 +59,28 @@ async function AccountOrders() {
           <form action={signOut}><button className="btn-ghost py-1.5"><LogOut size={16} /> Çıkış</button></form>
         </div>
       </div>
+      {prefs && prefs.length > 0 && (
+        <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <h2 className="font-extrabold">🧠 Sesli asistanın hatırladığı tercihlerin</h2>
+            <form action={deleteAllPrefs}>
+              <button className="text-xs font-bold text-muted hover:text-brand">Tümünü sil</button>
+            </form>
+          </div>
+          <ul className="divide-y divide-line text-sm">
+            {prefs.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 py-1.5">
+                <span>{p.note}</span>
+                <form action={deletePref}>
+                  <input type="hidden" name="id" value={p.id} />
+                  <button className="rounded-lg px-2 py-1 text-xs font-bold text-muted hover:bg-brand-soft hover:text-brand">Sil</button>
+                </form>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">Asistan bunları önerilerinde kullanır. Asistana &quot;bunu unut&quot; diyerek de silebilirsin.</p>
+        </section>
+      )}
       {orders.length === 0 ? (
         <p className="rounded-2xl bg-white p-6 text-center text-muted ring-1 ring-line">Henüz siparişin yok.</p>
       ) : (

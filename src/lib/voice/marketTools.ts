@@ -92,6 +92,19 @@ export const MARKET_TOOLS = [
     parameters: { type: "object", properties: {} },
   },
   {
+    name: "remember_preference",
+    description:
+      "Giriş yapmış müşterinin KALICI alışveriş tercihini hafızaya yazar (sonraki alışverişlerde hatırlanır). Örn: 'sütü hep tam yağlı 1 litre alırım', 'ekmeği tam buğday isterim', 'X marka peynir severim'. " +
+      "Müşteri açıkça 'hep / her zaman / bunu hatırla' gibi kalıcı bir tercih söylediğinde çağır; tek seferlik istekleri yazma. " +
+      "Sağlık (alerji, hastalık, diyet sebebi), din, siyaset gibi hassas bilgileri ASLA yazma. Not kısa ve üçüncü şahıs olsun: 'Süt: tam yağlı 1 L tercih eder'.",
+    parameters: { type: "object", properties: { note: { type: "string" } }, required: ["note"] },
+  },
+  {
+    name: "forget_preference",
+    description: "Müşteri bir tercihinin unutulmasını isterse ('artık yarım yağlı alıyorum', 'bunu unut') ilgili notu siler. Yeni tercih varsa ardından remember_preference çağır.",
+    parameters: { type: "object", properties: { about: { type: "string", description: "Silinecek notun konusu (ör. 'süt')" } }, required: ["about"] },
+  },
+  {
     name: "get_cart",
     description: "Sepetin güncel içeriğini, ara toplamı, teslimat ücretini, ücretsiz teslimata ve minimum sipariş tutarına kalan miktarı verir.",
     parameters: { type: "object", properties: {} },
@@ -130,6 +143,7 @@ SAMİMİ MÜŞTERİ İLETİŞİMİ:
 - Hitap: adı biliniyorsa "sen" dili, bilinmiyorsa "siz" dili.
 
 KESİN KURALLAR:
+- TERCİHLER: "MÜŞTERİ" bölümünde "Hatırlanan tercihler" varsa ürün ararken ve önerirken bunlara uy (ör. süt istenince tercih ettiği türü öner) ve bunu doğal şekilde belirt ("her zamanki tam yağlı sütünden mi?"). Kalıcı bir tercih söylenirse remember_preference ile kaydet ve "Bunu not ettim" de. Misafir müşteride tercih kaydedilmez.
 - EKRAN: search_products, list_category_products, list_discounted_products ve propose_cart_items sonuçları müşterinin ekranında GÖRSELİ ve FİYATIYLA kart olarak gösterilir. Uzun listeyi tek tek okuma; en uygun 2-3 tanesini söyle ve "diğerlerini ekranda görebilirsin" de.
 - Ürün, marka, fiyat, stok veya kampanya hakkında konuşmadan ÖNCE MUTLAKA search_products çağır. Ürün, marka, fiyat veya stok UYDURMA; yalnızca araç sonucundakileri söyle.
 - Sonuçta olmayan bir ürün/marka istenirse "markette bulamadım" de ve varsa stoktaki benzerlerini öner.

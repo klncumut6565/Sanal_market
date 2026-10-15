@@ -80,6 +80,11 @@ async function loadHistory(sb: ReturnType<typeof createClient>, limit: number) {
 }
 
 /** Oturum başında: kayıtlı müşterinin adı ve sipariş geçmişi özeti (yalnızca giriş yapmış müşteri). */
+async function prefsSummary(sb: ReturnType<typeof createClient>, uid: string) {
+  const { data } = await sb.from("customer_prefs").select("note").eq("user_id", uid).order("created_at").limit(20);
+  return data?.length ? `Hatırlanan tercihler: ${data.map((p) => p.note).join(" | ")}.` : "";
+}
+
 export async function loadCustomerContext(): Promise<{ firstName: string | null; summary: string | null } | null> {
   try {
     const sb = createClient();
@@ -88,7 +93,7 @@ export async function loadCustomerContext(): Promise<{ firstName: string | null;
     const { data: prof } = await sb.from("profiles").select("full_name").eq("id", h.uid).maybeSingle();
     const full = (prof?.full_name as string | null | undefined)?.trim() || "";
     const firstName = full ? full.split(/\s+/)[0] : null;
-    if (!h.orders.length) return { firstName, summary: "Müşterinin daha önce siparişi yok (ilk alışverişi)." };
+    if (!h.orders.length) return { firstName, summary: ["Müşterinin daha önce siparişi yok (ilk alışverişi).", await prefsSummary(sb, h.uid)].filter(Boolean).join(" ") };
     const last = h.orders[0];
     const lastItems = last.order_items.filter((i) => !i.removed).map((i) => `${i.quantity} × ${i.product_name}${i.unit_label ? ` (${i.unit_label})` : ""}`);
     const freq = new Map<string, { name: string; times: number; qty: number }>();
@@ -101,12 +106,14 @@ export async function loadCustomerContext(): Promise<{ firstName: string | null;
         f.qty += i.quantity;
         freq.set(k, f);
       }
+    const prefsLine = await prefsSummary(sb, h.uid);
     const often = [...freq.values()].filter((f) => f.times >= 2).sort((a, b) => b.times - a.times).slice(0, 5);
     const lines = [
       `Toplam ${h.orders.length}${h.orders.length >= 10 ? "+" : ""} geçmiş sipariş.`,
       `Son sipariş ${gunFarki(last.created_at)}: ${lastItems.join(", ")}.`,
     ];
     if (often.length) lines.push(`Sık aldıkları: ${often.map((f) => `${f.name} (${f.times} siparişte)`).join(", ")}.`);
+    if (prefsLine) lines.push(prefsLine);
     return { firstName, summary: lines.join(" ") };
   } catch {
     return null;
@@ -196,6 +203,34 @@ export function createMarketToolRunner(deps: {
       ]);
       const categories = cats.map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
       return { count: categories.length, categories, note: "Kategorilerin hepsini adlarıyla say." };
+    }
+
+    if (name === "remember_preference" || name === "forget_preference") {
+      const { data: u } = await sb.auth.getUser();
+      const uid = u.user?.id;
+      if (!uid) return { error: "Müşteri giriş yapmamış; tercihler yalnızca üye girişiyle hatırlanabilir. Bunu kısaca söyle." };
+      const { data: rows } = await sb.from("customer_prefs").select("id,note").eq("user_id", uid).order("created_at");
+      const list = rows ?? [];
+      if (name === "forget_preference") {
+        const about = trNorm(String(args.about ?? ""));
+        const words = about.split(" ").filter((w) => w.length >= 3);
+        const hit = list.filter((p) => {
+          const n = trNorm(p.note);
+          return about && (n.includes(about) || words.some((w) => n.includes(w)));
+        });
+        if (!hit.length) return { ok: false, note: "Bu konuda kayıtlı tercih yok.", saved: list.map((p) => p.note) };
+        await sb.from("customer_prefs").delete().in("id", hit.map((p) => p.id));
+        log(`🧠 Unutuldu: ${hit.map((p) => p.note).join(", ")}`, "info");
+        return { ok: true, forgotten: hit.map((p) => p.note) };
+      }
+      const note = String(args.note ?? "").trim().replace(/\s+/g, " ").slice(0, 200);
+      if (note.length < 3) return { error: "Not boş." };
+      if (list.some((p) => trNorm(p.note) === trNorm(note))) return { ok: true, note: "Zaten kayıtlı." };
+      if (list.length >= 20) await sb.from("customer_prefs").delete().eq("id", list[0].id); // en eskisini çıkar
+      const { error } = await sb.from("customer_prefs").insert({ user_id: uid, note });
+      if (error) return { error: error.message };
+      log(`🧠 Not edildi: ${note}`, "info");
+      return { ok: true, saved: note };
     }
 
     if (name === "get_order_history") {
