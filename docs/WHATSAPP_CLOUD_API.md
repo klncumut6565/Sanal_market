@@ -120,3 +120,10 @@ Webhook kurulmadan önce sistem güvenli tarafta kalır: Meta'ya gönderdiği he
 - `Template name does not exist in the translation` → şablon adı/dili yanlış ya da henüz onaylanmadı.
 - `Recipient phone number not in allowed list` → 0533 numarası 1. adımda "To" listesine eklenip doğrulanmamış.
 - `Authentication Error` / `expired` → token süresi dolmuş; 3. adımdaki kalıcı token'ı kullan.
+
+## Panelden kurulum (2026-10-15)
+Yönetim → Ayarlar → **WhatsApp sipariş botu** → **Bağlantı kurulumu**:
+1. **Durumu kontrol et**: anahtarlar, bot numarası, abonelik, gelen bildirim durumu.
+2. **1) Aboneliği yap**: `POST /{WABA_ID}/subscribed_apps` (sunucu WHATSAPP_TOKEN ile yapar). WABA kimliği: `WHATSAPP_WABA_ID` (yoksa 1750497189284542).
+3. **2) Webhook adresini kaydet**: `POST /{APP_ID}/subscriptions` (object=whatsapp_business_account, fields=messages). Vercel'de `WHATSAPP_APP_ID` + `WHATSAPP_APP_SECRET` gerekir; yoksa paneldeki "elle kurulum" adımları (Callback URL + Verify token kopyalanır).
+4. Başka bir telefondan bot numarasına yaz → cevap gelmeli; "Meta'dan en az bir bildirim geldi" ✅ olur.

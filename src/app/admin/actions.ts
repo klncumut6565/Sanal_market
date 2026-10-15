@@ -800,3 +800,10 @@ export async function setWaBotEnabled(on: boolean): Promise<{ ok: boolean; error
   revalidatePath("/admin/ayarlar");
   return { ok: true };
 }
+
+export async function waSetupAction(step: "durum" | "abone" | "webhook") {
+  await requireAdmin();
+  const { waRegisterWebhook, waSetupStatus, waSubscribeApp } = await import("@/lib/waSetup");
+  const result = step === "abone" ? await waSubscribeApp() : step === "webhook" ? await waRegisterWebhook() : null;
+  return { result, status: await waSetupStatus() };
+}

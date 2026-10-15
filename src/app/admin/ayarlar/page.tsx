@@ -26,6 +26,7 @@ export default async function SettingsPage() {
         <WaBotCard
           enabled={notify.wa_bot_enabled ?? true}
           botNumberHint="işletmenin WhatsApp Business (bot)"
+          verifyToken={notify.webhook_secret ?? null}
           ready={{
             gemini: !!process.env.GEMINI_API_KEY?.trim(),
             cloud: !!(process.env.WHATSAPP_TOKEN?.trim() && process.env.WHATSAPP_PHONE_NUMBER_ID?.trim()),

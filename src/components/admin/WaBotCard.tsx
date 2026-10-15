@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { Bot } from "lucide-react";
 import { setWaBotEnabled } from "@/app/admin/actions";
+import { WaSetupPanel } from "./WaSetupPanel";
 
 function Item({ ok, label }: { ok: boolean; label: string }) {
   return <li className={ok ? "text-emerald-700" : "text-amber-700"}>{ok ? "✅" : "⚠️"} {label}</li>;
@@ -10,7 +11,7 @@ function Item({ ok, label }: { ok: boolean; label: string }) {
 type ChatRow = { phone: string; name: string | null; updated_at: string; cart: unknown[] };
 
 /** Ayarlar: WhatsApp sipariş botu aç/kapat + son konuşmalar. */
-export function WaBotCard({ enabled, ready, chats, botNumberHint }: { enabled: boolean; ready: { gemini: boolean; cloud: boolean; webhook: boolean }; chats: ChatRow[]; botNumberHint: string }) {
+export function WaBotCard({ enabled, ready, chats, botNumberHint, verifyToken }: { enabled: boolean; ready: { gemini: boolean; cloud: boolean; webhook: boolean }; chats: ChatRow[]; botNumberHint: string; verifyToken: string | null }) {
   const [on, setOn] = useState(enabled);
   const [pending, start] = useTransition();
   const fmt = (d: string) => new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" }).format(new Date(d));
@@ -46,6 +47,7 @@ export function WaBotCard({ enabled, ready, chats, botNumberHint }: { enabled: b
         <Item ok={ready.cloud} label="WhatsApp Business bağlantısı (WHATSAPP_TOKEN / PHONE_NUMBER_ID)" />
         <Item ok={ready.webhook} label={ready.webhook ? "Gelen mesajlar alınıyor (webhook)" : "Gelen mesajlar henüz hiç alınmadı — Meta'da webhook aboneliği (subscribed_apps) yapılmalı"} />
       </ul>
+      <WaSetupPanel verifyToken={verifyToken} webhookSeen={ready.webhook} />
       {chats.length > 0 && (
         <div>
           <p className="mb-1 text-xs font-bold text-muted">Son konuşmalar</p>
