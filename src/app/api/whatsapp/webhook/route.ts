@@ -4,7 +4,7 @@
 //         Teslim edilemeyen ("failed") bildirimler CallMeBot ile yedek numaraya gönderilir.
 import { after, connection, type NextRequest } from "next/server";
 import { createPublicClient } from "@/lib/supabase/public";
-import { sendWhatsApp } from "@/lib/notify";
+import { sendWhatsApp, sendWhatsAppCloudText } from "@/lib/notify";
 import { handleBotMessage, type InboundMessage } from "@/lib/waBot";
 
 // Bot cevabı (yapay zekâ + araçlar) birkaç saniye sürebilir
@@ -39,7 +39,7 @@ type Change = {
       type?: string;
       text?: { body?: string };
       button?: { text?: string };
-      interactive?: { button_reply?: { title?: string }; list_reply?: { title?: string } };
+      interactive?: { button_reply?: { id?: string; title?: string }; list_reply?: { title?: string } };
     }[];
     contacts?: { wa_id?: string; profile?: { name?: string } }[];
     statuses?: { id?: string; status?: string; errors?: { code?: number; title?: string; message?: string }[] }[];
@@ -66,6 +66,12 @@ export async function POST(req: NextRequest) {
       for (const m of c.value?.messages ?? []) {
         if (!m.from) continue;
         inbound.push(m.from);
+        // "✅ Gördüm" düğmesi (işletme/kurye): pencere yenilendi → kısa onay, bota gitmez
+        if (m.interactive?.button_reply?.id === "pencere_yenile") {
+          const to = m.from;
+          after(() => sendWhatsAppCloudText(to, "👍 Tamam — bildirimler 24 saat boyunca kesintisiz gelecek.").then(() => undefined));
+          continue;
+        }
         if (m.id)
           botMsgs.push({
             from: m.from,

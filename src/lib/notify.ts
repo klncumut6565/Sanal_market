@@ -130,6 +130,27 @@ export async function sendWhatsAppCloudText(to: string, text: string) {
   return cloudPost({ to: to.replace(/\D/g, ""), type: "text", text: { body: text.slice(0, 4000), preview_url: false } });
 }
 
+/**
+ * Düz metin + "✅ Gördüm" yanıt düğmesi. Alıcının düğmeye dokunması bot numarasına gelen bir mesaj sayılır →
+ * 24 saatlik ücretsiz mesaj penceresi yeniden açılır (her gün "merhaba" yazmaya gerek kalmaz).
+ * Etkileşimli mesaj gövdesi en fazla 1024 karakter: uzun metin önce düz gönderilir, düğme ayrı kısa mesajla gelir.
+ */
+export async function sendWhatsAppCloudWithButton(to: string, text: string, button = "✅ Gördüm") {
+  const btn = (body: string) =>
+    cloudPost({
+      to: to.replace(/\D/g, ""),
+      type: "interactive",
+      interactive: { type: "button", body: { text: body }, action: { buttons: [{ type: "reply", reply: { id: "pencere_yenile", title: button.slice(0, 20) } }] } },
+    });
+  if (text.length <= 1000) {
+    const r = await btn(text);
+    return r.ok ? r : sendWhatsAppCloudText(to, text); // düğme gönderilemezse düz metin
+  }
+  const r = await sendWhatsAppCloudText(to, text);
+  if (r.ok) await btn("Bildirimlerin kesintisiz gelmesi için dokunun 👇");
+  return r;
+}
+
 export async function sendWhatsAppCloud(to: string, params: string[]) {
   const template = process.env.WHATSAPP_TEMPLATE?.trim() || "yeni_siparis";
   const lang = process.env.WHATSAPP_TEMPLATE_LANG?.trim() || "tr";
@@ -225,7 +246,8 @@ export async function sendWhatsAppChain(a: {
   let metaErr = "";
   const fallbackPhone = a.backupPhone || a.phone;
   if (a.phone && hasWhatsAppCloud() && a.windowOpen !== false) {
-    const r = await sendWhatsAppCloudText(a.phone, a.text);
+    // İşletme sahibine giden bildirimlerde "✅ Gördüm" düğmesi: dokununca 24 saatlik pencere yenilenir
+    const r = await sendWhatsAppCloudWithButton(a.phone, a.text);
     if (r.ok) {
       // Meta düz mesajı kabul edip sonradan teslim edemeyebilir; webhook "failed" derse yedek gider
       if (r.wamid && fallbackPhone && a.apikey) await recordOutbox(r.wamid, a.phone, a.text, fallbackPhone, a.apikey);
