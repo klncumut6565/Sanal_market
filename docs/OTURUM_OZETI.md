@@ -248,3 +248,5 @@
 - 2026-10-15: Geçici public._imp etkisizleştirildi (migration 20261015050000: gövde yalnızca hata, yetki yalnız postgres). DROP bu araçtan iptal edildi; tamamen silmek için SQL editöründe: drop function if exists public._imp(jsonb);
 
 - 2026-10-15: Sesli asistanlar (müşteri + yönetim) açılınca konuşmayı ASİSTAN başlatır: selamlama komutu artık mikrofon açılmadan, bağlantı kurulur kurulmaz gönderiliyor (önceden mikrofon açıldıktan sonra gidiyordu; ilk gürültü modeli 'müşteri konuşuyor' diye bekletebiliyordu). Yedek: 2,5 sn içinde asistandan ses gelmezse ve müşteri konuşmadıysa selamlama komutu bir kez daha gönderilir. (clientContent kullanılmadı: gemini-3.1-flash-live oturum ortasında desteklemiyor, bağlantı kopabilir.)
+
+- 2026-10-15: Sesli asistan ürün kartlarına ‹ › kaydırma okları (VoiceProducts: telefonda ve bilgisayarda görünür, başta sol/sonda sağ ok gizli, ~bir panel genişliği kaydırır; başlıkta "N ürün · kaydır").

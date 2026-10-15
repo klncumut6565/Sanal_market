@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { Check, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Check, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 import { useCart } from "@/store/cart";
 import { formatTL } from "@/lib/format";
@@ -11,10 +12,44 @@ export function VoiceProducts({ title, items }: { title: string; items: ShownPro
   const lines = useCart((s) => s.lines);
   const add = useCart((s) => s.add);
   const proposal = items.some((i) => i.proposedQty);
+  // Sığmayan kartlar için ‹ › okları (telefonda ve bilgisayarda)
+  const rowRef = useRef<HTMLDivElement>(null);
+  const [edge, setEdge] = useState({ left: false, right: false });
+  const measure = useCallback(() => {
+    const el = rowRef.current;
+    if (el) setEdge({ left: el.scrollLeft > 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
+  }, []);
+  useEffect(() => {
+    const el = rowRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    el.addEventListener("scroll", measure, { passive: true });
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", measure);
+    };
+  }, [measure, items]);
+  const go = (dir: -1 | 1) => rowRef.current?.scrollBy({ left: dir * Math.max(112, rowRef.current.clientWidth * 0.8), behavior: "smooth" });
+  const arrow = "absolute top-[42%] z-10 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-brand text-white shadow-lg ring-2 ring-ink transition active:scale-95";
   return (
     <div className="space-y-1.5">
-      <p className={`text-xs font-bold ${proposal ? "text-amber-300" : "opacity-70"}`}>{title}</p>
-      <div className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto px-4 pb-1">
+      <p className={`flex items-center justify-between text-xs font-bold ${proposal ? "text-amber-300" : "opacity-70"}`}>
+        <span>{title}</span>
+        {(edge.left || edge.right) && <span className="font-semibold opacity-70">{items.length} ürün · kaydır</span>}
+      </p>
+      <div className="relative">
+      {edge.left && (
+        <button type="button" onClick={() => go(-1)} aria-label="Önceki ürünler" className={`${arrow} -left-2`}>
+          <ChevronLeft size={20} />
+        </button>
+      )}
+      {edge.right && (
+        <button type="button" onClick={() => go(1)} aria-label="Sonraki ürünler" className={`${arrow} -right-2`}>
+          <ChevronRight size={20} />
+        </button>
+      )}
+      <div ref={rowRef} className="no-scrollbar -mx-4 flex snap-x gap-2 overflow-x-auto scroll-smooth px-4 pb-1">
         {items.map((p) => {
           const inCart = lines.find((l) => l.id === p.id)?.qty ?? 0;
           const out = p.stock < 1;
@@ -58,6 +93,7 @@ export function VoiceProducts({ title, items }: { title: string; items: ShownPro
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
