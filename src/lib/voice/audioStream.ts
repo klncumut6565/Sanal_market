@@ -331,3 +331,37 @@ export class AudioPlaybackQueue {
     }, 120);
   }
 }
+
+/**
+ * Gürültü kapısı + yankı koruması (mikrofon → yapay zekâ).
+ *  - Ortam gürültüsünü sürekli ölçer (son 2 sn içindeki en düşük seviye; sürekli uğultuya ~2-3 sn içinde uyum sağlar); eşik = max(taban, gürültü × 2,2).
+ *  - Eşiğin altındaki çerçeveler sessizlik (sıfır) olarak gönderilir → buzdolabı, TV, kalabalık
+ *    uğultusu modelde "müşteri konuşuyor" algısı yaratmaz. Akış kesilmez (sunucu sessizliği görür).
+ *  - Asistan konuşurken (hoparlör) eşik 2,5 kat yükselir: hoparlörden mikrofona sızan yankı
+ *    asistanın sözünü kesmez, ama müşteri yüksek sesle araya girerse yine duyulur.
+ *  - Konuşma algılanınca 400 ms boyunca kapı açık kalır (kelime sonları kırpılmaz).
+ */
+export function createNoiseGate(base = 420) {
+  const hist: { t: number; rms: number }[] = [];
+  let openUntil = 0;
+  let echoTailUntil = 0;
+  return (pcm: ArrayBuffer, assistantPlaying: boolean): { out: ArrayBuffer; rms: number; voiced: boolean } => {
+    const v = new Int16Array(pcm);
+    let sum = 0;
+    for (let i = 0; i < v.length; i++) sum += v[i] * v[i];
+    const rms = v.length ? Math.sqrt(sum / v.length) : 0;
+    const now = Date.now();
+    if (assistantPlaying) echoTailUntil = now + 350; // hoparlör sustuktan sonra kısa yankı kuyruğu
+    const echo = assistantPlaying || now < echoTailUntil;
+    // Gürültü tabanı = son 2 sn'deki en düşük seviye. Sürekli uğultu tabanı yükseltir; konuşmada
+    // kelime aralarındaki kısa duraklamalar tabanı düşük tutar. Asistan konuşurken ölçülmez.
+    if (!echo) hist.push({ t: now, rms });
+    while (hist.length && hist[0].t < now - 2000) hist.shift();
+    const floor = hist.length >= 6 ? Math.min(...hist.map((h) => h.rms)) : 150;
+    const thr = Math.max(base, floor * 2.2) * (echo ? 2.5 : 1);
+    const loud = rms > thr;
+    if (loud) openUntil = now + 400;
+    const voiced = now < openUntil;
+    return { out: voiced ? pcm : new ArrayBuffer(pcm.byteLength), rms, voiced };
+  };
+}

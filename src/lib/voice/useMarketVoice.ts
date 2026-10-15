@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
 import { createMarketToolRunner, closedNote, loadCustomerContext, type CartProposal, type ShownProduct } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
-import { startMicCapture, AudioPlaybackQueue, type MicCapture } from "./audioStream";
+import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate } from "./audioStream";
 import { hataTurkce } from "./hatalar";
 import { MARKET_TOOLS, MARKET_VOICE_INSTRUCTION } from "./marketTools";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
@@ -22,7 +22,7 @@ export type VoiceAction = { id: number; text: string; kind: "add" | "remove" | "
 
 const MAX_OTURUM_MS = 10 * 60_000; // tek oturum en fazla 10 dk
 const SESSIZLIK_MS = 90_000; // 90 sn hiç konuşulmazsa kapat
-const SES_ESIGI_RMS = 500;
+const SES_ESIGI_RMS = 420; // gürültü kapısının taban eşiği (ortam gürültüsüne göre otomatik yükselir)
 /** Ödeme ekranı sipariş tamamlanınca bu olayı yayar; açık sesli oturum teşekkür eder. */
 export const ORDER_DONE_EVENT = "sesli-asistan:siparis-tamamlandi";
 
@@ -258,12 +258,12 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       playbackRef.current = playback;
 
       lastSpeech.current = Date.now();
+      // Gürültü kapısı + hoparlör yankısı koruması (audioStream.createNoiseGate)
+      const gate = createNoiseGate(SES_ESIGI_RMS);
       micRef.current = await startMicCapture((pcm) => {
-        const v = new Int16Array(pcm);
-        let sum = 0;
-        for (let i = 0; i < v.length; i++) sum += v[i] * v[i];
-        if (Math.sqrt(sum / v.length) > SES_ESIGI_RMS) lastSpeech.current = Date.now();
-        providerRef.current?.sendAudio(pcm);
+        const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
+        if (g.voiced) lastSpeech.current = Date.now();
+        providerRef.current?.sendAudio(g.out);
       });
       set("listening");
       // Asistan önce konuşsun: selamlama
