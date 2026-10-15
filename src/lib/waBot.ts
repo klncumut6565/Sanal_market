@@ -309,7 +309,7 @@ async function runTool(sb: Sb, chat: Chat, name: string, args: Record<string, un
       `💳 ${PAY[c.payment_method!]} · 🕒 ${c.delivery_slot}`,
       c.note ? `📝 ${c.note}` : "",
       "",
-      `Onaylıyorsanız *EVET* yazın. (Sipariş vererek mesafeli satış sözleşmesini ve KVKK metnini kabul etmiş olursunuz: ${SITE}/kvkk)`,
+      `Onaylıyorsanız *EVET* yazın. (EVET yazarak ön bilgilendirme formunu ve mesafeli satış sözleşmesini okuyup kabul etmiş olursunuz: ${SITE}/mesafeli-satis-sozlesmesi · KVKK: ${SITE}/kvkk)`,
     ]
       .filter((x) => x !== "")
       .join("\n");
@@ -339,7 +339,7 @@ async function runTool(sb: Sb, chat: Chat, name: string, args: Record<string, un
         payment_method: c.payment_method,
         note: [c.note, "WhatsApp siparişi"].filter(Boolean).join(" · ").slice(0, 300),
         accepted_terms: true,
-        terms_version: "2026-10-11",
+        terms_version: "2026-10-15",
         client_order_id: crypto.randomUUID(),
       },
     });

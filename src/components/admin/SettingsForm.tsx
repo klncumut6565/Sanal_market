@@ -23,6 +23,17 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
           </div>
         </div>
         <F label="Adres"><textarea name="address" defaultValue={s.address ?? ""} className="input min-h-20" /></F>
+        <fieldset className="space-y-3 rounded-xl border border-line p-3">
+          <legend className="px-1 text-sm font-extrabold">Yasal satıcı bilgileri</legend>
+          <p className="text-xs text-muted">Mesafeli satış sözleşmesi ve ön bilgilendirme formunda &quot;Satıcı&quot; olarak görünür. Vergi levhasındaki bilgileri gir.</p>
+          <F label="Yasal ünvan (şahıs şirketiyse ad soyad)"><input name="legal_name" defaultValue={s.legal_name ?? ""} placeholder="Ör. Ahmet Yılmaz veya ABC Gıda Ltd. Şti." className="input" /></F>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <F label="Vergi dairesi"><input name="tax_office" defaultValue={s.tax_office ?? ""} className="input" /></F>
+            <F label="Vergi / T.C. kimlik no"><input name="tax_no" defaultValue={s.tax_no ?? ""} inputMode="numeric" className="input" /></F>
+            <F label="MERSİS no (şirketse)"><input name="mersis_no" defaultValue={s.mersis_no ?? ""} inputMode="numeric" className="input" /></F>
+            <F label="E-posta (şikâyet / cayma bildirimi)"><input name="contact_email" type="email" defaultValue={s.contact_email ?? ""} className="input" /></F>
+          </div>
+        </fieldset>
       </section>
       <section className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
         <F label="Teslimat ücreti (₺)"><input name="delivery_fee" inputMode="decimal" defaultValue={s.delivery_fee} className="input" /></F>

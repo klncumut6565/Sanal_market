@@ -29,7 +29,7 @@ export type PlaceOrderInput = {
 };
 
 /** Sözleşme / aydınlatma metni değiştiğinde güncelle (siparişe kaydedilir). */
-const TERMS_VERSION = "2026-10-11";
+const TERMS_VERSION = "2026-10-15";
 
 export type PlaceOrderResult =
   | { ok: true; id: string; token: string; orderNo: number }

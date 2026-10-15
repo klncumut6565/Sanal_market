@@ -40,6 +40,12 @@ export type Product = {
 
 export type StoreSettings = {
   store_name: string;
+  /** Yasal satıcı bilgileri (mesafeli satış sözleşmesi) */
+  legal_name?: string | null;
+  tax_office?: string | null;
+  tax_no?: string | null;
+  mersis_no?: string | null;
+  contact_email?: string | null;
   phone: string | null;
   address: string | null;
   delivery_area_note: string | null;

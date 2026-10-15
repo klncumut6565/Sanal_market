@@ -437,6 +437,11 @@ export async function saveSettings(_: ActionState, fd: FormData): Promise<Action
       sla_accept_min: sla[0],
       sla_prepare_min: sla[1],
       sla_delivery_min: sla[2],
+      legal_name: str(fd, "legal_name").slice(0, 200) || null,
+      tax_office: str(fd, "tax_office").slice(0, 80) || null,
+      tax_no: str(fd, "tax_no").replace(/\s/g, "").slice(0, 20) || null,
+      mersis_no: str(fd, "mersis_no").replace(/\s/g, "").slice(0, 20) || null,
+      contact_email: str(fd, "contact_email").slice(0, 120) || null,
   };
   let { error } = await supabase.from("store_settings").update(row).eq("id", 1);
   // Sesli asistan sütunları veritabanına henüz eklenmediyse diğer ayarları yine de kaydet

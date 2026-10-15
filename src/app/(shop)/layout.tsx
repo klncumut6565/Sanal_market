@@ -36,7 +36,11 @@ async function Footer() {
         <div>
           <Brand size="sm" />
           <p className="mt-1 text-xs font-semibold tracking-wide">İhtiyacın Kapında!</p>
-          <Link href="/kvkk" className="mt-2 inline-block text-xs font-semibold underline underline-offset-2 hover:text-brand">KVKK Aydınlatma Metni</Link>
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs font-semibold">
+            <Link href="/kvkk" className="underline underline-offset-2 hover:text-brand">KVKK Aydınlatma Metni</Link>
+            <Link href="/mesafeli-satis-sozlesmesi" className="underline underline-offset-2 hover:text-brand">Mesafeli Satış Sözleşmesi</Link>
+            <Link href="/on-bilgilendirme" className="underline underline-offset-2 hover:text-brand">Ön Bilgilendirme Formu</Link>
+          </div>
         </div>
         <p>{s.address ?? "Adres bilgisi ayarlardan girilecek"}</p>
         <p>

@@ -162,7 +162,7 @@ export function CheckoutForm({ settings, areas }: { settings: StoreSettings; are
           <Totals subtotal={s.subtotal} delivery={s.delivery} savings={s.savings} total={s.total} />
           <label className="flex items-start gap-2 text-xs text-muted">
             <input type="checkbox" className="mt-0.5 accent-brand" checked={form.accepted_terms} onChange={(e) => set("accepted_terms", e.target.checked)} />
-            <span>Ön bilgilendirme formunu ve mesafeli satış sözleşmesini okudum, onaylıyorum. Kişisel verilerimin <Link href="/kvkk" target="_blank" className="font-semibold text-brand underline">KVKK Aydınlatma Metni</Link> kapsamında işleneceğini biliyorum.</span>
+            <span><Link href="/on-bilgilendirme" target="_blank" className="font-semibold text-brand underline">Ön bilgilendirme formunu</Link> ve <Link href="/mesafeli-satis-sozlesmesi" target="_blank" className="font-semibold text-brand underline">mesafeli satış sözleşmesini</Link> okudum, onaylıyorum. Kişisel verilerimin <Link href="/kvkk" target="_blank" className="font-semibold text-brand underline">KVKK Aydınlatma Metni</Link> kapsamında işleneceğini biliyorum.</span>
           </label>
           {error && <p role="alert" className="rounded-lg bg-brand-soft p-2.5 text-sm font-semibold text-brand">{error}</p>}
           {s.belowMin && <p className="text-center text-xs font-semibold text-muted">Minimum sipariş tutarı {formatTL(settings.min_order_amount)}</p>}
