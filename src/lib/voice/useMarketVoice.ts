@@ -12,6 +12,8 @@ import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate }
 import { hataTurkce } from "./hatalar";
 import { MARKET_TOOLS, MARKET_VOICE_INSTRUCTION } from "./marketTools";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
+import { halusinasyonMu, yankiMi } from "./halusinasyon";
+import { voiceLog } from "./voiceLog";
 
 export type VoiceSettings = Pick<
   StoreSettings,
@@ -20,8 +22,8 @@ export type VoiceSettings = Pick<
 
 export type VoiceAction = { id: number; text: string; kind: "add" | "remove" | "info" };
 
-const MAX_OTURUM_MS = 10 * 60_000; // tek oturum en fazla 10 dk
-const SESSIZLIK_MS = 90_000; // 90 sn hiç konuşulmazsa kapat
+const MAX_OTURUM_MS = 20 * 60_000; // tek oturum en fazla 20 dk
+const SESSIZLIK_MS = 150_000; // 2,5 dk hiç konuşma/dokunma olmazsa kapat (ürün kartlarına bakarken kapanmasın)
 const SES_ESIGI_RMS = 420; // gürültü kapısının taban eşiği (ortam gürültüsüne göre otomatik yükselir)
 /** Ödeme ekranı sipariş tamamlanınca bu olayı yayar; açık sesli oturum teşekkür eder. */
 export const ORDER_DONE_EVENT = "sesli-asistan:siparis-tamamlandi";
@@ -35,6 +37,10 @@ const icerir = (t: string, list: string[]) => {
   const n = ` ${trN(t)} `;
   return list.some((k) => n.includes(` ${k}`));
 };
+/** Yedek kapatma için yalnızca AÇIK bitirme sözleri ("teşekkürler" tek başına sohbeti bitirmez) */
+const MUSTERI_KAPAT = [...ASIST_VEDA, "kapat", "kapatabilirsin", "bu kadar", "başka bir şey yok", "başka yok"];
+/** end_session'ı kabul etmek için müşterinin son cümlesinde aranan sözler */
+const KAPAT_IZIN = [...MUSTERI_VEDA, "yok", "gerek yok", "yeter", "evet"];
 
 
 export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
@@ -59,6 +65,8 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const userTurn = useRef(0);
   const lastAsst = useRef("");
   const lastUser = useRef("");
+  const startedAt = useRef(0);
+  const orderDone = useRef(false);
   /** Kapanış başladı: mikrofon kapalı, son konuşma bitince oturum kapanır */
   const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
   const settingsRef = useRef(settings);
@@ -160,6 +168,8 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
     proposalRef.current = null;
     ending.current = null;
     lastUser.current = "";
+    orderDone.current = false;
+    startedAt.current = Date.now();
     set("connecting");
 
     const provider = new GeminiLiveProvider(MARKET_TOOLS, MARKET_VOICE_INSTRUCTION);
@@ -200,9 +210,11 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         if (userBuf.current) lastUser.current = userBuf.current;
         userBuf.current = "";
         const asst = asstBuf.current;
+        lastSpeech.current = Date.now(); // sessizlik süresi asistanın sustuğu andan sayılır
+        const sahteUser = halusinasyonMu(lastUser.current) || yankiMi(lastUser.current, asst);
         if (ending.current) {
           ending.current.turnDone = true;
-        } else if (asst && icerir(asst, ASIST_VEDA) && icerir(lastUser.current, MUSTERI_VEDA)) {
+        } else if (asst && !sahteUser && icerir(asst, ASIST_VEDA) && icerir(lastUser.current, MUSTERI_KAPAT)) {
           // Yedek: araç çağrılmadan vedalaştıysa da kapat (karşılıklı "görüşürüz" döngüsünü keser)
           finishSession();
           const e2 = ending.current as { turnDone: boolean } | null;
@@ -215,20 +227,72 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         go("listening");
       });
       provider.onError((m) => {
+        voiceLog("musteri", "hata", m, startedAt.current);
         setError(hataTurkce(m));
         set("error");
         void cleanup();
       });
-      provider.onClose(() => {
+      provider.onClose((code, reason) => {
+        voiceLog("musteri", "kopma", `${code} ${reason}`.trim(), startedAt.current);
         if (stateRef.current !== "idle") {
-          setError("Bağlantı sona erdi. Devam etmek için tekrar başlat.");
+          setError(`Bağlantı koptu (${code}${reason ? `: ${reason}` : ""}). Devam etmek için tekrar başlat.`);
           set("error");
           void cleanup();
         }
       });
-      provider.onGoAway(() => {});
+      // Kopma / sunucunun "kapanacağım" (goAway) uyarısı → yeni token + oturum devam tutamacıyla otomatik yeniden bağlan
+      provider.enableAutoReconnect({
+        max: 3,
+        fetchSession: async () => {
+          const r = await fetch("/api/voice/session", { method: "POST" });
+          const j = (await r.json().catch(() => ({}))) as RealtimeSessionResponse & { error?: string };
+          if (!r.ok || !j.token) throw new Error(j.error || `token ${r.status}`);
+          return j;
+        },
+        onState: (st, info) => {
+          if (st === "reconnecting") {
+            playback.clear();
+            set("reconnecting");
+            if (info.code) voiceLog("musteri", "kopma", `${info.code} ${info.reason ?? ""} → yeniden bağlanılıyor (${info.attempt})`.trim(), startedAt.current);
+          } else if (st === "ok") {
+            voiceLog("musteri", "yeniden_baglandi", `${info.reason || info.code || ""} devam=${info.resumed ? "evet" : "hayır"}`, startedAt.current);
+            set("listening");
+            lastSpeech.current = Date.now();
+            provider.sendText(
+              info.resumed
+                ? "[SİSTEM] Bağlantı yenilendi. Selam verme; kaldığın yerden devam et (cevabın yarım kaldıysa kısaca tamamla)."
+                : "[SİSTEM] Bağlantı bir an koptu ve yenilendi; önceki konuşmayı hatırlamıyorsun. Selam verme; 'Bağlantı bir an koptu, nerede kalmıştık?' de. Sepet olduğu gibi duruyor.",
+            );
+          } else {
+            voiceLog("musteri", "yeniden_baglanamadi", `${info.code ?? ""} ${info.error ?? ""}`.trim(), startedAt.current);
+          }
+        },
+      });
+      provider.onGoAway((ms) => {
+        voiceLog("musteri", "goaway", `${ms ?? "?"} ms`, startedAt.current);
+        // Asistan susunca (ya da en geç süre dolmadan) bağlantıyı tazele
+        const until = Date.now() + Math.max(1000, (ms ?? 10_000) - 2000);
+        const t = setInterval(() => {
+          if (providerRef.current !== provider) return clearInterval(t);
+          const busy = (playbackRef.current?.isPlaying() ?? false) || stateRef.current === "tool_calling" || stateRef.current === "user_speaking";
+          if (!busy || Date.now() > until) {
+            clearInterval(t);
+            void provider.reconnectNow("goAway");
+          }
+        }, 300);
+        timers.current.push(t);
+      });
       provider.onToolCall(async (name, args) => {
         if (name === "end_session") {
+          // Yanlış kapanmaya karşı: müşteri gerçekten bitirmek istediyse (ya da sipariş tamamlandıysa) kapat.
+          // Gürültüden uydurulan "izlediğiniz için teşekkürler" veya asistanın kendi yankısı kapatma sebebi sayılmaz.
+          const said = (userBuf.current || lastUser.current).trim();
+          const sahte = !said || halusinasyonMu(said) || yankiMi(said, lastAsst.current);
+          if (!orderDone.current && (sahte || !icerir(said, KAPAT_IZIN))) {
+            voiceLog("musteri", "kapat_reddedildi", sahte ? "gürültü/yankı" : "kapatma sözü yok", startedAt.current);
+            return { ok: false, error: "Müşteri sohbeti bitirmek istemedi; KAPATMA. Veda etme, sohbete devam et; anlamadıysan 'tekrar eder misin?' de." };
+          }
+          voiceLog("musteri", "bitti", orderDone.current ? "sipariş" : "müşteri kapattı", startedAt.current);
           finishSession();
           return { ok: true, closing: true, note: "Oturum kapanıyor. Veda ettiysen başka bir şey söyleme." };
         }
@@ -286,8 +350,11 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       timers.current.push(
         setInterval(() => {
           const now = Date.now();
+          if (stateRef.current === "reconnecting") return;
           if (now - started > MAX_OTURUM_MS || (now - lastSpeech.current > SESSIZLIK_MS && !playback.isPlaying())) {
-            setError(now - started > MAX_OTURUM_MS ? "Oturum süresi doldu (10 dk). Devam etmek için tekrar başlat." : "Bir süredir ses gelmediği için asistanı kapattım.");
+            const sure = now - started > MAX_OTURUM_MS;
+            voiceLog("musteri", sure ? "sure_doldu" : "sessizlik", "", startedAt.current);
+            setError(sure ? "Oturum süresi doldu (20 dk). Devam etmek için tekrar başlat." : "Bir süredir ses gelmediği için asistanı kapattım. Devam etmek için tekrar başlat.");
             set("error");
             void cleanup();
           }
@@ -297,10 +364,16 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       providerRef.current = providerRef.current ?? provider;
       playbackRef.current = playbackRef.current ?? playback;
       await cleanup();
+      voiceLog("musteri", "hata", `başlangıç: ${e instanceof Error ? e.message : String(e)}`, startedAt.current);
       setError(hataTurkce(e));
       set("error");
     }
   }, [cleanup, go, runTool, set, finishSession]);
+
+  /** Panelde dokunma/kaydırma da etkinlik sayılır (ürün kartlarına bakarken sessizlikten kapanmasın) */
+  const touch = useCallback(() => {
+    lastSpeech.current = Date.now();
+  }, []);
 
   useEffect(() => () => void cleanup(), [cleanup]);
 
@@ -312,11 +385,12 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         `[SİSTEM] Sipariş tamamlandı. Sipariş no: ${d.orderNo ?? "-"}${d.total != null ? `, toplam ${d.total.toFixed(2)} TL` : ""}. Tek cümleyle teşekkür et ve end_session çağır.`,
       );
       // Teşekkürden sonra oturum her durumda kapanır (mikrofon hemen kapanır)
+      orderDone.current = true;
       finishSession();
     };
     window.addEventListener(ORDER_DONE_EVENT, h);
     return () => window.removeEventListener(ORDER_DONE_EVENT, h);
   }, [finishSession]);
 
-  return { state, error, userText, assistantText, actions, shown, start, stop };
+  return { state, error, userText, assistantText, actions, shown, start, stop, touch };
 }

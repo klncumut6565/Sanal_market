@@ -82,7 +82,12 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
       )}
 
       {open && (
-        <div className="fixed inset-x-0 bottom-0 z-50 p-3 sm:inset-x-auto sm:right-4 sm:w-96">
+        <div
+          className="fixed inset-x-0 bottom-0 z-50 p-3 sm:inset-x-auto sm:right-4 sm:w-96"
+          onPointerDown={v.touch}
+          onScrollCapture={v.touch}
+          onWheel={v.touch}
+        >
           <div className="space-y-3 rounded-3xl bg-ink p-4 text-white shadow-2xl">
             <div className="flex items-center justify-between">
               <p className="font-black">🎙️ Sesli alışveriş asistanı</p>

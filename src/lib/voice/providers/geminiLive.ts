@@ -46,7 +46,16 @@ export class GeminiLiveProvider implements RealtimeProvider {
   private turnCompleteHandler: (() => void) | null = null;
   private toolCallHandler: ToolCallHandler | null = null;
   private goAwayHandler: ((timeLeftMs: number | null) => void) | null = null;
-  private closeHandler: (() => void) | null = null;
+  private closeHandler: ((code: number, reason: string) => void) | null = null;
+  /** Otomatik yeniden bağlanma: beklenmeyen kopma / goAway sonrası yeni token + oturum devam tutamacıyla */
+  private reconnectCfg: {
+    fetchSession: () => Promise<RealtimeSessionResponse>;
+    max: number;
+    onState: (s: "reconnecting" | "ok" | "failed", info: { code?: number; reason?: string; resumed?: boolean; attempt: number; error?: string }) => void;
+  } | null = null;
+  private reconnectCount = 0;
+  private reconnecting = false;
+  private lastInstruction: string | undefined;
   private setupDone = false;
   /** disconnect() ile bilinçli kapatıldıysa onclose hata/yeniden bağlanma tetiklemez. */
   private kapatildi = false;
@@ -71,8 +80,55 @@ export class GeminiLiveProvider implements RealtimeProvider {
   }
 
   /** Bilinçsiz (beklenmeyen) bağlantı kopmasında tetiklenir; hook yeniden bağlanmayı dener. */
-  onClose(handler: () => void) {
+  onClose(handler: (code: number, reason: string) => void) {
     this.closeHandler = handler;
+  }
+
+  /** Beklenmeyen kopmada otomatik yeniden bağlanmayı açar. */
+  enableAutoReconnect(cfg: NonNullable<GeminiLiveProvider["reconnectCfg"]>) {
+    this.reconnectCfg = cfg;
+  }
+
+  /** Bağlantıyı bilerek yeniler (ör. goAway geldiğinde, asistan sustuğunda). */
+  async reconnectNow(why = "goAway"): Promise<boolean> {
+    return this.yenidenBaglan(0, why);
+  }
+
+  private async yenidenBaglan(code: number, reason: string): Promise<boolean> {
+    const cfg = this.reconnectCfg;
+    if (!cfg || this.reconnecting || this.kapatildi) return false;
+    if (this.reconnectCount >= cfg.max) return false;
+    this.reconnecting = true;
+    this.reconnectCount += 1;
+    const attempt = this.reconnectCount;
+    cfg.onState("reconnecting", { code, reason, attempt });
+    // Eski soketi sessizce bırak (kapanışı hata sayılmasın)
+    const eski = this.ws;
+    if (eski) {
+      eski.onclose = null;
+      eski.onmessage = null;
+      eski.onerror = null;
+      try {
+        eski.close();
+      } catch {
+        /* yok say */
+      }
+    }
+    this.ws = null;
+    this.setupDone = false;
+    const handle = this.resumeHandle;
+    try {
+      const sess = await cfg.fetchSession();
+      if (this.kapatildi) return false;
+      await this.connect(sess, handle, this.lastInstruction);
+      cfg.onState("ok", { code, reason, resumed: !!handle, attempt });
+      return true;
+    } catch (e) {
+      cfg.onState("failed", { code, reason, attempt, error: e instanceof Error ? e.message : String(e) });
+      return false;
+    } finally {
+      this.reconnecting = false;
+    }
   }
 
   async connect(
@@ -84,11 +140,23 @@ export class GeminiLiveProvider implements RealtimeProvider {
     // EDİLMEZ ("Method doesn't allow unregistered callers" / 1008). Token ile
     // bağlanmak için BidiGenerateContentConstrained uç noktası kullanılır
     // (resmi SDK de böyle yapar; SDK v1alpha kullanır). Sürümler sırayla denenir.
+    if (systemInstruction) this.lastInstruction = systemInstruction;
+    if (!this.reconnecting) {
+      this.kapatildi = false;
+      this.reconnectCount = 0;
+    }
     const surumler = Array.from(new Set(["v1alpha", session.apiVersion || "v1beta", "v1beta"]));
     let sonHata: Error | null = null;
     for (const surum of surumler) {
+      if (this.kapatildi) throw new Error("Oturum kapatıldı.");
       try {
         await this.baglan(session, surum, resumeHandle, systemInstruction);
+        if (this.kapatildi) {
+          // bağlanırken kullanıcı kapattı
+          this.ws?.close();
+          this.ws = null;
+          throw new Error("Oturum kapatıldı.");
+        }
         return;
       } catch (e) {
         sonHata = e instanceof Error ? e : new Error(String(e));
@@ -120,7 +188,6 @@ export class GeminiLiveProvider implements RealtimeProvider {
     // WebSocket) için access_token query parametresi kullanılıyor.
     const url = `wss://${WS_HOST}${wsPath}?access_token=${encodeURIComponent(session.token)}`;
 
-    this.kapatildi = false;
     this.resumeHandle = resumeHandle ?? null;
     await new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(url);
@@ -184,8 +251,14 @@ export class GeminiLiveProvider implements RealtimeProvider {
           return;
         }
         if (this.kapatildi) return; // kullanıcı kapattı — hata değil
-        if (this.closeHandler) this.closeHandler();
-        else this.errorHandler?.(`Bağlantı kapandı${ev.reason ? `: ${ev.reason}` : "."}`);
+        if (this.ws !== ws) return;
+        void (async () => {
+          // Önce otomatik yeniden bağlanmayı dene; olmazsa kapanışı bildir
+          if (await this.yenidenBaglan(ev.code, ev.reason || "")) return;
+          if (this.kapatildi) return;
+          if (this.closeHandler) this.closeHandler(ev.code, ev.reason || "");
+          else this.errorHandler?.(`Bağlantı kapandı (${ev.code})${ev.reason ? `: ${ev.reason}` : "."}`);
+        })();
       };
 
       ws.onmessage = (ev) => {

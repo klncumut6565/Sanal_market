@@ -9,8 +9,10 @@ import { GeminiLiveProvider } from "./providers/geminiLive";
 import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate } from "./audioStream";
 import { hataTurkce } from "./hatalar";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
+import { halusinasyonMu, yankiMi } from "./halusinasyon";
+import { voiceLog } from "./voiceLog";
 
-const MAX_OTURUM_MS = 10 * 60_000;
+const MAX_OTURUM_MS = 20 * 60_000;
 const SESSIZLIK_MS = 120_000;
 const SES_ESIGI_RMS = 420; // gürültü kapısının taban eşiği (ortam gürültüsüne göre otomatik yükselir)
 
@@ -61,6 +63,7 @@ export function useAdminVoice(onEnded?: () => void) {
     onEndedRef.current = onEnded;
   }, [onEnded]);
   const lastUser = useRef("");
+  const startedAt = useRef(0);
   /** Kapanış: mikrofon hemen kapanır, son konuşma bitince oturum kapanır */
   const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
 
@@ -118,6 +121,7 @@ export function useAdminVoice(onEnded?: () => void) {
     asstBuf.current = "";
     lastUser.current = "";
     ending.current = null;
+    startedAt.current = Date.now();
     set("connecting");
 
     const runTool = createAdminToolRunner({
@@ -161,8 +165,10 @@ export function useAdminVoice(onEnded?: () => void) {
       provider.onTurnComplete(() => {
         if (userBuf.current) lastUser.current = userBuf.current;
         userBuf.current = "";
+        lastSpeech.current = Date.now();
+        const sahte = halusinasyonMu(lastUser.current) || yankiMi(lastUser.current, asstBuf.current);
         if (ending.current) ending.current.turnDone = true;
-        else if (icerir(lastUser.current, KULLANICI_KAPAT) && icerir(asstBuf.current, ASIST_VEDA)) {
+        else if (!sahte && icerir(lastUser.current, KULLANICI_KAPAT) && icerir(asstBuf.current, ASIST_VEDA)) {
           // Yedek: araç çağrılmadan vedalaştıysa da kapat
           finishSession();
           const e2 = ending.current as { turnDone: boolean } | null;
@@ -175,20 +181,67 @@ export function useAdminVoice(onEnded?: () => void) {
         go("listening");
       });
       provider.onError((m) => {
+        voiceLog("admin", "hata", m, startedAt.current);
         setError(hataTurkce(m));
         set("error");
         void cleanup();
       });
-      provider.onClose(() => {
+      provider.onClose((code, reason) => {
+        voiceLog("admin", "kopma", `${code} ${reason}`.trim(), startedAt.current);
         if (stateRef.current !== "idle") {
-          setError("Bağlantı sona erdi. Devam etmek için tekrar başlat.");
+          setError(`Bağlantı koptu (${code}${reason ? `: ${reason}` : ""}). Devam etmek için tekrar başlat.`);
           set("error");
           void cleanup();
         }
       });
-      provider.onGoAway(() => {});
+      provider.enableAutoReconnect({
+        max: 3,
+        fetchSession: async () => {
+          const r = await fetch("/api/voice/session?mod=admin", { method: "POST" });
+          const j = (await r.json().catch(() => ({}))) as RealtimeSessionResponse & { error?: string };
+          if (!r.ok || !j.token) throw new Error(j.error || `token ${r.status}`);
+          return j;
+        },
+        onState: (st, info) => {
+          if (st === "reconnecting") {
+            playback.clear();
+            set("reconnecting");
+            if (info.code) voiceLog("admin", "kopma", `${info.code} ${info.reason ?? ""} → yeniden bağlanılıyor (${info.attempt})`.trim(), startedAt.current);
+          } else if (st === "ok") {
+            voiceLog("admin", "yeniden_baglandi", `${info.reason || info.code || ""} devam=${info.resumed ? "evet" : "hayır"}`, startedAt.current);
+            set("listening");
+            lastSpeech.current = Date.now();
+            provider.sendText(
+              info.resumed
+                ? "[SİSTEM] Bağlantı yenilendi. Selam verme; kaldığın yerden devam et."
+                : "[SİSTEM] Bağlantı bir an koptu ve yenilendi; önceki konuşmayı hatırlamıyorsun. Selam verme; 'Bağlantı bir an koptu, ne soruyordun?' de.",
+            );
+          } else {
+            voiceLog("admin", "yeniden_baglanamadi", `${info.code ?? ""} ${info.error ?? ""}`.trim(), startedAt.current);
+          }
+        },
+      });
+      provider.onGoAway((ms) => {
+        voiceLog("admin", "goaway", `${ms ?? "?"} ms`, startedAt.current);
+        const until = Date.now() + Math.max(1000, (ms ?? 10_000) - 2000);
+        const t = setInterval(() => {
+          if (providerRef.current !== provider) return clearInterval(t);
+          const busy = (playbackRef.current?.isPlaying() ?? false) || stateRef.current === "tool_calling" || stateRef.current === "user_speaking";
+          if (!busy || Date.now() > until) {
+            clearInterval(t);
+            void provider.reconnectNow("goAway");
+          }
+        }, 300);
+        timers.current.push(t);
+      });
       provider.onToolCall(async (name, args) => {
         if (name === "end_session") {
+          const said = (userBuf.current || lastUser.current).trim();
+          if (!said || halusinasyonMu(said) || yankiMi(said, asstBuf.current) || !icerir(said, [...KULLANICI_KAPAT, ...ASIST_VEDA, "evet", "yok"])) {
+            voiceLog("admin", "kapat_reddedildi", "", startedAt.current);
+            return { ok: false, error: "Kullanıcı sohbeti bitirmek istemedi; KAPATMA, devam et." };
+          }
+          voiceLog("admin", "bitti", "", startedAt.current);
           finishSession();
           return { ok: true, closing: true, note: "Oturum kapanıyor; veda ettiysen başka bir şey söyleme." };
         }
@@ -234,8 +287,10 @@ export function useAdminVoice(onEnded?: () => void) {
       timers.current.push(
         setInterval(() => {
           const now = Date.now();
+          if (stateRef.current === "reconnecting") return;
           if (now - started > MAX_OTURUM_MS || (now - lastSpeech.current > SESSIZLIK_MS && !playback.isPlaying())) {
-            setError(now - started > MAX_OTURUM_MS ? "Oturum süresi doldu (10 dk). Devam etmek için tekrar başlat." : "Bir süredir ses gelmediği için asistanı kapattım.");
+            voiceLog("admin", now - started > MAX_OTURUM_MS ? "sure_doldu" : "sessizlik", "", startedAt.current);
+            setError(now - started > MAX_OTURUM_MS ? "Oturum süresi doldu (20 dk). Devam etmek için tekrar başlat." : "Bir süredir ses gelmediği için asistanı kapattım.");
             set("error");
             void cleanup();
           }
