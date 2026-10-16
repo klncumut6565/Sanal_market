@@ -14,13 +14,14 @@ import { BulkSelectProvider, RowCheckbox, SelectPageCheckbox } from "@/component
 import { Suspense } from "react";
 import { fetchAll } from "@/lib/data/fetchAll";
 import { barcodeKey, fold, matchWords, nameKey } from "@/lib/trFold";
-import { categoryOptions, withDescendants } from "@/lib/categoryTree";
+import { categoryOptions, childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
+import { CategoryFilter } from "@/components/admin/CategoryFilter";
 
 const PAGE = 100;
 
 export const metadata = { title: "Ürünler" };
 
-export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; stok?: string; marj?: string; s?: string; sira?: string }> }) {
+export default async function ProductsAdmin({ searchParams }: { searchParams: Promise<{ q?: string; kategori?: string; alt?: string; stok?: string; marj?: string; s?: string; sira?: string }> }) {
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const now = new Date().getTime();
@@ -34,10 +35,24 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const cats = (categories ?? []) as Category[];
   const treeOpts = categoryOptions(cats);
   const catOpts = treeOpts.map((o) => ({ id: o.id, name: o.label }));
-  const catFilter = sp.kategori ? withDescendants(cats, sp.kategori) : null;
+  // Kategori + alt kategori: eski bağlantılarda kategori=alt kategori id'si olabilir → üstünü ana, kendisini alt say
+  const byId = new Map(cats.map((c) => [c.id, c]));
+  const picked = sp.kategori ? byId.get(sp.kategori) : undefined;
+  const topId = picked ? (picked.parent_id && byId.has(picked.parent_id) ? picked.parent_id : picked.id) : "";
+  const subId = picked && picked.id !== topId ? picked.id : sp.alt && byId.get(sp.alt)?.parent_id === topId ? sp.alt : "";
+  const catFilter = subId ? withDescendants(cats, subId) : topId ? withDescendants(cats, topId) : null;
   // Türkçe karakter ve büyük/küçük harf duyarsız, kelime bazlı ("yeni raki 70" → YENİ RAKI 70CL)
   // Mükerrer şüphesi: aynı ad (yazım farkı yok sayılır) veya aynı barkod (baştaki 0 / boşluk farkı yok sayılır)
   const allProducts = (products ?? []) as Product[];
+  const perCat = new Map<string, number>();
+  for (const p of allProducts) if (p.category_id) perCat.set(p.category_id, (perCat.get(p.category_id) ?? 0) + 1);
+  const catTops = topLevel(cats).map((c) => ({
+    id: c.id,
+    name: c.name,
+    count: [...withDescendants(cats, c.id)].reduce((a, id) => a + (perCat.get(id) ?? 0), 0),
+  }));
+  const catSubs: Record<string, { id: string; name: string; count: number }[]> = {};
+  for (const t of catTops) catSubs[t.id] = childrenOf(cats, t.id).map((c) => ({ id: c.id, name: c.name, count: perCat.get(c.id) ?? 0 }));
   const nameCount = new Map<string, number>();
   const bcCount = new Map<string, number>();
   for (const p of allProducts) {
@@ -117,10 +132,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         <Suspense fallback={<input name="q" defaultValue={sp.q} placeholder="Ürün adı veya barkod" className="input max-w-xs" />}>
           <LiveSearchInput placeholder="Ürün adı veya barkod — yazdıkça arar" className="w-full sm:max-w-xs" />
         </Suspense>
-        <select name="kategori" defaultValue={sp.kategori ?? ""} className="input max-w-52">
-          <option value="">Tüm kategoriler</option>
-          {treeOpts.map((o) => <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>)}
-        </select>
+        <CategoryFilter tops={catTops} subsByTop={catSubs} top={topId} sub={subId} />
         <select name="stok" defaultValue={sp.stok ?? ""} className="input max-w-44">
           <option value="">Tüm stoklar</option>
           <option value="kritik">Kritik stok</option>
