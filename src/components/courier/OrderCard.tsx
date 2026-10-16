@@ -4,6 +4,7 @@ import { AlertTriangle, Banknote, ChevronDown, CreditCard, Hand, Loader2, Messag
 import { waLink } from "@/lib/whatsapp";
 import { displayPhone } from "@/lib/phone";
 import { mapsDirections } from "@/lib/courierShared";
+import { mapQuery } from "@/lib/mapAddress";
 import { since, tl, type CourierOrder } from "./types";
 
 type Props = {
@@ -91,7 +92,7 @@ export function OrderCard({ o, now, mode, busy, canClaim, onClaim, onPickup, onD
 
         {mode === "mine" && (
           <div className="grid grid-cols-3 gap-2 text-sm font-bold">
-            <a href={mapsDirections(o.address)} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-0.5 rounded-xl bg-ink py-2.5 text-white">
+            <a href={mapsDirections(o)} target="_blank" rel="noopener noreferrer" className="flex flex-col items-center gap-0.5 rounded-xl bg-ink py-2.5 text-white">
               <Navigation size={18} /> Yol tarifi
             </a>
             <a href={`tel:${o.phone}`} className="flex flex-col items-center gap-0.5 rounded-xl bg-white py-2.5 ring-1 ring-line">
@@ -112,7 +113,11 @@ export function OrderCard({ o, now, mode, busy, canClaim, onClaim, onPickup, onD
             “Kapınızdayım” mesajı gönder
           </a>
         )}
-        {mode === "mine" && <p className="text-center text-xs text-muted">{displayPhone(o.phone)}</p>}
+        {mode === "mine" && (
+          <p className="text-center text-[11px] text-muted">
+            🗺 Haritada aranan: {mapQuery(o)} · {displayPhone(o.phone)}
+          </p>
+        )}
 
         {mode === "pool" ? (
           <button type="button" disabled={busy || !canClaim} onClick={onClaim} className="btn-primary w-full py-3 text-base disabled:opacity-50">

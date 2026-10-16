@@ -7,6 +7,11 @@ export type CourierOrder = {
   phone: string;
   address: string;
   address_note: string | null;
+  addr_neighborhood?: string | null;
+  addr_street?: string | null;
+  addr_door_no?: string | null;
+  addr_district?: string | null;
+  addr_city?: string | null;
   note: string | null;
   delivery_slot: string | null;
   payment_method: string;
@@ -39,7 +44,7 @@ export type Settlement = {
 };
 
 export const ORDER_COLS =
-  "id,order_no,status,customer_name,phone,address,address_note,note,delivery_slot,payment_method,subtotal,delivery_fee,total,created_at,dispatched_at,assigned_at,picked_up_at,delivered_at,collected_method,collected_amount,courier_note,delivery_issue,delivery_issue_at,settlement_id,courier_id";
+  "id,order_no,status,customer_name,phone,address,address_note,addr_neighborhood,addr_street,addr_door_no,addr_district,addr_city,note,delivery_slot,payment_method,subtotal,delivery_fee,total,created_at,dispatched_at,assigned_at,picked_up_at,delivered_at,collected_method,collected_amount,courier_note,delivery_issue,delivery_issue_at,settlement_id,courier_id";
 
 export const numOrder = (o: CourierOrder): CourierOrder => ({
   ...o,

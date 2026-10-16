@@ -22,6 +22,5 @@ export const payLabel = (m: string | null | undefined) => (m === "kapida_pos" ? 
 export const collectedLabel = (m: string | null | undefined) => (m === "pos" ? "POS" : m === "nakit" ? "Nakit" : "—");
 
 /** Sipariş adresinden harita bağlantıları */
-export const mapsSearch = (a: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a}, Çorlu, Tekirdağ`)}`;
-export const mapsDirections = (a: string) =>
-  `https://www.google.com/maps/dir/?api=1&travelmode=driving&destination=${encodeURIComponent(`${a}, Çorlu, Tekirdağ`)}`;
+// Harita: yalnızca sokak + dış kapı no + mahalle (iç kapı, apartman, not aramaya katılmaz) — bkz. lib/mapAddress
+export { mapsSearchUrl as mapsSearch, mapsDirectionsUrl as mapsDirections } from "@/lib/mapAddress";

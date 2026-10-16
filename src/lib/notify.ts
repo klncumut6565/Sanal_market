@@ -1,4 +1,5 @@
 import "server-only";
+import { mapsSearchUrl } from "@/lib/mapAddress";
 import { createPublicClient } from "@/lib/supabase/public";
 // Yeni sipariş bildirimleri: e-posta (Resend) + WhatsApp.
 // WhatsApp: Meta WhatsApp Cloud API ayarlıysa (WHATSAPP_TOKEN + WHATSAPP_PHONE_NUMBER_ID) ANLIK resmi API,
@@ -54,7 +55,7 @@ export function textBody(o: OrderMsg, forCourier = false) {
     .filter(Boolean)
     .join("\n");
   const last = forCourier
-    ? `\n🗺 Harita: https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${o.address}, Çorlu, Tekirdağ`)}`
+    ? `\n🗺 Harita: ${mapsSearchUrl(o.address)}`
     : `\nPanel: ${SITE}/admin/siparisler/${o.id}`;
   return [
     `🛒 YENİ SİPARİŞ #${o.order_no} — ${tl(o.total)}`,

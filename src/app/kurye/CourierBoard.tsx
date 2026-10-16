@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PushSetup } from "@/components/PushSetup";
 import { waLink } from "@/lib/whatsapp";
 import { displayPhone } from "@/lib/phone";
+import { mapsSearchUrl } from "@/lib/mapAddress";
 
 type O = {
   id: string;
@@ -22,7 +23,8 @@ type O = {
 };
 const tl = (n: number) => new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(Number(n));
 const pay = (m: string) => (m === "kapida_pos" ? "Kapıda kart (POS)" : "Kapıda nakit");
-const maps = (a: string) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${a}, Çorlu, Tekirdağ`)}`;
+// Harita: yalnızca sokak + dış kapı no + mahalle (iç kapı, apartman, not aramaya katılmaz)
+const maps = (a: string) => mapsSearchUrl(a);
 
 export function CourierBoard({ token }: { token: string }) {
   const [orders, setOrders] = useState<O[] | null>(null);
