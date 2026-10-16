@@ -47,7 +47,7 @@ export function AdminNav() {
   const path = usePathname();
   const pending = usePendingCount();
   return (
-    <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:px-3">
+    <nav className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:px-2">
       {items.map(({ href, label, icon: Icon }) => {
         const active = href === "/admin" ? path === href : path.startsWith(href);
         const alarm = href === "/admin/siparisler" && pending > 0;
@@ -55,7 +55,7 @@ export function AdminNav() {
           <Link
             key={href}
             href={alarm ? "/admin/siparisler?durum=acik" : href}
-            className={`flex shrink-0 items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold ${
+            className={`flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold lg:px-2.5 lg:py-2 lg:text-[13px] ${
               alarm ? "bekleyen-yanip-son" : active ? "bg-brand-soft text-brand" : "hover:bg-bg"
             }`}
           >

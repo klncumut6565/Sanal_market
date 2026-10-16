@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { ChevronLeft } from "lucide-react";
 import { AddToCart } from "@/components/shop/AddToCart";
 import { Price } from "@/components/shop/Price";
-import { ProductImage } from "@/components/shop/ProductImage";
+import { ProductGallery } from "@/components/shop/ProductGallery";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { getCategories, getMemberCatalog, getProductBySlug, getProducts } from "@/lib/data/catalog";
 import { discountRate } from "@/lib/format";
@@ -70,7 +70,7 @@ async function ProductContent({ params }: Props) {
           "@type": "Product",
           name: p.name,
           url: abs(`/urun/${p.slug}`),
-          ...(p.image_url ? { image: [p.image_url] } : {}),
+          ...(p.image_url ? { image: [p.image_url, ...(p.extra_images ?? [])] } : {}),
           description: p.description || `${p.name}${p.unit_label ? ` ${p.unit_label}` : ""} – ${CITY} online market`,
           ...(p.barcode ? { gtin: p.barcode } : {}),
           ...(cat ? { category: parentCat ? `${parentCat.name} > ${cat.name}` : cat.name } : {}),
@@ -108,7 +108,7 @@ async function ProductContent({ params }: Props) {
         )}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="relative">
-            <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="lg" />
+            <ProductGallery images={[p.image_url, ...(p.extra_images ?? [])].filter((u): u is string => !!u)} emoji={p.emoji} alt={p.name} />
             {off > 0 && <span className="absolute left-3 top-3 rounded-lg bg-brand px-2 py-1 text-sm font-bold text-white">%{off} indirim</span>}
           </div>
           <div className="flex flex-col">

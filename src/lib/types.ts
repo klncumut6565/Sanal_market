@@ -30,6 +30,8 @@ export type Product = {
   critical_stock: number;
   max_per_order: number;
   image_url: string | null;
+  /** Ek görseller (ana görsel image_url; en fazla 10) */
+  extra_images?: string[];
   emoji: string | null;
   is_active: boolean;
   is_featured: boolean;

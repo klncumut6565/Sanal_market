@@ -20,18 +20,18 @@ export const instant = false;
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[230px_minmax(0,1fr)]">
+    <div className="min-h-dvh lg:grid lg:grid-cols-[176px_minmax(0,1fr)]">
       <aside className="border-b border-line bg-white lg:sticky lg:top-0 lg:h-dvh lg:border-b-0 lg:border-r">
-        <div className="flex items-center justify-between px-4 py-3 lg:block lg:py-5">
+        <div className="flex items-center justify-between px-4 py-3 lg:block lg:px-3 lg:py-4">
           <Link href="/admin" className="block">
             <Brand size="sm" />
-            <span className="mt-1 block text-xs font-bold uppercase tracking-wider text-muted">Yönetim paneli</span>
+            <span className="mt-1 block text-[10px] font-bold uppercase tracking-wider text-muted">Yönetim paneli</span>
           </Link>
           <Link href="/" className="text-sm font-semibold text-brand lg:mt-3 lg:block">Mağazaya git →</Link>
         </div>
         <AdminNav />
       </aside>
-      <main className="min-w-0 p-4 pb-24 lg:p-8 lg:pb-24">
+      <main className="min-w-0 p-4 pb-24 lg:p-6 lg:pb-24">
         <Suspense fallback={<div className="h-64 animate-pulse rounded-2xl bg-white" />}>
           <Gate>{children}</Gate>
         </Suspense>

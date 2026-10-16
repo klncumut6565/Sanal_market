@@ -28,6 +28,16 @@ const numOrNull = (fd: FormData, k: string) => {
 };
 
 // ---------------- ÜRÜNLER ----------------
+/** Ek görseller: JSON dizi → yalnızca https bağlantıları, tekrarsız, en fazla 10 */
+function parseExtraImages(raw: string): string[] {
+  try {
+    const a = JSON.parse(raw || "[]");
+    if (!Array.isArray(a)) return [];
+    return [...new Set(a.map(String).filter((u) => /^https:\/\//.test(u)))].slice(0, 10);
+  } catch {
+    return [];
+  }
+}
 export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionState> {
   const { supabase } = await requireAdmin();
   const id = str(fd, "id");
@@ -55,6 +65,7 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
     critical_stock: Math.max(0, Math.trunc(numOrNull(fd, "critical_stock") ?? 5)),
     max_per_order: Math.max(1, Math.trunc(numOrNull(fd, "max_per_order") ?? 20)),
     image_url: str(fd, "image_url") || null,
+    extra_images: parseExtraImages(str(fd, "extra_images")),
     emoji: str(fd, "emoji") || null,
     is_active: fd.get("is_active") === "on",
     is_featured: fd.get("is_featured") === "on",

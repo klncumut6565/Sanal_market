@@ -9,7 +9,7 @@ export function InlineCategorySelect({ id, value, options }: { id: string; value
   const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 items-center gap-1">
       <select
         value={cur}
         disabled={pending}
@@ -25,7 +25,7 @@ export function InlineCategorySelect({ id, value, options }: { id: string; value
             setDone(true);
           });
         }}
-        className={`w-40 rounded-lg border px-2 py-1.5 text-sm ${cur ? "border-line" : "border-dashed border-warn text-muted"}`}
+        className={`w-full min-w-0 max-w-40 truncate rounded-lg border px-1.5 py-1.5 text-[13px] ${cur ? "border-line" : "border-dashed border-warn text-muted"}`}
       >
         <option value="">— Kategori seç —</option>
         {options.map((c) => (

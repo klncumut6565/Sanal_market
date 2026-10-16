@@ -51,7 +51,7 @@ export function AdminVoiceAssistant() {
           onClick={openIt}
           title="Sesli rapor"
           aria-label="Yönetim sesli asistanı"
-          className="group fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full bg-ink p-2 text-white opacity-45 shadow-lg transition-all duration-300 hover:pr-4 hover:opacity-100 focus:pr-4 focus:opacity-100 lg:left-[246px]"
+          className="group fixed bottom-4 left-4 z-40 flex items-center gap-2 rounded-full bg-ink p-2 text-white opacity-45 shadow-lg transition-all duration-300 hover:pr-4 hover:opacity-100 focus:pr-4 focus:opacity-100 lg:left-[192px]"
         >
           <span className="grid h-7 w-7 place-items-center rounded-full bg-brand">
             <Mic size={16} />
@@ -63,7 +63,7 @@ export function AdminVoiceAssistant() {
       )}
 
       {open && (
-        <div className={`fixed inset-x-0 bottom-0 z-[60] p-3 sm:inset-x-auto sm:left-4 lg:left-[246px] ${v.visuals.length ? "sm:w-[26rem]" : "sm:w-96"}`}>
+        <div className={`fixed inset-x-0 bottom-0 z-[60] p-3 sm:inset-x-auto sm:left-4 lg:left-[192px] ${v.visuals.length ? "sm:w-[26rem]" : "sm:w-96"}`}>
           <div className="space-y-3 rounded-3xl bg-ink p-4 text-white shadow-2xl">
             <div className="flex items-center justify-between">
               <p className="flex items-center gap-2 font-black">

@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { categoryOptions } from "@/lib/categoryTree";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { ClipboardPaste, ImagePlus, Loader2, ScanBarcode, X } from "lucide-react";
+import { ClipboardPaste, Loader2, Plus, ScanBarcode, X } from "lucide-react";
 import { compressImage } from "@/lib/imageCompress";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { DuplicateHint } from "./DuplicateHint";
@@ -39,7 +39,13 @@ export function ProductForm({
   const mNormal = calcMargin(num(priceS), num(costS));
   const mSale = num(saleS) != null ? calcMargin(num(saleS), num(costS)) : null;
   const [state, action, pending] = useActionState<ActionState, FormData>(saveProduct, {});
-  const [imageUrl, setImageUrl] = useState(product?.image_url ?? initial?.image_url ?? "");
+  // Görseller: ilk = ana (vitrin) görsel, diğerleri ek görseller
+  const [images, setImages] = useState<string[]>(() =>
+    [product?.image_url ?? initial?.image_url ?? "", ...(product?.extra_images ?? [])].filter(Boolean).slice(0, 11),
+  );
+  const imageUrl = images[0] ?? "";
+  const [active, setActive] = useState(0);
+  const addImage = (url: string) => setImages((list) => (list.includes(url) || list.length >= 11 ? list : [...list, url]));
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [barcode, setBarcode] = useState(product?.barcode ?? initialBarcode ?? "");
@@ -65,7 +71,7 @@ export function ProductForm({
     const supabase = createClient();
     const { error } = await supabase.storage.from("product-images").upload(path, img, { cacheControl: "31536000", contentType: img.type });
     if (error) setUploadError("Yükleme başarısız: " + error.message);
-    else setImageUrl(supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl);
+    else addImage(supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl);
     setUploading(false);
   }
 
@@ -147,6 +153,7 @@ export function ProductForm({
       )}
       {product && <input type="hidden" name="id" value={product.id} />}
       <input type="hidden" name="image_url" value={imageUrl} />
+      <input type="hidden" name="extra_images" value={JSON.stringify(images.slice(1))} />
 
       <section className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-[160px_minmax(0,1fr)]">
         <div className="space-y-2">
@@ -164,17 +171,70 @@ export function ProductForm({
             className="relative"
             title="Görseli buraya sürükleyebilir veya Ctrl+V ile yapıştırabilirsin"
           >
-            <ProductImage src={imageUrl || null} emoji={product?.emoji ?? null} alt="Ürün görseli" />
+            <ProductImage src={images[Math.min(active, images.length - 1)] || null} emoji={product?.emoji ?? null} alt="Ürün görseli" />
             {uploading && (
               <span className="absolute inset-0 grid place-items-center rounded-2xl bg-white/70">
                 <Loader2 className="animate-spin text-brand" />
               </span>
             )}
           </div>
-          <label className="btn-ghost w-full cursor-pointer py-2 text-sm">
-            {uploading ? <Loader2 size={16} className="animate-spin" /> : <ImagePlus size={16} />} Görsel yükle
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
-          </label>
+          {/* Görsel şeridi: ana görsel ★, tıkla → büyük önizleme, "Ana yap", ✕ sil; + ile çoklu ekle */}
+          <div className="grid grid-cols-4 gap-1.5">
+            {images.map((u, i) => (
+              <div key={u} className={`group relative aspect-square overflow-hidden rounded-lg bg-white ring-2 ${i === Math.min(active, images.length - 1) ? "ring-brand" : "ring-line"}`}>
+                <button type="button" onClick={() => setActive(i)} className="h-full w-full" title={i === 0 ? "Ana görsel" : "Önizle"}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u} alt="" className="h-full w-full object-contain p-0.5" />
+                </button>
+                {i === 0 ? (
+                  <span className="absolute left-0.5 top-0.5 rounded bg-brand px-1 text-[9px] font-black text-white">ANA</span>
+                ) : (
+                  <button
+                    type="button"
+                    title="Ana görsel yap"
+                    onClick={() => {
+                      setImages((l) => [u, ...l.filter((x) => x !== u)]);
+                      setActive(0);
+                    }}
+                    className="absolute bottom-0.5 left-0.5 rounded bg-white/90 px-1 text-[9px] font-black text-brand opacity-0 shadow group-hover:opacity-100"
+                  >
+                    ★ Ana
+                  </button>
+                )}
+                <button
+                  type="button"
+                  aria-label="Görseli kaldır"
+                  onClick={() => {
+                    setImages((l) => l.filter((x) => x !== u));
+                    setActive(0);
+                  }}
+                  className="absolute right-0.5 top-0.5 grid h-4 w-4 place-items-center rounded-full bg-white/90 text-muted shadow hover:text-brand"
+                >
+                  <X size={11} />
+                </button>
+              </div>
+            ))}
+            {images.length < 11 && (
+              <label
+                title="Görsel ekle (birden fazla seçebilirsin)"
+                className="grid aspect-square cursor-pointer place-items-center rounded-lg border-2 border-dashed border-brand/50 bg-brand-soft/40 text-brand hover:bg-brand-soft"
+              >
+                {uploading ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} strokeWidth={3} />}
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={async (e) => {
+                    const files = Array.from(e.target.files ?? []).slice(0, 11 - images.length);
+                    e.target.value = "";
+                    for (const f of files) await upload(f);
+                  }}
+                />
+              </label>
+            )}
+          </div>
+          <p className="text-[11px] text-muted">{images.length ? `${images.length} görsel · ilk görsel vitrinde görünür` : "Görsel yok"}</p>
           <button type="button" onClick={() => void pasteFromClipboard()} disabled={uploading} className="btn-ghost w-full py-2 text-sm">
             <ClipboardPaste size={16} /> Panodan yapıştır
           </button>
@@ -191,9 +251,9 @@ export function ProductForm({
             className="w-full rounded-lg border border-dashed border-line px-2 py-1.5 text-xs"
           />
           <p className="text-[11px] leading-snug text-muted">İpucu: Google Görseller&apos;de resme sağ tıkla → <b>Resmi kopyala</b>, sonra bu sayfada <b>Ctrl+V</b>.</p>
-          {imageUrl && (
-            <button type="button" onClick={() => setImageUrl("")} className="flex w-full items-center justify-center gap-1 text-xs font-semibold text-muted hover:text-brand">
-              <X size={14} /> Görseli kaldır
+          {images.length > 1 && (
+            <button type="button" onClick={() => setImages([])} className="flex w-full items-center justify-center gap-1 text-xs font-semibold text-muted hover:text-brand">
+              <X size={14} /> Tüm görselleri kaldır
             </button>
           )}
           {uploadError && <p className="text-xs font-semibold text-brand">{uploadError}</p>}

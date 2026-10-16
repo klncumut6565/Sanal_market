@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Camera, Plus, ScanBarcode, Rows3 } from "lucide-react";
+import { Camera, Check, Plus, ScanBarcode, Rows3 } from "lucide-react";
 import { requireAdmin } from "@/lib/data/auth";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
@@ -179,7 +179,19 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         names={Object.fromEntries(shown.map((p) => [p.id, p.name]))}
       >
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-line">
-        <table className="w-full min-w-[1160px] text-sm">
+        <table className="w-full min-w-[1000px] table-fixed text-sm">
+          <colgroup>
+            <col className="w-8" />
+            <col className="w-10" />
+            <col />
+            <col className="w-[150px]" />
+            <col className="w-[132px]" />
+            <col className="w-[104px]" />
+            <col className="w-[100px]" />
+            <col className="w-[88px]" />
+            <col className="w-[70px]" />
+            <col className="w-[96px]" />
+          </colgroup>
           <thead className="bg-bg text-left text-xs uppercase text-muted">
             <tr><th className="w-8 py-3 pl-3"><SelectPageCheckbox /></th><th className="w-10 py-3 pl-2 text-right">#</th><th className="p-3">Ürün</th><th>Kategori</th><th>Fiyat</th><th>Alış / Marj</th><th>Stok</th><th title="Ad, barkod, fiyat, birim veya görselin en son değiştiği tarih (stok değişimi sayılmaz)">Güncelleme</th><th>Durum</th><th /></tr>
           </thead>
@@ -189,11 +201,13 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                 <td className="py-3 pl-3"><RowCheckbox id={p.id} /></td>
                 <td className="py-3 pl-2 text-right text-xs font-bold tabular-nums text-muted">{(pageNo - 1) * PAGE + i + 1}</td>
                 <td className="p-3">
-                  <div className="flex items-center gap-3">
-                    <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
-                    <div>
-                      <p className="font-bold">{p.name}</p>
-                      <p className="text-xs text-muted">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <div className="shrink-0">
+                      <ProductImage src={p.image_url} emoji={p.emoji} alt={p.name} size="sm" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 break-words font-bold leading-snug" title={p.name}>{p.name}</p>
+                      <p className="truncate text-xs text-muted">
                         {p.unit_label}
                         {p.barcode?.trim() ? ` · ${p.barcode}` : <span className="font-bold text-yellow-700">{p.unit_label ? " · " : ""}Barkod yok</span>}
                       </p>
@@ -212,7 +226,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                     </div>
                   </div>
                 </td>
-                <td>
+                <td className="pr-2">
                   <InlineCategorySelect id={p.id} value={p.category_id} options={catOpts} />
                 </td>
                 <td>
@@ -226,7 +240,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                           inputMode="decimal"
                           defaultValue={String(p.price).replace(".", ",")}
                           aria-label="Satış fiyatı"
-                          className={`w-24 rounded-lg border border-line px-2 py-1.5 font-bold ${p.sale_price != null ? "text-xs text-muted line-through" : ""}`}
+                          className={`w-[76px] rounded-lg border border-line px-1.5 py-1.5 font-bold ${p.sale_price != null ? "text-xs text-muted line-through" : ""}`}
                         />
                       </label>
                       <label className="flex items-center gap-1" title="İndirimli fiyat (boş = indirim yok)">
@@ -237,11 +251,11 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                           defaultValue={p.sale_price != null ? String(p.sale_price).replace(".", ",") : ""}
                           placeholder="İndirim"
                           aria-label="İndirimli fiyat"
-                          className={`w-24 rounded-lg border px-2 py-1 text-xs ${p.sale_price != null ? "border-brand font-bold text-brand" : "border-dashed border-line"}`}
+                          className={`w-[76px] rounded-lg border px-1.5 py-1 text-xs ${p.sale_price != null ? "border-brand font-bold text-brand" : "border-dashed border-line"}`}
                         />
                       </label>
                     </div>
-                    <button className="rounded-lg px-2 py-1.5 text-xs font-bold text-brand hover:bg-brand-soft">Kaydet</button>
+                    <button title="Kaydet" aria-label="Kaydet" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-brand hover:bg-brand-soft"><Check size={16} strokeWidth={3} /></button>
                   </form>
                 </td>
                 <td>
@@ -268,9 +282,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                       type="number"
                       min={0}
                       defaultValue={p.stock}
-                      className={`w-20 rounded-lg border px-2 py-1.5 font-bold ${p.stock === 0 ? "border-brand text-brand" : p.stock <= p.critical_stock ? "border-warn text-warn" : "border-line"}`}
+                      className={`w-[60px] rounded-lg border px-1.5 py-1.5 font-bold ${p.stock === 0 ? "border-brand text-brand" : p.stock <= p.critical_stock ? "border-warn text-warn" : "border-line"}`}
                     />
-                    <button className="rounded-lg px-2 py-1.5 text-xs font-bold text-brand hover:bg-brand-soft">Kaydet</button>
+                    <button title="Kaydet" aria-label="Kaydet" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-brand hover:bg-brand-soft"><Check size={16} strokeWidth={3} /></button>
                   </form>
                 </td>
                 <td>
@@ -286,7 +300,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                   </form>
                 </td>
                 <td className="pr-3 text-right">
-                  <div className="flex items-center justify-end gap-3 whitespace-nowrap">
+                  <div className="flex items-center justify-end gap-2 whitespace-nowrap">
                     <Link href={`/admin/urunler/${p.id}`} className="font-bold text-brand">Düzenle</Link>
                     <DeleteProductButton id={p.id} name={p.name} />
                   </div>

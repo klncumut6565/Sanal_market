@@ -12,7 +12,7 @@ export const CATALOG_TAG = "catalog";
 export const SETTINGS_TAG = "settings";
 
 const PRODUCT_COLS =
-  "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,emoji,is_active,is_featured,sort_order";
+  "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,extra_images,emoji,is_active,is_featured,sort_order";
 
 const DEFAULT_SETTINGS: StoreSettings = {
   store_name: "Sanal Market",
