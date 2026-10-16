@@ -25,7 +25,7 @@ export default function CourierApplyPage() {
 async function Body() {
   const user = await getSessionUser();
   if (!user) redirect("/giris?kurye=1");
-  if (user.role === "courier") redirect("/kurye");
+  if (user.isCourier) redirect("/kurye");
   const supabase = await createClient();
   const { data: app } = await supabase.from("courier_applications").select("status, requested_at, decided_at, vehicle, plate").eq("user_id", user.id).maybeSingle();
 

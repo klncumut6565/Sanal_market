@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { ChevronRight, LogOut } from "lucide-react";
+import { ArrowLeft, ChevronRight, LogOut, ShoppingBasket } from "lucide-react";
 import { getSessionUser } from "@/lib/data/auth";
 import { createClient } from "@/lib/supabase/server";
 import { STATUS_LABEL, formatDate, formatTL } from "@/lib/format";
@@ -15,6 +15,12 @@ export const metadata = { title: "Siparişlerim" };
 export default function MyOrdersPage({ searchParams }: { searchParams: Promise<{ sifre?: string }> }) {
   return (
     <div className="mx-auto max-w-2xl space-y-4 px-4 py-5">
+      <Link
+        href="/"
+        className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-sm font-bold text-ink shadow-sm ring-1 ring-line hover:text-brand hover:ring-brand"
+      >
+        <ArrowLeft size={16} /> <ShoppingBasket size={16} className="text-brand" /> Alışverişe devam et
+      </Link>
       <h1 className="text-2xl font-black">Siparişlerim</h1>
       <Suspense fallback={<div className="h-40 animate-pulse rounded-2xl bg-white" />}>
         <PasswordNotice searchParams={searchParams} />
@@ -56,7 +62,7 @@ async function AccountOrders() {
         <span>{user.email}</span>
         <div className="flex gap-2">
           {user.role === "admin" && <Link href="/admin" className="btn-ghost py-1.5">Yönetim paneli</Link>}
-          {user.role === "courier" && <Link href="/kurye" className="btn-ghost py-1.5">🛵 Kurye paneli</Link>}
+          {user.isCourier && <Link href="/kurye" className="btn-ghost py-1.5">🛵 Kurye paneli</Link>}
           <form action={signOut}><button className="btn-ghost py-1.5"><LogOut size={16} /> Çıkış</button></form>
         </div>
       </div>

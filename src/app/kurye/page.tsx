@@ -31,7 +31,7 @@ async function Board({ searchParams }: Props) {
   const { k = "" } = await searchParams;
   const user = await getSessionUser();
   // Üye girişli onaylı kurye → profesyonel kurye paneli
-  if (user?.role === "courier") {
+  if (user?.isCourier) {
     const supabase = await createClient();
     const [{ data: me }, { data: st }] = await Promise.all([
       supabase.from("couriers").select("user_id, full_name, phone, vehicle, plate, per_delivery_fee, on_duty").eq("user_id", user.id).single(),

@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/supabase/env";
 
-export type SessionUser = { id: string; email: string | null; role: "customer" | "admin" | "courier"; full_name: string | null; phone: string | null };
+export type SessionUser = { id: string; email: string | null; role: "customer" | "admin" | "courier"; isCourier: boolean; full_name: string | null; phone: string | null };
 
 /**
  * Oturumdaki kullanıcı. `cache` ile aynı istek içinde (layout + sayfa + aksiyon) yalnızca BİR KEZ çalışır.
@@ -28,6 +28,8 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
     email: (claims.email as string | undefined) ?? null,
     // Kurye rolü couriers tablosundan (aktif kayıt) gelir; yönetici her zaman yönetici sayılır
     role: profile?.role === "admin" ? "admin" : courier?.is_active ? "courier" : "customer",
+    // Yönetici aynı zamanda onaylı kurye olabilir: kurye paneli bu bayrağa bakar
+    isCourier: courier?.is_active === true,
     full_name: profile?.full_name ?? null,
     phone: profile?.phone ?? null,
   };
@@ -46,7 +48,7 @@ export const requireAdmin = cache(async () => {
 export const requireCourier = cache(async () => {
   const user = await getSessionUser();
   if (!user) redirect("/giris?kurye=1");
-  if (user.role !== "courier") redirect("/kurye/basvuru");
+  if (!user.isCourier) redirect("/kurye/basvuru");
   const supabase = await createClient();
   return { user, supabase };
 });

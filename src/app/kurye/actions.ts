@@ -109,7 +109,7 @@ export type ApplyState = { error?: string; ok?: string };
 export async function applyCourier(_: ApplyState, fd: FormData): Promise<ApplyState> {
   const user = await getSessionUser();
   if (!user) redirect("/giris?kurye=1");
-  if (user.role === "courier") redirect("/kurye");
+  if (user.isCourier) redirect("/kurye");
   const vehicle = String(fd.get("vehicle") ?? "motosiklet");
   const plate = String(fd.get("plate") ?? "").trim().slice(0, 15);
   const supabase = await createClient();
