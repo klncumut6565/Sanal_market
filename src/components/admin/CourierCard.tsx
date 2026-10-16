@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/data/auth";
 import { formatDate, formatTL } from "@/lib/format";
 import { collectedLabel } from "@/lib/courierShared";
 import { assignCourier, clearIssue } from "@/app/admin/kuryeler/actions";
+import { CourierMap } from "./CourierMap";
 
 export type CourierCols = {
   courier_id: string | null;
@@ -64,6 +65,15 @@ export async function CourierCard({ order }: { order: { id: string; status: stri
           </select>
           <button className="btn-primary py-2 text-sm">{order.courier_id ? "Değiştir" : "Ata ve bildir"}</button>
         </form>
+      )}
+
+      {order.courier_id && (order.status === "yolda" || order.picked_up_at) && (
+        <details open={order.status === "yolda"} className="rounded-lg bg-white p-1.5">
+          <summary className="cursor-pointer px-1 text-xs font-bold text-muted">📍 Kurye konumu ve teslimat rotası</summary>
+          <div className="mt-1.5">
+            <CourierMap orderId={order.id} courierId={order.courier_id} height={280} />
+          </div>
+        </details>
       )}
 
       {order.delivery_issue && (

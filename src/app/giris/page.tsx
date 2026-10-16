@@ -27,7 +27,7 @@ async function Next({ searchParams }: { searchParams: Promise<{ next?: string; y
   return (
     <AuthForm
       key={admin ? "admin" : courier ? "kurye" : "user"}
-      next={admin ? "/admin" : courier ? "/kurye/basvuru" : (next ?? "/siparislerim")}
+      next={admin ? "/admin" : courier ? "/kurye/basvuru" : (next ?? "/")}
       admin={admin}
       courier={courier}
     />

@@ -9,7 +9,9 @@ export type AuthState = { error?: string; info?: string };
 
 const safeNext = (v: FormDataEntryValue | null) => {
   const s = typeof v === "string" ? v : "";
-  return s.startsWith("/") && !s.startsWith("//") ? s : "/siparislerim";
+  // Varsayılan: ana sayfa. "Hesabım" (siparişlerim) bağlantısından gelinse de üye girişi ana sayfaya döner;
+  // ödeme gibi başka bir sayfadan gelindiyse oraya dönülür.
+  return s.startsWith("/") && !s.startsWith("//") && !s.startsWith("/siparislerim") ? s : "/";
 };
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,7 +43,7 @@ export async function signIn(_: AuthState, fd: FormData): Promise<AuthState> {
     if (!adminLogin) {
       // Kurye: onaylıysa doğrudan kurye paneli; kurye girişinden gelip onaylı değilse başvuru sayfası
       const { data: isCourier } = await supabase.rpc("is_courier");
-      if (isCourier === true && (courierLogin || !fd.get("next") || target === "/siparislerim")) target = "/kurye";
+      if (isCourier === true && (courierLogin || target === "/")) target = "/kurye";
       else if (courierLogin) target = "/kurye/basvuru";
     }
   } catch (e) {

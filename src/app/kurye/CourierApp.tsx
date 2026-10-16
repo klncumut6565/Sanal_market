@@ -8,7 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { PushSetup } from "@/components/PushSetup";
 import { OrderCard } from "@/components/courier/OrderCard";
 import { DeliverSheet, IssueSheet } from "@/components/courier/Sheets";
-import { ORDER_COLS, dayHm, hm, numOrder, since, tl, type CourierOrder, type Settlement } from "@/components/courier/types";
+import { ORDER_COLS, dayHm, hm, numHist, numOrder, since, tl, type CourierOrder, type HistoryRow, type Settlement } from "@/components/courier/types";
+import { useCourierLocation } from "@/components/courier/useCourierLocation";
 import { addDays, businessDateStart, reportRanges } from "@/lib/hours";
 import { collectedLabel, vehicleLabel } from "@/lib/courierShared";
 import { displayPhone } from "@/lib/phone";
@@ -78,7 +79,7 @@ function alertNewTask() {
   }
 }
 
-function stats(list: CourierOrder[], fee: number) {
+function stats(list: HistoryRow[], fee: number) {
   const cash = list.filter((o) => o.collected_method === "nakit").reduce((a, o) => a + (o.collected_amount ?? 0), 0);
   const pos = list.filter((o) => o.collected_method === "pos").reduce((a, o) => a + (o.collected_amount ?? 0), 0);
   const durs = list
@@ -99,9 +100,9 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   const [tab, setTab] = useState<Tab>("gorev");
   const [period, setPeriod] = useState<Period>("bugun");
   const [live, setLive] = useState<CourierOrder[] | null>(null);
-  const [history, setHistory] = useState<CourierOrder[]>([]);
-  const [today, setToday] = useState<CourierOrder[]>([]);
-  const [unsettled, setUnsettled] = useState<CourierOrder[]>([]);
+  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [today, setToday] = useState<HistoryRow[]>([]);
+  const [unsettled, setUnsettled] = useState<HistoryRow[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; bad?: boolean } | null>(null);
@@ -111,6 +112,7 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const known = useRef<Set<string> | null>(null);
   const sb = useMemo(() => createClient(), []);
+  const loc = useCourierLocation(me.on_duty);
 
   const say = (text: string, bad = false) => {
     setToast({ text, bad });
@@ -139,16 +141,17 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   const loadMoney = useCallback(async () => {
     const t = periodRange("bugun", openTime);
     const p = periodRange(period, openTime);
-    const base = () => sb.from("orders").select(ORDER_COLS).eq("courier_id", me.user_id).eq("status", "teslim_edildi");
+    // Teslim edilen siparişler kişisel veri olmadan gelir (müşteri adı/telefon/adres yok, yalnızca mahalle)
+    const hist = (from: string, to: string, unsettledOnly = false) => sb.rpc("courier_history", { p_from: from, p_to: to, p_unsettled: unsettledOnly });
     const [h, d, u, s] = await Promise.all([
-      base().gte("delivered_at", p.from).lt("delivered_at", p.to).order("delivered_at", { ascending: false }).limit(1000),
-      base().gte("delivered_at", t.from).lt("delivered_at", t.to).limit(500),
-      base().is("settlement_id", null).order("delivered_at", { ascending: false }).limit(1000),
+      hist(p.from, p.to),
+      hist(t.from, t.to),
+      hist(t.from, t.to, true),
       sb.from("courier_settlements").select("id,created_at,order_count,cash_amount,pos_amount,fee_amount,note").eq("courier_id", me.user_id).order("created_at", { ascending: false }).limit(30),
     ]);
-    setHistory(((h.data ?? []) as CourierOrder[]).map(numOrder));
-    setToday(((d.data ?? []) as CourierOrder[]).map(numOrder));
-    setUnsettled(((u.data ?? []) as CourierOrder[]).map(numOrder));
+    setHistory(((h.data ?? []) as HistoryRow[]).map(numHist));
+    setToday(((d.data ?? []) as HistoryRow[]).map(numHist));
+    setUnsettled(((u.data ?? []) as HistoryRow[]).map(numHist));
     setSettlements(
       ((s.data ?? []) as Settlement[]).map((x) => ({ ...x, cash_amount: Number(x.cash_amount), pos_amount: Number(x.pos_amount), fee_amount: Number(x.fee_amount) })),
     );
@@ -224,6 +227,7 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
             {me.on_duty ? "Mesaide" : "Molada"}
           </button>
         </div>
+        <LocationBar loc={loc} onDuty={me.on_duty} />
         <div className="grid grid-cols-4 gap-1.5 text-center">
           {[
             ["Teslimat", String(sToday.count)],
@@ -319,7 +323,7 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold">
-                        #{o.order_no} · {o.customer_name}
+                        #{o.order_no} · {o.area}
                       </p>
                       <p className="truncate text-xs text-muted">
                         {dayHm(o.delivered_at)} · {since(o.picked_up_at ?? o.dispatched_at, Date.parse(o.delivered_at ?? "") || now)} sürdü
@@ -354,7 +358,7 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
                 {unsettled.map((o) => (
                   <li key={o.id} className="flex items-center justify-between px-3 py-2 text-sm">
                     <span className="truncate">
-                      <b>#{o.order_no}</b> · {hm(o.delivered_at)} · {o.customer_name}
+                      <b>#{o.order_no}</b> · {hm(o.delivered_at)} · {o.area}
                     </span>
                     <span className="shrink-0 font-bold tabular-nums">
                       {tl(o.collected_amount ?? 0)} <span className="text-xs text-muted">{collectedLabel(o.collected_method)}</span>
@@ -516,5 +520,22 @@ function Info({ k, v }: { k: string; v: string }) {
       <dt className="text-xs text-muted">{k}</dt>
       <dd className="font-bold">{v}</dd>
     </div>
+  );
+}
+
+function LocationBar({ loc, onDuty }: { loc: ReturnType<typeof useCourierLocation>; onDuty: boolean }) {
+  if (!onDuty) return <p className="text-xs text-white/50">📍 Konum paylaşımı kapalı (yalnızca mesaideyken paylaşılır)</p>;
+  const text: Record<string, string> = {
+    bekliyor: "📍 Konum alınıyor… (izin isterse “İzin ver” de)",
+    aktif: `📍 Konum paylaşılıyor${loc.accuracy ? ` · ±${loc.accuracy} m` : ""}${loc.sentAt ? ` · ${hm(new Date(loc.sentAt).toISOString())}` : ""}`,
+    reddedildi: "⚠️ Konum izni verilmedi. Tarayıcı ayarlarından bu siteye konum izni ver.",
+    desteklenmiyor: "⚠️ Bu cihaz konum paylaşımını desteklemiyor.",
+    hata: "⚠️ Konum alınamadı. GPS açık mı? Tekrar deneniyor…",
+  };
+  const bad = loc.status === "reddedildi" || loc.status === "hata" || loc.status === "desteklenmiyor";
+  return (
+    <p className={`rounded-lg px-2 py-1 text-xs font-semibold ${bad ? "bg-amber-400/20 text-amber-200" : "text-emerald-200"}`}>
+      {text[loc.status] ?? ""} {loc.status === "aktif" && <span className="font-normal text-white/50">· ekranı açık tut</span>}
+    </p>
   );
 }

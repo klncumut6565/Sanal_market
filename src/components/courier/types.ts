@@ -62,3 +62,24 @@ export const hm = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat("tr-TR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date(iso)) : "—";
 export const dayHm = (iso: string | null) =>
   iso ? new Intl.DateTimeFormat("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Istanbul" }).format(new Date(iso)) : "—";
+
+/** Teslim edilmiş sipariş — kişisel veri YOK (courier_history): yalnızca no, mahalle, tutar, zaman */
+export type HistoryRow = {
+  id: string;
+  order_no: number;
+  area: string;
+  payment_method: string;
+  total: number;
+  collected_method: "nakit" | "pos" | null;
+  collected_amount: number | null;
+  courier_note: string | null;
+  dispatched_at: string | null;
+  picked_up_at: string | null;
+  delivered_at: string | null;
+  settlement_id: number | null;
+};
+export const numHist = (o: HistoryRow): HistoryRow => ({
+  ...o,
+  total: Number(o.total),
+  collected_amount: o.collected_amount == null ? null : Number(o.collected_amount),
+});

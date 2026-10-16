@@ -66,9 +66,10 @@ export async function pickupOrder(id: string) {
 export async function deliverOrder(id: string, method: "nakit" | "pos", amount: number, note: string): Promise<CourierResult> {
   if (!isId(id)) return { ok: false, error: "Geçersiz sipariş." };
   const { user, supabase } = await requireCourier();
+  // Teslimden sonra kurye siparişi göremez (kişisel veri gizliliği) — gerekli alanlar önceden okunur
+  const { data: o } = await supabase.from("orders").select("order_no, total").eq("id", id).maybeSingle();
   const { error } = await supabase.rpc("courier_deliver", { p_order_id: id, p_method: method, p_amount: amount, p_note: note || null });
   if (error) return { ok: false, error: msg(error) };
-  const { data: o } = await supabase.from("orders").select("order_no, total").eq("id", id).maybeSingle();
   if (o && Math.abs(Number(o.total) - amount) >= 0.01)
     tellAdmins(
       `⚠️ Tahsilat farkı #${o.order_no}`,

@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const rawNext = searchParams.get("next") ?? "";
   const recovery = type === "recovery" || rawNext === "/sifre-yenile";
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : recovery ? "/sifre-yenile" : "/siparislerim";
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : recovery ? "/sifre-yenile" : "/";
   const supabase = await createClient();
 
   if (code) {

@@ -8,6 +8,7 @@ import { displayPhone } from "@/lib/phone";
 import { waLink } from "@/lib/whatsapp";
 import { VEHICLES, vehicleLabel } from "@/lib/courierShared";
 import { ConfirmSubmit } from "@/components/admin/ConfirmSubmit";
+import { CourierMap } from "@/components/admin/CourierMap";
 import { decideCourier, settleCourier, updateCourier } from "./actions";
 
 export const metadata = { title: "Kuryeler" };
@@ -114,6 +115,12 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
           Kurye giriş adresi: <b>/giris?kurye=1</b>
         </p>
       </div>
+      {active.length > 0 && (
+        <section className="space-y-1.5">
+          <h2 className="font-extrabold">Canlı konum</h2>
+          <CourierMap height={380} />
+        </section>
+      )}
       {ok && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">{ok}</p>}
       {hata && <p className="rounded-xl bg-brand-soft p-3 text-sm font-semibold text-brand">{hata}</p>}
 

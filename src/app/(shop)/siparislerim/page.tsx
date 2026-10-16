@@ -37,7 +37,7 @@ async function AccountOrders() {
       <>
         <div className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 ring-1 ring-line">
           <p className="text-sm">Giriş yaparak tüm siparişlerini her cihazdan görebilirsin.</p>
-          <Link href="/giris?next=/siparislerim" className="btn-primary shrink-0 py-2">Giriş yap</Link>
+          <Link href="/giris" className="btn-primary shrink-0 py-2">Giriş yap</Link>
         </div>
         <DeviceOrders />
       </>
