@@ -9,6 +9,7 @@ import { ProductImage } from "@/components/shop/ProductImage";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { getCategories, getMemberCatalog, getProductBySlug, getProducts } from "@/lib/data/catalog";
 import { discountRate } from "@/lib/format";
+import { CITY, abs, breadcrumbLd, clip, isPublicCategory, jsonLdHtml, productPrice } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -20,8 +21,24 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const p = await getProductBySlug((await params).slug);
-  return { title: p?.name ?? "Ürün" };
+  const slug = (await params).slug;
+  const [p, cats] = await Promise.all([getProductBySlug(slug), getCategories()]);
+  const cat = p ? cats.find((c) => c.id === p.category_id) : undefined;
+  // Üyeye özel / bulunamayan ürünler Google'da listelenmez
+  if (!p || !isPublicCategory(cat)) return { title: p?.name ?? "Ürün", robots: { index: false, follow: false } };
+  const price = productPrice(p).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const unit = p.unit_label ? ` ${p.unit_label}` : "";
+  const description = clip(
+    `${p.name}${unit} ${price} TL. ${CITY}'da online sipariş verin, motokuryeyle kapınıza gelsin. Kapıda nakit veya kartla ödeme.` +
+      (p.description ? ` ${p.description}` : ""),
+  );
+  const path = `/urun/${p.slug}`;
+  return {
+    title: `${p.name} – ${CITY} Online Sipariş`,
+    description,
+    alternates: { canonical: path },
+    openGraph: { type: "website", url: path, title: `${p.name} – ${price} TL`, description, images: p.image_url ? [{ url: p.image_url, alt: p.name }] : undefined },
+  };
 }
 
 export default function ProductPage({ params }: Props) {
@@ -45,9 +62,41 @@ async function ProductContent({ params }: Props) {
   const cat = cats.find((c) => c.id === p.category_id);
   const similar = all.filter((x) => x.category_id === p.category_id && x.id !== p.id).slice(0, 10);
   const off = discountRate(p);
+  const parentCat = cat?.parent_id ? cats.find((c) => c.id === cat.parent_id) : null;
+  const seoLd = isPublicCategory(cat)
+    ? [
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          name: p.name,
+          url: abs(`/urun/${p.slug}`),
+          ...(p.image_url ? { image: [p.image_url] } : {}),
+          description: p.description || `${p.name}${p.unit_label ? ` ${p.unit_label}` : ""} – ${CITY} online market`,
+          ...(p.barcode ? { gtin: p.barcode } : {}),
+          ...(cat ? { category: parentCat ? `${parentCat.name} > ${cat.name}` : cat.name } : {}),
+          offers: {
+            "@type": "Offer",
+            url: abs(`/urun/${p.slug}`),
+            priceCurrency: "TRY",
+            price: productPrice(p).toFixed(2),
+            availability: p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+            itemCondition: "https://schema.org/NewCondition",
+            areaServed: { "@type": "City", name: CITY },
+            seller: { "@type": "Organization", name: "Sanal Market" },
+          },
+        },
+        breadcrumbLd([
+          { name: "Ana sayfa", path: "/" },
+          ...(parentCat ? [{ name: parentCat.name, path: `/kategori/${parentCat.slug}` }] : []),
+          ...(cat ? [{ name: cat.name, path: `/kategori/${cat.slug}` }] : []),
+          { name: p.name, path: `/urun/${p.slug}` },
+        ]),
+      ]
+    : null;
 
   return (
     <div className="space-y-8">
+      {seoLd && <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(seoLd)} />}
       <div className="rounded-3xl bg-white p-4 ring-1 ring-line sm:p-6">
         {cat && (
           <Link href={`/kategori/${cat.slug}`} className="mb-3 inline-flex items-center text-sm font-semibold text-muted hover:text-brand">

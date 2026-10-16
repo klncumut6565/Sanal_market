@@ -10,14 +10,59 @@ import { getCategories, getMemberCatalog, getProducts, getStoreSettings, mergeCa
 import { formatTL } from "@/lib/format";
 import { VoicePromo } from "@/components/shop/VoicePromo";
 import { topLevel, withDescendants } from "@/lib/categoryTree";
+import type { Metadata } from "next";
+import { CITY, REGION, SITE_DESCRIPTION, SITE_URL, abs, isPublicCategory, jsonLdHtml } from "@/lib/seo";
+
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
   const [categories, products, s] = await Promise.all([getCategories(), getProducts(), getStoreSettings()]);
   const deals = products.filter((p) => p.sale_price != null && p.stock > 0);
   const featured = products.filter((p) => p.is_featured);
+  const seoCats = topLevel(categories.filter(isPublicCategory));
+  const storeLd = [
+    {
+      "@context": "https://schema.org",
+      "@type": "GroceryStore",
+      "@id": `${SITE_URL}/#magaza`,
+      name: s.store_name || "Sanal Market",
+      url: SITE_URL,
+      logo: abs("/logo.png"),
+      image: abs("/logo.png"),
+      description: SITE_DESCRIPTION,
+      ...(s.phone ? { telephone: s.phone } : {}),
+      ...(s.address ? { address: { "@type": "PostalAddress", streetAddress: s.address, addressLocality: CITY, addressRegion: REGION, addressCountry: "TR" } } : {}),
+      areaServed: { "@type": "City", name: `${CITY}, ${REGION}` },
+      currenciesAccepted: "TRY",
+      paymentAccepted: "Nakit, Kredi Kartı",
+      ...(s.open_time && s.close_time
+        ? {
+            openingHoursSpecification: {
+              "@type": "OpeningHoursSpecification",
+              dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+              opens: s.open_time,
+              closes: s.close_time,
+            },
+          }
+        : {}),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      name: "Sanal Market",
+      url: SITE_URL,
+      inLanguage: "tr-TR",
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/ara?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ];
 
   return (
     <div className="space-y-7">
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(storeLd)} />
       {s.voice_enabled !== false && <VoicePromo />}
       <section className="relative overflow-hidden rounded-3xl bg-ink p-5 text-white sm:p-7">
         <div aria-hidden className="absolute -right-24 -top-28 h-72 w-72 rounded-full border-[14px] border-brand/35 sm:-right-16 sm:-top-20 sm:border-brand/70" />
@@ -63,6 +108,30 @@ export default async function HomePage() {
         if (all.length === 0) return null;
         return <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={all.slice(0, 20)} total={all.length} />;
       })}
+
+      <section className="rounded-3xl bg-white p-5 text-sm leading-relaxed text-muted ring-1 ring-line sm:p-6">
+        <h2 className="mb-2 text-base font-extrabold text-ink">{CITY} online market: market alışverişiniz kapınızda</h2>
+        <p>
+          Sanal Market, {CITY}&apos;da market alışverişini evden yapmanızı sağlayan online markettir. Gıda ve temel tüketim,
+          içecek, atıştırmalık, temizlik, kağıt ve hijyen ürünlerini sipariş edin; motokuryemiz siparişinizi kapınıza getirsin.
+          Ödemeyi kapıda nakit veya kartla yapabilirsiniz.
+          {s.working_hours ? ` Her gün ${s.working_hours} saatleri arasında sipariş alıyoruz.` : ""}
+          {` ${formatTL(s.free_delivery_threshold)} ve üzeri siparişlerde teslimat ücretsiz.`}
+        </p>
+        {seoCats.length > 0 && (
+          <p className="mt-3">
+            Kategoriler:{" "}
+            {seoCats.map((c, i) => (
+              <span key={c.id}>
+                {i > 0 && ", "}
+                <Link href={`/kategori/${c.slug}`} className="font-semibold text-ink underline-offset-2 hover:text-brand hover:underline">
+                  {c.name}
+                </Link>
+              </span>
+            ))}
+          </p>
+        )}
+      </section>
 
       {products.length === 0 && (
         <div className="rounded-2xl bg-white p-8 text-center ring-1 ring-line">

@@ -7,6 +7,7 @@ import { ProductGrid } from "@/components/shop/ProductCard";
 import { GridSkeleton } from "@/components/shop/Skeletons";
 import { getCategories, getMemberCatalog, getProducts } from "@/lib/data/catalog";
 import { childrenOf, withDescendants } from "@/lib/categoryTree";
+import { CITY, breadcrumbLd, isPublicCategory, jsonLdHtml } from "@/lib/seo";
 
 type Props = { params: Promise<{ slug: string }>; searchParams: Promise<{ sayfa?: string }> };
 const PER = 60;
@@ -18,8 +19,23 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const cat = (await getCategories()).find((c) => c.slug === slug);
-  return { title: cat?.name ?? "Kategori" };
+  const cats = await getCategories();
+  const cat = cats.find((c) => c.slug === slug);
+  if (!cat || !isPublicCategory(cat)) return { title: cat?.name ?? "Kategori", robots: { index: false, follow: false } };
+  const parent = cat.parent_id ? cats.find((c) => c.id === cat.parent_id) : null;
+  const subs = childrenOf(cats, cat.id).slice(0, 5).map((c) => c.name.toLocaleLowerCase("tr"));
+  const name = parent ? `${parent.name} – ${cat.name}` : cat.name;
+  const description =
+    `${CITY}'da ${cat.name.toLocaleLowerCase("tr")} ürünlerini online sipariş edin` +
+    (subs.length ? ` (${subs.join(", ")})` : "") +
+    ". Motokuryeyle kapınızda, kapıda nakit veya kartla ödeme. Sanal Market.";
+  const path = `/kategori/${cat.slug}`;
+  return {
+    title: `${name} – ${CITY} Online Market`,
+    description,
+    alternates: { canonical: path },
+    openGraph: { type: "website", url: path, title: `${cat.name} – ${CITY} Online Market`, description },
+  };
 }
 
 export default function CategoryPage({ params, searchParams }: Props) {
@@ -50,8 +66,16 @@ async function CategoryContent({ params, searchParams }: Props) {
   const top = parent ?? cat;
   const subs = childrenOf(categories, top.id);
   const chip = "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-bold ring-1 transition";
+  const crumbs = isPublicCategory(cat)
+    ? breadcrumbLd([
+        { name: "Ana sayfa", path: "/" },
+        ...(parent ? [{ name: parent.name, path: `/kategori/${parent.slug}` }] : []),
+        { name: cat.name, path: `/kategori/${cat.slug}` },
+      ])
+    : null;
   return (
     <div>
+      {crumbs && <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(crumbs)} />}
       {parent && (
         <Link href={`/kategori/${parent.slug}`} className="mb-1 inline-block text-sm font-semibold text-muted hover:text-brand">
           <CategoryIcon cat={parent} imgClass="h-4 w-4" /> {parent.name} ›

@@ -1,10 +1,33 @@
 import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/nunito-sans";
 import "./globals.css";
+import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
-  title: { default: "Sanal Market", template: "%s · Sanal Market" },
-  description: "İhtiyacın kapında! Motokurye servisi, kapıda nakit veya kartla ödeme. Her gün 10:00 - 01:00.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: "%s · Sanal Market Çorlu" },
+  description: SITE_DESCRIPTION,
+  applicationName: "Sanal Market",
+  keywords: [
+    "Çorlu online market",
+    "Çorlu sanal market",
+    "Çorlu market siparişi",
+    "Çorlu eve market",
+    "Çorlu market alışverişi",
+    "Tekirdağ online market",
+  ],
+  openGraph: {
+    type: "website",
+    locale: "tr_TR",
+    siteName: "Sanal Market",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: "/",
+    images: [{ url: "/logo.png", alt: "Sanal Market" }],
+  },
+  twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: ["/logo.png"] },
+  // Google Search Console doğrulama kodu (Vercel > Environment Variables > GOOGLE_SITE_VERIFICATION)
+  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
 };
 
 export const viewport: Viewport = {

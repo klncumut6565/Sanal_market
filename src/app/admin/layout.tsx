@@ -11,6 +11,7 @@ import { StoreModeSwitch } from "@/components/admin/StoreModeSwitch";
 
 export const metadata: Metadata = {
   title: { default: "Yönetim", template: "%s · Yönetim" },
+  robots: { index: false, follow: false },
   manifest: "/api/manifest/admin",
   appleWebApp: { capable: true, title: "SM Yönetim", statusBarStyle: "default" },
   icons: { apple: "/pwa-192.png" },
