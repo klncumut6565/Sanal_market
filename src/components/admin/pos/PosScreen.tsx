@@ -186,10 +186,11 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
   const onCode = useCallback(
     (raw: string) => {
       const code = raw.trim();
-      if (!code) return;
+      if (!code) return false;
       const p = byBarcode.get(code) ?? byBarcode.get(code.replace(/^0+/, ""));
       if (p) addProduct(p, multiplier);
       else say(false, `Barkod bulunamadı: ${code}`);
+      return !!p;
     },
     [byBarcode, addProduct, multiplier],
   );

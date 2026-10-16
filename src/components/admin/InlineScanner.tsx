@@ -1,21 +1,22 @@
 "use client";
-// Satış ekranı için sayfa içinde (tam ekran değil) sürekli çalışan kamera barkod / QR okuyucu.
-// Açık kaldığı sürece okutulan her barkodu bildirir; aynı kod 1,5 sn içinde tekrar okunursa yok sayılır.
+// Satış ekranı için sayfa içinde (tam ekran değil) kamera barkod / QR okuyucu.
+// Bir kod okununca: kamera hemen durur, büyük yeşil ✓ onay gösterilir, ~1,2 sn sonra kamera kapanır
+// (ekranda açık kalmaz). Yeni ürün için tekrar "Kamerayla okut"a basılır.
 import { useEffect, useRef, useState } from "react";
-import { Camera, CameraOff, Loader2, Zap } from "lucide-react";
+import { Camera, CameraOff, Check, Loader2, X, Zap } from "lucide-react";
 import type { IScannerControls } from "@zxing/browser";
 
-const REPEAT_MS = 1500;
+const CONFIRM_MS = 1200;
 
-export function InlineScanner({ onResult, className = "" }: { onResult: (code: string) => void; className?: string }) {
+export function InlineScanner({ onResult, className = "" }: { onResult: (code: string) => boolean | void; className?: string }) {
   const [on, setOn] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [torch, setTorch] = useState<boolean | null>(null);
-  const [lastCode, setLastCode] = useState<string | null>(null);
+  const [okCode, setOkCode] = useState<{ code: string; found: boolean } | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
-  const last = useRef<{ code: string; at: number } | null>(null);
+  const doneRef = useRef(false);
   const cb = useRef(onResult);
   useEffect(() => {
     cb.current = onResult;
@@ -24,6 +25,8 @@ export function InlineScanner({ onResult, className = "" }: { onResult: (code: s
   useEffect(() => {
     if (!on) return;
     let cancelled = false;
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
+    doneRef.current = false;
     (async () => {
       try {
         const [{ BrowserMultiFormatReader }, { DecodeHintType, BarcodeFormat }] = await Promise.all([import("@zxing/browser"), import("@zxing/library")]);
@@ -46,15 +49,19 @@ export function InlineScanner({ onResult, className = "" }: { onResult: (code: s
           { audio: false, video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } } },
           videoRef.current,
           (result) => {
-            if (!result) return;
+            if (!result || doneRef.current) return;
             const code = result.getText().trim();
-            const now = Date.now();
-            if (!code || (last.current && last.current.code === code && now - last.current.at < REPEAT_MS)) return;
-            last.current = { code, at: now };
+            if (!code) return;
+            doneRef.current = true;
+            controlsRef.current?.stop(); // kamera hemen durur
             beep();
             navigator.vibrate?.(80);
-            setLastCode(code);
-            cb.current(code);
+            const found = cb.current(code) !== false;
+            setOkCode({ code, found });
+            closeTimer = setTimeout(() => {
+              setOkCode(null);
+              setOn(false);
+            }, CONFIRM_MS);
           },
         );
         if (cancelled) {
@@ -77,6 +84,7 @@ export function InlineScanner({ onResult, className = "" }: { onResult: (code: s
     })();
     return () => {
       cancelled = true;
+      clearTimeout(closeTimer);
       controlsRef.current?.stop();
       controlsRef.current = null;
       setReady(false);
@@ -114,8 +122,16 @@ export function InlineScanner({ onResult, className = "" }: { onResult: (code: s
         </div>
       )}
       {error && <p className="absolute inset-x-2 bottom-2 rounded-lg bg-white p-2 text-center text-xs font-bold text-brand">{error}</p>}
-      {lastCode && !error && (
-        <p className="absolute inset-x-2 bottom-2 truncate rounded-lg bg-black/60 px-2 py-1 text-center font-mono text-xs font-bold text-white">✓ {lastCode}</p>
+      {okCode && (
+        <div className={`absolute inset-0 grid place-items-center text-white ${okCode.found ? "bg-emerald-600/90" : "bg-red-600/90"}`}>
+          <div className="flex flex-col items-center gap-1.5">
+            <span className={`grid h-14 w-14 place-items-center rounded-full bg-white shadow-lg ${okCode.found ? "text-emerald-600" : "text-red-600"}`}>
+              {okCode.found ? <Check size={34} strokeWidth={3.5} /> : <X size={34} strokeWidth={3.5} />}
+            </span>
+            <p className="text-sm font-black">{okCode.found ? "Okundu · fişe eklendi" : "Okundu · ürün bulunamadı"}</p>
+            <p className="max-w-[90%] truncate font-mono text-xs opacity-90">{okCode.code}</p>
+          </div>
+        </div>
       )}
       <div className="absolute right-1.5 top-1.5 flex gap-1.5">
         {torch !== null && (
