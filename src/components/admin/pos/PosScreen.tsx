@@ -1,6 +1,7 @@
 "use client";
 // Mağaza içi satış ekranı (kasa). Barkod okuyucu / arama / hızlı ürün kutucukları ile fiş oluşturur,
 // nakit-kart-karışık ödeme alır, stoktan düşer (pos_complete_sale), fiş yazdırır, bekletme ve iptal destekler.
+import { InlineScanner } from "@/components/admin/InlineScanner";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import {
@@ -434,6 +435,8 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
       <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_440px]">
         {/* SOL: arama + ürünler */}
         <section className="min-w-0 space-y-3">
+          {/* Arama (daraltıldı) + sağında kameradan barkod / QR okuma alanı */}
+          <div className="grid items-start gap-2 sm:grid-cols-[minmax(0,1fr)_15rem]">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -448,13 +451,15 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => e.key === "Escape" && setQ("")}
-              placeholder="Barkod okut veya ürün adı yaz (F2) — Enter ilk ürünü ekler"
-              className="h-14 w-full rounded-2xl border-2 border-line bg-white pl-12 pr-28 text-lg font-semibold outline-none focus:border-brand"
+              placeholder="Barkod veya ürün adı (F2) — Enter ekler"
+              className="h-14 w-full rounded-2xl border-2 border-line bg-white pl-12 pr-20 text-lg font-semibold outline-none focus:border-brand"
             />
             {multiplier > 1 && (
               <span className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-brand px-3 py-1 text-sm font-black text-white">× {multiplier}</span>
             )}
           </form>
+            <InlineScanner onResult={onCode} />
+          </div>
 
           {flash && (
             <p
