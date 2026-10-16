@@ -20,6 +20,10 @@ const ERR: Record<string, string> = {
   GECERSIZ_TUTAR: "Tahsilat tutarı geçersiz.",
   GECERSIZ_YONTEM: "Tahsilat yöntemi seç (nakit / POS).",
   SIPARIS_KAPALI: "Sipariş kapanmış (teslim edildi ya da iptal).",
+  POS_FISI_GEREKLI: "POS ile ödeme varsa en az bir POS fişi fotoğrafı ekle.",
+  FIS_TUTARI_UYUSMUYOR: "POS fişlerinin toplamı POS tutarına eşit değil.",
+  GECERSIZ_FIS: "Fiş görseli yüklenemedi; tekrar dene.",
+  COK_FAZLA_FIS: "En fazla 10 fiş eklenebilir.",
 };
 const msg = (e: { message?: string } | null) => {
   const k = (e?.message ?? "").split(":")[0].trim();
@@ -63,17 +67,24 @@ export async function pickupOrder(id: string) {
   return rpc("courier_pickup", { p_order_id: id });
 }
 
-export async function deliverOrder(id: string, method: "nakit" | "pos", amount: number, note: string): Promise<CourierResult> {
+export async function deliverOrder(id: string, cash: number, pos: number, note: string, receipts: { path: string; amount: number | null }[]): Promise<CourierResult> {
   if (!isId(id)) return { ok: false, error: "Geçersiz sipariş." };
   const { user, supabase } = await requireCourier();
   // Teslimden sonra kurye siparişi göremez (kişisel veri gizliliği) — gerekli alanlar önceden okunur
   const { data: o } = await supabase.from("orders").select("order_no, total").eq("id", id).maybeSingle();
-  const { error } = await supabase.rpc("courier_deliver", { p_order_id: id, p_method: method, p_amount: amount, p_note: note || null });
+  const { error } = await supabase.rpc("courier_deliver_split", {
+    p_order_id: id,
+    p_cash: cash,
+    p_pos: pos,
+    p_note: note || null,
+    p_receipts: receipts.slice(0, 10).map((r) => ({ path: r.path, amount: r.amount == null ? "" : String(r.amount) })),
+  });
   if (error) return { ok: false, error: msg(error) };
-  if (o && Math.abs(Number(o.total) - amount) >= 0.01)
+  const got = Math.round((cash + pos) * 100) / 100;
+  if (o && Math.abs(Number(o.total) - got) >= 0.01)
     tellAdmins(
       `⚠️ Tahsilat farkı #${o.order_no}`,
-      `${user.full_name ?? "Kurye"}: ${formatTL(amount)} ${method === "pos" ? "POS" : "nakit"} aldı (sipariş ${formatTL(o.total)}).${note ? ` Not: ${note}` : ""}`,
+      `${user.full_name ?? "Kurye"}: ${formatTL(got)} aldı (nakit ${formatTL(cash)}, POS ${formatTL(pos)}); sipariş ${formatTL(o.total)}.${note ? ` Not: ${note}` : ""}`,
       `/admin/siparisler/${id}`,
       `tahsilat-${o.order_no}`,
     );

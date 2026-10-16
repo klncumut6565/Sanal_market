@@ -9,6 +9,7 @@ import { waLink } from "@/lib/whatsapp";
 import { VEHICLES, vehicleLabel } from "@/lib/courierShared";
 import { ConfirmSubmit } from "@/components/admin/ConfirmSubmit";
 import { CourierMap } from "@/components/admin/CourierMap";
+import { ReceiptGallery, type ReceiptRow } from "@/components/admin/ReceiptGallery";
 import { decideCourier, settleCourier, updateCourier } from "./actions";
 
 export const metadata = { title: "Kuryeler" };
@@ -39,6 +40,8 @@ type O = {
   total: number;
   collected_method: "nakit" | "pos" | null;
   collected_amount: number | null;
+  cash_amount: number | null;
+  pos_amount: number | null;
   delivered_at: string | null;
   picked_up_at: string | null;
   dispatched_at: string | null;
@@ -65,7 +68,9 @@ function range(p: string, open: string) {
   return { from: s(r.today), to: end };
 }
 
-const sum = (list: O[], m: "nakit" | "pos") => list.filter((o) => o.collected_method === m).reduce((a, o) => a + Number(o.collected_amount ?? 0), 0);
+// Parçalı ödemeler dahil: nakit ve POS kısımları ayrı sütunlardan toplanır (eski kayıtlarda yöntem + tutar)
+const part = (o: O, m: "nakit" | "pos") => Number((m === "nakit" ? o.cash_amount : o.pos_amount) ?? (o.collected_method === m ? o.collected_amount : 0) ?? 0);
+const sum = (list: O[], m: "nakit" | "pos") => list.reduce((a, o) => a + part(o, m), 0);
 function avgMin(list: O[]) {
   const d = list
     .map((o) => (o.delivered_at && (o.picked_up_at ?? o.dispatched_at) ? (Date.parse(o.delivered_at) - Date.parse((o.picked_up_at ?? o.dispatched_at)!)) / 60_000 : null))
@@ -73,7 +78,7 @@ function avgMin(list: O[]) {
   return d.length ? Math.round(d.reduce((a, x) => a + x, 0) / d.length) : null;
 }
 
-const COLS = "id,order_no,status,courier_id,customer_name,total,collected_method,collected_amount,delivered_at,picked_up_at,dispatched_at,delivery_issue,settlement_id";
+const COLS = "id,order_no,status,courier_id,customer_name,total,collected_method,collected_amount,cash_amount,pos_amount,delivered_at,picked_up_at,dispatched_at,delivery_issue,settlement_id";
 
 export default async function CouriersPage({ searchParams }: { searchParams: Promise<{ donem?: string; ok?: string; hata?: string }> }) {
   const { donem = "bugun", ok, hata } = await searchParams;
@@ -82,12 +87,18 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
   const open = String(settings.open_time ?? "10:00").slice(0, 5);
   const pr = range(donem, open);
 
-  const [{ data: ov }, { data: live }, { data: done }, { data: unsettled }, { data: sets }] = await Promise.all([
+  const [{ data: ov }, { data: live }, { data: done }, { data: unsettled }, { data: sets }, { data: rec }] = await Promise.all([
     supabase.rpc("admin_courier_overview"),
     supabase.from("orders").select(COLS).not("courier_id", "is", null).in("status", ["hazirlaniyor", "yolda"]).order("created_at"),
     supabase.from("orders").select(COLS).not("courier_id", "is", null).eq("status", "teslim_edildi").gte("delivered_at", pr.from).lt("delivered_at", pr.to).limit(5000),
     supabase.from("orders").select(COLS).not("courier_id", "is", null).eq("status", "teslim_edildi").is("settlement_id", null).limit(5000),
     supabase.from("courier_settlements").select("id,courier_id,created_at,order_count,cash_amount,pos_amount,fee_amount,note").order("created_at", { ascending: false }).limit(25),
+    supabase
+      .from("pos_receipts")
+      .select("id,order_id,courier_id,path,amount,created_at,review_status,review_note,orders(order_no,pos_amount)")
+      .neq("review_status", "onaylandi")
+      .order("created_at", { ascending: false })
+      .limit(24),
   ]);
   const rows = (ov ?? []) as Row[];
   const by = <T extends { courier_id: string }>(list: T[] | null, id: string) => (list ?? []).filter((x) => x.courier_id === id);
@@ -99,6 +110,18 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
   const onDuty = active.filter((r) => r.on_duty).length;
   const allDone = (done ?? []) as O[];
   const allOpen = (unsettled ?? []) as O[];
+  // Hesaplaşılmamış POS'lu teslimatların fişleri (fişsiz / sorunlu / bekleyen kontrolü)
+  const posIds = allOpen.filter((o) => part(o, "pos") > 0).map((o) => o.id);
+  const { data: urc } = posIds.length ? await supabase.from("pos_receipts").select("order_id,review_status").in("order_id", posIds) : { data: [] };
+  const receiptRows = (urc ?? []) as { order_id: string; review_status: string }[];
+  const allReceiptOrders = new Set(receiptRows.map((x) => x.order_id));
+  type RecQ = ReceiptRow & { courier_id: string | null; orders: { order_no: number; pos_amount: number | null } | null };
+  const reviewList = ((rec ?? []) as unknown as RecQ[]).map((r) => ({
+    ...r,
+    amount: r.amount == null ? null : Number(r.amount),
+    caption: `#${r.orders?.order_no ?? "?"} · ${nameOf.get(r.courier_id ?? "") ?? "Kurye"} · POS ${formatTL(Number(r.orders?.pos_amount ?? 0))}`,
+    href: `/admin/siparisler/${r.order_id}`,
+  }));
 
   return (
     <div className="max-w-5xl space-y-5">
@@ -134,6 +157,14 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
               <b>#{o.order_no}</b> · {o.customer_name} · {nameOf.get(o.courier_id)}: <span className="font-semibold text-red-700">{o.delivery_issue}</span>
             </Link>
           ))}
+        </section>
+      )}
+
+      {reviewList.length > 0 && (
+        <section className="space-y-2 rounded-2xl bg-violet-50 p-4 ring-1 ring-violet-200">
+          <h2 className="font-extrabold text-violet-900">🧾 POS fişi kontrolü ({reviewList.length})</h2>
+          <p className="text-xs text-violet-900/70">Kuryelerin teslimde çektiği POS fişleri. Fişteki tutarı ve tarihi kontrol edip onayla; uymayanı “Sorunlu” işaretle.</p>
+          <ReceiptGallery receipts={reviewList} back="/admin/kuryeler" compact />
         </section>
       )}
 
@@ -203,6 +234,11 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
           const l = by((live ?? []) as O[], r.user_id);
           const fee = Number(r.per_delivery_fee ?? 0);
           const cashOpen = sum(u, "nakit");
+          const posOrders = u.filter((o) => part(o, "pos") > 0);
+          const recOf = (oid: string) => receiptRows.filter((x) => x.order_id === oid);
+          const posNoReceipt = posOrders.filter((o) => !allReceiptOrders.has(o.id)).length;
+          const posProblem = posOrders.filter((o) => recOf(o.id).some((x) => x.review_status === "sorunlu")).length;
+          const posWaiting = posOrders.filter((o) => recOf(o.id).some((x) => x.review_status === "bekliyor")).length;
           const avg = avgMin(d);
           return (
             <article key={r.user_id} className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
@@ -252,6 +288,15 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
                       {" "}
                       · {u.length} teslimat · POS {formatTL(sum(u, "pos"))} · hak ediş {formatTL(u.length * fee)}
                     </span>
+                    {posOrders.length > 0 && (
+                      <span className="mt-1 block text-xs font-bold">
+                        🧾 POS fişleri: {posOrders.length} teslimat
+                        {posWaiting > 0 && <span className="text-amber-700"> · {posWaiting} kontrol bekliyor</span>}
+                        {posProblem > 0 && <span className="text-red-700"> · {posProblem} sorunlu</span>}
+                        {posNoReceipt > 0 && <span className="text-red-700"> · {posNoReceipt} fişsiz</span>}
+                        {posWaiting + posProblem + posNoReceipt === 0 && <span className="text-emerald-700"> · hepsi onaylı ✓</span>}
+                      </span>
+                    )}
                   </p>
                 </div>
                 {u.length > 0 && (

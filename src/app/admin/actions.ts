@@ -384,7 +384,13 @@ export async function setOrderStatus(fd: FormData) {
     if (o?.courier_id && !o.collected_method)
       await supabase
         .from("orders")
-        .update({ collected_method: o.payment_method === "kapida_pos" ? "pos" : "nakit", collected_amount: o.total, courier_note: "Yönetici teslim edildi olarak işaretledi" })
+        .update({
+          collected_method: o.payment_method === "kapida_pos" ? "pos" : "nakit",
+          collected_amount: o.total,
+          cash_amount: o.payment_method === "kapida_pos" ? 0 : o.total,
+          pos_amount: o.payment_method === "kapida_pos" ? o.total : 0,
+          courier_note: "Yönetici teslim edildi olarak işaretledi (fiş yok)",
+        })
         .eq("id", id);
   }
   // "Hazır · Kuryeye ver": sipariş mesajı kuryeye WhatsApp'tan (arka planda, sayfayı bekletmeden)

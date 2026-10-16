@@ -72,6 +72,9 @@ export type HistoryRow = {
   total: number;
   collected_method: "nakit" | "pos" | null;
   collected_amount: number | null;
+  cash_amount: number;
+  pos_amount: number;
+  receipts: number;
   courier_note: string | null;
   dispatched_at: string | null;
   picked_up_at: string | null;
@@ -82,4 +85,10 @@ export const numHist = (o: HistoryRow): HistoryRow => ({
   ...o,
   total: Number(o.total),
   collected_amount: o.collected_amount == null ? null : Number(o.collected_amount),
+  cash_amount: Number(o.cash_amount ?? 0),
+  pos_amount: Number(o.pos_amount ?? 0),
+  receipts: Number(o.receipts ?? 0),
 });
+
+/** "Nakit" / "POS" / "Parçalı" */
+export const payKind = (cash: number, pos: number) => (cash > 0 && pos > 0 ? "Parçalı" : pos > 0 ? "POS" : "Nakit");

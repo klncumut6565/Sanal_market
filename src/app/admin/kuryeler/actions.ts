@@ -95,3 +95,16 @@ export async function clearIssue(fd: FormData) {
   revalidatePath(url);
   redirect(url);
 }
+
+/** POS fişi kontrolü: onayla / sorunlu / tekrar beklet */
+export async function reviewReceipt(fd: FormData) {
+  const { supabase } = await requireAdmin();
+  const id = Number(str(fd, "id"));
+  const status = str(fd, "status");
+  if (!Number.isInteger(id) || !["onaylandi", "sorunlu", "bekliyor"].includes(status)) return;
+  const { error } = await supabase.rpc("admin_review_receipt", { p_id: id, p_status: status, p_note: str(fd, "note") || null });
+  const url = back(fd, "/admin/kuryeler");
+  if (error) go(url, "hata", em(error));
+  revalidatePath(url);
+  redirect(url);
+}

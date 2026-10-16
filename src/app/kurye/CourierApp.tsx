@@ -8,10 +8,10 @@ import { createClient } from "@/lib/supabase/client";
 import { PushSetup } from "@/components/PushSetup";
 import { OrderCard } from "@/components/courier/OrderCard";
 import { DeliverSheet, IssueSheet } from "@/components/courier/Sheets";
-import { ORDER_COLS, dayHm, hm, numHist, numOrder, since, tl, type CourierOrder, type HistoryRow, type Settlement } from "@/components/courier/types";
+import { ORDER_COLS, dayHm, hm, numHist, numOrder, payKind, since, tl, type CourierOrder, type HistoryRow, type Settlement } from "@/components/courier/types";
 import { useCourierLocation } from "@/components/courier/useCourierLocation";
 import { addDays, businessDateStart, reportRanges } from "@/lib/hours";
-import { collectedLabel, vehicleLabel } from "@/lib/courierShared";
+import { vehicleLabel } from "@/lib/courierShared";
 import { displayPhone } from "@/lib/phone";
 import { signOut } from "@/app/giris/actions";
 import { claimOrder, deliverOrder, pickupOrder, releaseOrder, reportIssue, setDuty, subscribeCourierPush, type CourierResult } from "./actions";
@@ -80,8 +80,9 @@ function alertNewTask() {
 }
 
 function stats(list: HistoryRow[], fee: number) {
-  const cash = list.filter((o) => o.collected_method === "nakit").reduce((a, o) => a + (o.collected_amount ?? 0), 0);
-  const pos = list.filter((o) => o.collected_method === "pos").reduce((a, o) => a + (o.collected_amount ?? 0), 0);
+  // Parçalı ödemeler dahil: nakit ve POS kısımları ayrı toplanır
+  const cash = list.reduce((a, o) => a + o.cash_amount, 0);
+  const pos = list.reduce((a, o) => a + o.pos_amount, 0);
   const durs = list
     .map((o) => (o.delivered_at && (o.picked_up_at ?? o.dispatched_at) ? (Date.parse(o.delivered_at) - Date.parse((o.picked_up_at ?? o.dispatched_at)!)) / 60_000 : null))
     .filter((d): d is number => d != null && d >= 0 && d < 240);
@@ -142,7 +143,7 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
     const t = periodRange("bugun", openTime);
     const p = periodRange(period, openTime);
     // Teslim edilen siparişler kişisel veri olmadan gelir (müşteri adı/telefon/adres yok, yalnızca mahalle)
-    const hist = (from: string, to: string, unsettledOnly = false) => sb.rpc("courier_history", { p_from: from, p_to: to, p_unsettled: unsettledOnly });
+    const hist = (from: string, to: string, unsettledOnly = false) => sb.rpc("courier_history2", { p_from: from, p_to: to, p_unsettled: unsettledOnly });
     const [h, d, u, s] = await Promise.all([
       hist(p.from, p.to),
       hist(t.from, t.to),
@@ -318,8 +319,12 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
               <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-white ring-1 ring-line">
                 {history.map((o) => (
                   <li key={o.id} className="flex items-center gap-3 px-3 py-2.5">
-                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${o.collected_method === "pos" ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"}`}>
-                      {o.collected_method === "pos" ? <CreditCard size={16} /> : <Banknote size={16} />}
+                    <span
+                      className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${
+                        o.cash_amount > 0 && o.pos_amount > 0 ? "bg-amber-100 text-amber-700" : o.pos_amount > 0 ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-700"
+                      }`}
+                    >
+                      {o.pos_amount > 0 ? <CreditCard size={16} /> : <Banknote size={16} />}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-bold">
@@ -332,7 +337,11 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-black tabular-nums">{tl(o.collected_amount ?? 0)}</p>
-                      <p className="text-[11px] font-semibold text-muted">{collectedLabel(o.collected_method)}{o.settlement_id ? " · ✓" : ""}</p>
+                      <p className="text-[11px] font-semibold text-muted">
+                        {o.cash_amount > 0 && o.pos_amount > 0 ? `${tl(o.cash_amount)} N + ${tl(o.pos_amount)} P` : payKind(o.cash_amount, o.pos_amount)}
+                        {o.receipts > 0 ? ` · 🧾${o.receipts}` : ""}
+                        {o.settlement_id ? " · ✓" : ""}
+                      </p>
                     </div>
                   </li>
                 ))}
@@ -361,7 +370,10 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
                       <b>#{o.order_no}</b> · {hm(o.delivered_at)} · {o.area}
                     </span>
                     <span className="shrink-0 font-bold tabular-nums">
-                      {tl(o.collected_amount ?? 0)} <span className="text-xs text-muted">{collectedLabel(o.collected_method)}</span>
+                      {tl(o.collected_amount ?? 0)}{" "}
+                      <span className="text-xs text-muted">
+                        {o.cash_amount > 0 && o.pos_amount > 0 ? `(N ${tl(o.cash_amount)} + P ${tl(o.pos_amount)})` : payKind(o.cash_amount, o.pos_amount)}
+                      </span>
                     </span>
                   </li>
                 ))}
@@ -448,8 +460,9 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
           o={deliverFor}
           busy={busy === deliverFor.id}
           onClose={() => setDeliverFor(null)}
-          onConfirm={async (m, amount, note) => {
-            const ok = await act(deliverFor.id, () => deliverOrder(deliverFor.id, m, amount, note), `#${deliverFor.order_no} teslim edildi 👏`);
+          courierId={me.user_id}
+          onConfirm={async (cash, pos, note, receipts) => {
+            const ok = await act(deliverFor.id, () => deliverOrder(deliverFor.id, cash, pos, note, receipts), `#${deliverFor.order_no} teslim edildi 👏`);
             if (ok) setDeliverFor(null);
           }}
         />
