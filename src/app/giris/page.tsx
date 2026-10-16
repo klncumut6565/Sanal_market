@@ -5,7 +5,7 @@ import { AuthForm } from "./AuthForm";
 
 export const metadata = { title: "Giriş yap" };
 
-export default function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; yonetici?: string }> }) {
+export default function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; yonetici?: string; kurye?: string }> }) {
   return (
     <div className="grid min-h-dvh place-items-center bg-bg px-4 py-10">
       <div className="w-full max-w-sm">
@@ -20,8 +20,16 @@ export default function LoginPage({ searchParams }: { searchParams: Promise<{ ne
   );
 }
 
-async function Next({ searchParams }: { searchParams: Promise<{ next?: string; yonetici?: string }> }) {
-  const { next, yonetici } = await searchParams;
+async function Next({ searchParams }: { searchParams: Promise<{ next?: string; yonetici?: string; kurye?: string }> }) {
+  const { next, yonetici, kurye } = await searchParams;
   const admin = yonetici === "1" || next?.startsWith("/admin") === true;
-  return <AuthForm key={admin ? "admin" : "user"} next={admin ? "/admin" : (next ?? "/siparislerim")} admin={admin} />;
+  const courier = !admin && (kurye === "1" || next?.startsWith("/kurye") === true);
+  return (
+    <AuthForm
+      key={admin ? "admin" : courier ? "kurye" : "user"}
+      next={admin ? "/admin" : courier ? "/kurye/basvuru" : (next ?? "/siparislerim")}
+      admin={admin}
+      courier={courier}
+    />
+  );
 }

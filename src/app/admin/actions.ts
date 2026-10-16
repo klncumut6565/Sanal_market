@@ -378,8 +378,19 @@ export async function setOrderStatus(fd: FormData) {
   const status = str(fd, "status") as OrderStatus;
   const { error } = await supabase.rpc("admin_set_order_status", { p_order_id: id, p_status: status });
   if (status === "iptal" && !error) updateTag(CATALOG_TAG); // stok iade edildi
+  // Yönetici "Teslim edildi" dediyse ve sipariş bir kuryedeyse tahsilatı sipariş ödeme yöntemiyle kaydet (kurye kasası tutarlı kalsın)
+  if (status === "teslim_edildi" && !error) {
+    const { data: o } = await supabase.from("orders").select("courier_id, collected_method, payment_method, total").eq("id", id).maybeSingle();
+    if (o?.courier_id && !o.collected_method)
+      await supabase
+        .from("orders")
+        .update({ collected_method: o.payment_method === "kapida_pos" ? "pos" : "nakit", collected_amount: o.total, courier_note: "Yönetici teslim edildi olarak işaretledi" })
+        .eq("id", id);
+  }
   // "Hazır · Kuryeye ver": sipariş mesajı kuryeye WhatsApp'tan (arka planda, sayfayı bekletmeden)
   if (status === "yolda" && !error) {
+    // Kurye atanmamışsa ve mesaide tek kurye varsa ona ata
+    await supabase.rpc("admin_auto_assign", { p_order_id: id });
     after(async () => {
       try {
         await notifyCourier(supabase, id);

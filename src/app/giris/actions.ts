@@ -21,6 +21,8 @@ export async function signIn(_: AuthState, fd: FormData): Promise<AuthState> {
   if (!password) return { error: "Şifreni gir." };
 
   const adminLogin = fd.get("admin") === "1";
+  const courierLogin = fd.get("kurye") === "1";
+  let target = adminLogin ? "/admin" : safeNext(fd.get("next"));
   try {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -36,11 +38,17 @@ export async function signIn(_: AuthState, fd: FormData): Promise<AuthState> {
         };
       }
     }
+    if (!adminLogin) {
+      // Kurye: onaylıysa doğrudan kurye paneli; kurye girişinden gelip onaylı değilse başvuru sayfası
+      const { data: isCourier } = await supabase.rpc("is_courier");
+      if (isCourier === true && (courierLogin || !fd.get("next") || target === "/siparislerim")) target = "/kurye";
+      else if (courierLogin) target = "/kurye/basvuru";
+    }
   } catch (e) {
     console.error("[giris] signIn:", e);
     return { error: "Giriş şu an yapılamıyor. Lütfen biraz sonra tekrar dene." };
   }
-  redirect(adminLogin ? "/admin" : safeNext(fd.get("next")));
+  redirect(target);
 }
 
 export async function signUp(_: AuthState, fd: FormData): Promise<AuthState> {

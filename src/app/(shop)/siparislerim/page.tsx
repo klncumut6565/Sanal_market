@@ -56,6 +56,7 @@ async function AccountOrders() {
         <span>{user.email}</span>
         <div className="flex gap-2">
           {user.role === "admin" && <Link href="/admin" className="btn-ghost py-1.5">Yönetim paneli</Link>}
+          {user.role === "courier" && <Link href="/kurye" className="btn-ghost py-1.5">🛵 Kurye paneli</Link>}
           <form action={signOut}><button className="btn-ghost py-1.5"><LogOut size={16} /> Çıkış</button></form>
         </div>
       </div>

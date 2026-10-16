@@ -16,7 +16,15 @@ export function OrderTable({ orders }: { orders: Order[] }) {
               <td className="py-2.5"><Link href={`/admin/siparisler/${o.id}`} className="font-bold text-brand">#{o.order_no}</Link></td>
               <td>{o.customer_name}</td>
               <td className="text-muted">{formatDate(o.created_at)}</td>
-              <td><StatusBadge status={o.status} /></td>
+              <td>
+                <StatusBadge status={o.status} />
+                {(o as Order & { courier_id?: string | null }).courier_id && <span title="Kuryeye atandı" className="ml-1">🛵</span>}
+                {(o as Order & { delivery_issue?: string | null }).delivery_issue && o.status !== "teslim_edildi" && o.status !== "iptal" && (
+                  <span title={(o as Order & { delivery_issue?: string | null }).delivery_issue ?? ""} className="ml-1 rounded bg-red-100 px-1 text-xs font-bold text-red-700">
+                    teslim edilemedi
+                  </span>
+                )}
+              </td>
               <td>{o.payment_method === "kapida_pos" ? "POS" : "Nakit"}</td>
               <td className="text-right font-bold">{formatTL(o.total)}</td>
             </tr>

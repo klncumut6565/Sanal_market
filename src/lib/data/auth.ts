@@ -5,7 +5,7 @@ import { connection } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { hasSupabase } from "@/lib/supabase/env";
 
-export type SessionUser = { id: string; email: string | null; role: "customer" | "admin"; full_name: string | null; phone: string | null };
+export type SessionUser = { id: string; email: string | null; role: "customer" | "admin" | "courier"; full_name: string | null; phone: string | null };
 
 /**
  * Oturumdaki kullanıcı. `cache` ile aynı istek içinde (layout + sayfa + aksiyon) yalnızca BİR KEZ çalışır.
@@ -19,11 +19,15 @@ export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const { data, error } = await supabase.auth.getClaims();
   const claims = data?.claims;
   if (error || !claims?.sub) return null;
-  const { data: profile } = await supabase.from("profiles").select("role, full_name, phone").eq("id", claims.sub).maybeSingle();
+  const [{ data: profile }, { data: courier }] = await Promise.all([
+    supabase.from("profiles").select("role, full_name, phone").eq("id", claims.sub).maybeSingle(),
+    supabase.from("couriers").select("is_active").eq("user_id", claims.sub).maybeSingle(),
+  ]);
   return {
     id: claims.sub,
     email: (claims.email as string | undefined) ?? null,
-    role: profile?.role === "admin" ? "admin" : "customer",
+    // Kurye rolü couriers tablosundan (aktif kayıt) gelir; yönetici her zaman yönetici sayılır
+    role: profile?.role === "admin" ? "admin" : courier?.is_active ? "courier" : "customer",
     full_name: profile?.full_name ?? null,
     phone: profile?.phone ?? null,
   };
@@ -34,6 +38,15 @@ export const requireAdmin = cache(async () => {
   const user = await getSessionUser();
   if (!user) redirect("/giris?next=/admin");
   if (user.role !== "admin") redirect("/?yetki=yok");
+  const supabase = await createClient();
+  return { user, supabase };
+});
+
+/** Kurye sayfaları ve aksiyonları: yalnızca onaylı ve aktif kurye */
+export const requireCourier = cache(async () => {
+  const user = await getSessionUser();
+  if (!user) redirect("/giris?kurye=1");
+  if (user.role !== "courier") redirect("/kurye/basvuru");
   const supabase = await createClient();
   return { user, supabase };
 });

@@ -8,15 +8,9 @@ import { VAPID_PUBLIC_KEY, type PushPayload } from "./config";
 
 const secret = () => process.env.WHATSAPP_VERIFY_TOKEN?.trim() || "";
 
-export async function sendPush(role: "admin" | "kurye", payload: PushPayload): Promise<{ sent: number; failed: number; total: number }> {
-  if (!secret()) return { sent: 0, failed: 0, total: 0 };
-  const sb = createPublicClient();
-  const { data, error } = await sb.rpc("push_targets", { p_secret: secret(), p_role: role });
-  if (error || !data) {
-    console.error("[push] hedefler:", error?.message);
-    return { sent: 0, failed: 0, total: 0 };
-  }
-  const t = data as { vapid_private: string | null; subs: { endpoint: string; p256dh: string; auth: string }[] };
+type Targets = { vapid_private: string | null; subs: { endpoint: string; p256dh: string; auth: string }[] };
+
+async function deliver(sb: ReturnType<typeof createPublicClient>, t: Targets, payload: PushPayload) {
   if (!t.vapid_private || !t.subs.length) return { sent: 0, failed: 0, total: t.subs?.length ?? 0 };
   webpush.setVapidDetails("mailto:klncumut65@gmail.com", VAPID_PUBLIC_KEY, t.vapid_private);
   const body = JSON.stringify(payload);
@@ -38,4 +32,27 @@ export async function sendPush(role: "admin" | "kurye", payload: PushPayload): P
     }),
   );
   return { sent, failed, total: t.subs.length };
+}
+
+export async function sendPush(role: "admin" | "kurye", payload: PushPayload): Promise<{ sent: number; failed: number; total: number }> {
+  if (!secret()) return { sent: 0, failed: 0, total: 0 };
+  const sb = createPublicClient();
+  const { data, error } = await sb.rpc("push_targets", { p_secret: secret(), p_role: role });
+  if (error || !data) {
+    console.error("[push] hedefler:", error?.message);
+    return { sent: 0, failed: 0, total: 0 };
+  }
+  return deliver(sb, data as Targets, payload);
+}
+
+/** Kurye bildirimi: userId verilirse yalnızca o kuryenin cihazları; null → mesaideki tüm kuryeler + eski gizli bağlantılı cihazlar */
+export async function sendPushCourier(userId: string | null, payload: PushPayload): Promise<{ sent: number; failed: number; total: number }> {
+  if (!secret()) return { sent: 0, failed: 0, total: 0 };
+  const sb = createPublicClient();
+  const { data, error } = await sb.rpc("push_targets_courier", { p_secret: secret(), p_user_id: userId });
+  if (error || !data) {
+    console.error("[push] kurye hedefleri:", error?.message);
+    return { sent: 0, failed: 0, total: 0 };
+  }
+  return deliver(sb, data as Targets, payload);
 }

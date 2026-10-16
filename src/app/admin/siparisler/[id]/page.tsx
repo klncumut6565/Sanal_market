@@ -14,6 +14,7 @@ import { displayPhone } from "@/lib/phone";
 import { getStoreSettings } from "@/lib/data/catalog";
 import { courierText, loadOrderMsg } from "@/lib/courier";
 import { OrderItems, type Alt } from "@/components/admin/OrderItems";
+import { CourierCard, type CourierCols } from "@/components/admin/CourierCard";
 
 export const metadata = { title: "Sipariş detayı" };
 
@@ -76,6 +77,7 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
           <SlaBar since={stageStart(order)} targetMin={stageTargetMin(order.status, settings)} label={STAGES[order.status as "alindi"].waitingFor} />
         )}
         <NextStepForm order={order} back={`/admin/siparisler/${order.id}`} big />
+        <CourierCard order={order as Order & CourierCols} />
         {courierMsg && (order.status === "hazirlaniyor" || order.status === "yolda") && (
           <div className="flex flex-wrap items-center gap-2 rounded-xl bg-bg p-2.5 text-sm">
             <Bike size={18} className="text-brand" />

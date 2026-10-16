@@ -28,10 +28,10 @@ async function sendResetMail(_: AuthState, fd: FormData): Promise<AuthState> {
   };
 }
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { Bike, ShieldCheck } from "lucide-react";
 import { PhoneInput } from "@/components/PhoneInput";
 
-export function AuthForm({ next, admin = false }: { next: string; admin?: boolean }) {
+export function AuthForm({ next, admin = false, courier = false }: { next: string; admin?: boolean; courier?: boolean }) {
   const [mode, setMode] = useState<"in" | "up" | "forgot">("in");
   const [inState, inAction, inPending] = useActionState<AuthState, FormData>(signIn, {});
   const [upState, upAction, upPending] = useActionState<AuthState, FormData>(signUp, {});
@@ -80,7 +80,17 @@ export function AuthForm({ next, admin = false }: { next: string; admin?: boolea
     );
 
   return (
-    <div className="rounded-2xl bg-white p-5 ring-1 ring-line">
+    <div className={`rounded-2xl bg-white p-5 ${courier ? "ring-2 ring-sky-400" : "ring-1 ring-line"}`}>
+      {courier && (
+        <div className="mb-4 rounded-xl bg-sky-50 p-3 text-sm">
+          <p className="flex items-center gap-2 font-extrabold text-sky-800">
+            <Bike size={18} /> Kurye girişi
+          </p>
+          <p className="mt-1 text-sky-900/80">
+            Hesabın yoksa önce <b>Üye ol</b>. Giriş yaptıktan sonra kurye başvurun yönetime iletilir; onaylanınca kurye paneli açılır.
+          </p>
+        </div>
+      )}
       <div className="mb-4 grid grid-cols-2 rounded-xl bg-bg p-1 text-sm font-bold">
         {(["in", "up"] as const).map((m) => (
           <button key={m} type="button" onClick={() => setMode(m)} className={`rounded-lg py-2 ${mode === m ? "bg-white shadow-sm" : "text-muted"}`}>
@@ -90,6 +100,7 @@ export function AuthForm({ next, admin = false }: { next: string; admin?: boolea
       </div>
       <form action={mode === "in" ? inAction : upAction} className="space-y-3">
         <input type="hidden" name="next" value={next} />
+        {courier && <input type="hidden" name="kurye" value="1" />}
         {mode === "up" && (
           <>
             <input name="full_name" required placeholder="Ad soyad" autoComplete="name" className="input" />
@@ -107,11 +118,20 @@ export function AuthForm({ next, admin = false }: { next: string; admin?: boolea
           Şifremi unuttum
         </button>
       )}
-      <p className="mt-3 text-center text-xs text-muted">Üye olmadan da sipariş verebilirsin.</p>
+      {!courier && <p className="mt-3 text-center text-xs text-muted">Üye olmadan da sipariş verebilirsin.</p>}
       {mode === "in" && (
-        <Link href="/giris?yonetici=1" className="mt-3 flex items-center justify-center gap-1.5 border-t border-line pt-3 text-xs font-bold text-muted hover:text-ink">
-          <ShieldCheck size={14} /> Yönetici girişi
-        </Link>
+        <div className="mt-3 flex items-center justify-center gap-4 border-t border-line pt-3 text-xs font-bold text-muted">
+          {courier ? (
+            <Link href="/giris" className="hover:text-ink">← Müşteri girişi</Link>
+          ) : (
+            <Link href="/giris?kurye=1" className="flex items-center gap-1.5 hover:text-ink">
+              <Bike size={14} /> Kurye girişi
+            </Link>
+          )}
+          <Link href="/giris?yonetici=1" className="flex items-center gap-1.5 hover:text-ink">
+            <ShieldCheck size={14} /> Yönetici girişi
+          </Link>
+        </div>
       )}
       {mode === "up" && (
         <p className="mt-1 text-center text-xs text-muted">
