@@ -160,19 +160,43 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
 
   const refresh = useCallback(() => Promise.all([loadLive(), loadMoney()]), [loadLive, loadMoney]);
 
+  // CANLI: Supabase Realtime (anında) + 15 sn'de bir tam yenileme (yedek). Yönetici atama, hesaplaşma,
+  // ücret/araç değişikliği ya da sipariş durumu değiştirince kurye ekranı kendiliğinden güncellenir.
+  const [liveOn, setLiveOn] = useState(false);
   useEffect(() => {
     const first = setTimeout(refresh, 0);
-    const t = setInterval(loadLive, 15_000);
+    const t = setInterval(() => void refresh(), 15_000);
     const clock = setInterval(() => setNow(Date.now()), 30_000);
     const vis = () => document.visibilityState === "visible" && void refresh();
     document.addEventListener("visibilitychange", vis);
+    let debounce: ReturnType<typeof setTimeout> | undefined;
+    const soon = () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => void refresh(), 400);
+    };
+    const ch = sb
+      .channel(`kurye-${me.user_id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "orders" }, soon)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "courier_settlements", filter: `courier_id=eq.${me.user_id}` }, (p) => {
+        const n = p.new as { cash_amount?: number; pos_amount?: number; order_count?: number };
+        say(`✅ Hesaplaşma yapıldı: ${n.order_count ?? ""} teslimat · ${tl(Number(n.cash_amount ?? 0))} nakit teslim alındı`);
+        soon();
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "couriers", filter: `user_id=eq.${me.user_id}` }, (p) => {
+        const n = p.new as Partial<CourierMe>;
+        setMe((m) => ({ ...m, full_name: n.full_name ?? m.full_name, phone: n.phone ?? m.phone, vehicle: n.vehicle ?? m.vehicle, plate: n.plate ?? m.plate, per_delivery_fee: n.per_delivery_fee != null ? Number(n.per_delivery_fee) : m.per_delivery_fee, on_duty: n.on_duty ?? m.on_duty }));
+        soon();
+      })
+      .subscribe((st) => setLiveOn(st === "SUBSCRIBED"));
     return () => {
       clearTimeout(first);
+      clearTimeout(debounce);
       clearInterval(t);
       clearInterval(clock);
       document.removeEventListener("visibilitychange", vis);
+      void sb.removeChannel(ch);
     };
-  }, [refresh, loadLive]);
+  }, [refresh, sb, me.user_id]);
 
   async function act(key: string, fn: () => Promise<CourierResult>, okText: string) {
     setBusy(key);
@@ -256,7 +280,8 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
             <div className="flex items-center justify-between px-1">
               <h2 className="font-extrabold">Görevlerim ({mine.length})</h2>
               <button type="button" onClick={() => void refresh()} className="flex items-center gap-1 text-xs font-bold text-muted">
-                <RefreshCw size={14} /> {loadedAt ? hm(new Date(loadedAt).toISOString()) : "…"}
+                <span className={`h-2 w-2 rounded-full ${liveOn ? "animate-pulse bg-emerald-500" : "bg-muted/40"}`} />
+                {liveOn ? "Canlı" : "Yenileniyor"} · <RefreshCw size={14} /> {loadedAt ? hm(new Date(loadedAt).toISOString()) : "…"}
               </button>
             </div>
             {live === null ? (

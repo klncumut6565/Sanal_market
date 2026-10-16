@@ -9,6 +9,7 @@ import { waLink } from "@/lib/whatsapp";
 import { VEHICLES, vehicleLabel } from "@/lib/courierShared";
 import { ConfirmSubmit } from "@/components/admin/ConfirmSubmit";
 import { CourierMap } from "@/components/admin/CourierMap";
+import { LiveRefresh } from "@/components/admin/LiveRefresh";
 import { ReceiptGallery, type ReceiptRow } from "@/components/admin/ReceiptGallery";
 import { decideCourier, settleCourier, updateCourier } from "./actions";
 
@@ -134,9 +135,12 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
             {active.length} aktif kurye · {onDuty} mesaide · üzerlerinde {formatTL(sum(allOpen, "nakit"))} nakit (hesaplaşılmadı)
           </p>
         </div>
-        <p className="text-xs text-muted">
-          Kurye giriş adresi: <b>/giris?kurye=1</b>
-        </p>
+        <div className="flex flex-col items-end gap-1">
+          <LiveRefresh tables={["orders", "courier_settlements", "couriers", "pos_receipts"]} />
+          <p className="text-xs text-muted">
+            Kurye giriş adresi: <b>/giris?kurye=1</b>
+          </p>
+        </div>
       </div>
       {active.length > 0 && (
         <section className="space-y-1.5">
