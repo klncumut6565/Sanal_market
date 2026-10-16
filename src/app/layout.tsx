@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     url: "/",
-    images: [{ url: "/logo.png", alt: "Sanal Market" }],
+    images: [{ url: "/logo.png", alt: "Çorlu Sanal Market" }],
   },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: ["/logo.png"] },
   // Google Search Console doğrulama kodu (Vercel > Environment Variables > GOOGLE_SITE_VERIFICATION)
