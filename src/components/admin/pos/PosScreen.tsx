@@ -37,6 +37,10 @@ type Held = { id: string; at: number; lines: PosLine[]; discount: string };
 const LS_CART = "pos-fis-v1";
 const LS_HELD = "pos-bekleyen-v1";
 const BILLS = [5, 10, 20, 50, 100, 200, 500, 1000];
+// Ürün kutucuk listesi (tüm ürünlerin tarayıcıya indirilmesi) şimdilik KAPALI — Supabase veri çıkışını azaltmak için.
+// Kapalıyken barkod ve ad araması tek tek, küçük sorgularla veritabanından yapılır. Tekrar açmak için true yapın.
+const PRODUCT_LIST_ENABLED = false;
+const POS_COLS = "id,name,barcode,price,sale_price,stock,category_id,unit_label,image_url,emoji,is_active";
 
 const lsGet = <T,>(k: string, d: T): T => {
   try {
@@ -92,11 +96,12 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
 
   // ---------------- veri ----------------
   const loadProducts = useCallback(async () => {
+    if (!PRODUCT_LIST_ENABLED) return;
     const all: PosProduct[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error } = await sb
         .from("products")
-        .select("id,name,barcode,price,sale_price,stock,category_id,unit_label,image_url,emoji,is_active")
+        .select(POS_COLS)
         .order("name")
         .range(from, from + 999);
       if (error) {
@@ -183,16 +188,40 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
     [],
   );
 
+  // Liste kapalıyken barkodla tek ürün sorgusu (aynı barkod oturum boyunca tekrar sorgulanmaz)
+  const codeCache = useRef(new Map<string, PosProduct>());
   const onCode = useCallback(
-    (raw: string) => {
+    (raw: string): boolean | void => {
       const code = raw.trim();
       if (!code) return false;
-      const p = byBarcode.get(code) ?? byBarcode.get(code.replace(/^0+/, ""));
-      if (p) addProduct(p, multiplier);
-      else say(false, `Barkod bulunamadı: ${code}`);
-      return !!p;
+      const alt = code.replace(/^0+/, "");
+      if (PRODUCT_LIST_ENABLED) {
+        const p = byBarcode.get(code) ?? byBarcode.get(alt);
+        if (p) addProduct(p, multiplier);
+        else say(false, `Barkod bulunamadı: ${code}`);
+        return !!p;
+      }
+      const qty = multiplier;
+      const cached = codeCache.current.get(code);
+      if (cached) {
+        addProduct(cached, qty);
+        return true;
+      }
+      void (async () => {
+        const { data } = await sb
+          .from("products")
+          .select(POS_COLS)
+          .in("barcode", alt && alt !== code ? [code, alt] : [code])
+          .limit(1)
+          .maybeSingle();
+        const p = (data as PosProduct | null) ?? null;
+        if (p) {
+          codeCache.current.set(code, p);
+          addProduct(p, qty);
+        } else say(false, `Barkod bulunamadı: ${code}`);
+      })();
     },
-    [byBarcode, addProduct, multiplier],
+    [byBarcode, addProduct, multiplier, sb],
   );
 
   // El barkod okuyucu: ekranın neresinde olursa olsun ürünü fişe ekler (pencere açıkken yok sayar)
@@ -277,6 +306,35 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
     return scored.slice(0, 60).map((x) => x.p);
   }, [products, index, dq, catSet]);
 
+  // Liste kapalıyken ad araması: yazmayı bırakınca en fazla 8 ürün sorgulanır
+  const [remote, setRemote] = useState<PosProduct[]>([]);
+  const [remoteBusy, setRemoteBusy] = useState(false);
+  useEffect(() => {
+    if (PRODUCT_LIST_ENABLED) return;
+    const m = q.trim().match(/^(\d+)\*(.*)$/);
+    const text = (m ? m[2] : q).trim();
+    if (text.length < 2 || /^\d+$/.test(text)) {
+      const t = setTimeout(() => setRemote([]), 0);
+      return () => clearTimeout(t);
+    }
+    let alive = true;
+    const t = setTimeout(async () => {
+      setRemoteBusy(true);
+      const words = text.replace(/[%_,()]/g, " ").split(/\s+/).filter(Boolean).slice(0, 4);
+      let qq = sb.from("products").select(POS_COLS);
+      for (const w of words) qq = qq.ilike("name", `%${w}%`);
+      const { data } = await qq.order("is_active", { ascending: false }).order("name").limit(8);
+      if (!alive) return;
+      setRemote((data ?? []) as PosProduct[]);
+      setRemoteBusy(false);
+    }, 350);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [q, sb]);
+  const shown = PRODUCT_LIST_ENABLED ? results : remote;
+
   const submitSearch = () => {
     const v = q.trim();
     const m = v.match(/^(\d+)\*(.*)$/);
@@ -294,8 +352,8 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
       setQ("");
       return;
     }
-    if (results[0]) {
-      addProduct(results[0], m ? Math.max(1, Number(m[1])) : multiplier);
+    if (shown[0]) {
+      addProduct(shown[0], m ? Math.max(1, Number(m[1])) : multiplier);
       setQ("");
     }
   };
@@ -470,6 +528,48 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
             </p>
           )}
 
+          {!PRODUCT_LIST_ENABLED && (
+            <div className="rounded-2xl bg-white ring-1 ring-line">
+              {q.trim().length >= 2 && !/^\d+$/.test(q.trim()) ? (
+                <ul className="divide-y divide-line">
+                  {remote.map((p) => (
+                    <li key={p.id}>
+                      <button
+                        onClick={() => {
+                          addProduct(p, multiplier);
+                          setQ("");
+                          searchRef.current?.focus();
+                        }}
+                        className={`flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-bg ${!p.is_active ? "opacity-50" : ""}`}
+                      >
+                        <span className="min-w-0 truncate text-sm font-bold">{p.name}</span>
+                        <span className="flex shrink-0 items-center gap-3">
+                          <span className={`text-[11px] font-bold ${p.stock <= 0 ? "text-red-600" : "text-muted"}`}>{p.stock <= 0 ? "stok 0" : `stok ${p.stock}`}</span>
+                          <span className="font-black text-brand">{formatTL(unitPrice(p))}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                  {!remote.length && (
+                    <li className="flex items-center gap-2 px-4 py-3 text-sm text-muted">
+                      {remoteBusy ? (
+                        <>
+                          <Loader2 className="animate-spin" size={16} /> Aranıyor…
+                        </>
+                      ) : (
+                        "Ürün bulunamadı."
+                      )}
+                    </li>
+                  )}
+                </ul>
+              ) : (
+                <p className="px-4 py-3 text-sm text-muted">Ürün listesi şimdilik kapalı. Barkodu okutun ya da ürün adını yazın — eşleşen ürünler burada çıkar.</p>
+              )}
+            </div>
+          )}
+
+          {PRODUCT_LIST_ENABLED && (
+          <>
           <div className="no-scrollbar flex gap-1.5 overflow-x-auto pb-1">
             <button onClick={() => setCat("")} className={`shrink-0 rounded-full px-3.5 py-2 text-sm font-bold ${!cat ? "bg-ink text-white" : "bg-white ring-1 ring-line"}`}>
               {q ? "Tümü" : "Stoktakiler"}
@@ -527,6 +627,8 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
               ))}
               {results.length === 0 && <p className="col-span-full rounded-2xl bg-white p-6 text-center text-muted ring-1 ring-line">Ürün bulunamadı.</p>}
             </div>
+          )}
+          </>
           )}
         </section>
 
