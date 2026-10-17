@@ -42,7 +42,7 @@ const num = (p: Product): Product => ({
 export async function getCategories(): Promise<Category[]> {
   "use cache";
   cacheTag(CATALOG_TAG);
-  cacheLife("hours"); // veri tasarrufu: ürün/ayar değişince updateTag(CATALOG_TAG) ile anında yenilenir
+  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return [];
   const { data, error } = await createPublicClient()
     .from("categories")
@@ -57,7 +57,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function getProducts(): Promise<Product[]> {
   "use cache";
   cacheTag(CATALOG_TAG);
-  cacheLife("hours"); // veri tasarrufu: ürün/ayar değişince updateTag(CATALOG_TAG) ile anında yenilenir
+  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return [];
   const sb = createPublicClient();
   const { data, error } = await fetchAll((f, t) =>
@@ -75,7 +75,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 export async function searchProducts(q: string): Promise<Product[]> {
   "use cache";
   cacheTag(CATALOG_TAG);
-  cacheLife("hours"); // veri tasarrufu: ürün/ayar değişince updateTag(CATALOG_TAG) ile anında yenilenir
+  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase || q.trim().length < 2) return [];
   const { data } = await createPublicClient().rpc("search_products", { q: q.trim() });
   return ((data ?? []) as Product[]).map(num);
@@ -84,7 +84,7 @@ export async function searchProducts(q: string): Promise<Product[]> {
 export async function getStoreSettings(): Promise<StoreSettings> {
   "use cache";
   cacheTag(SETTINGS_TAG);
-  cacheLife("hours"); // veri tasarrufu: ürün/ayar değişince updateTag(CATALOG_TAG) ile anında yenilenir
+  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return DEFAULT_SETTINGS;
   const { data } = await createPublicClient().from("store_settings").select("*").eq("id", 1).single();
   if (!data) return DEFAULT_SETTINGS;

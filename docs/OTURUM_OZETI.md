@@ -290,3 +290,9 @@
 - Barkod (el okuyucu / kamera / yazarak): tek ürün sorgusu, oturum içi önbellek.
 - Ad araması: 350 ms bekleyip en fazla 8 sonuç (ilike), arama kutusunun altında liste; Enter ilk sonucu ekler.
 - Tekrar açmak için sabiti `true` yapmak yeterli.
+
+## 2026-10-18 — Vercel "ISR Writes %75" uyarısı (ücretsiz plan 200.000/ay)
+- Neden: vitrin önbelleği saatlik + her siparişte `updateTag(CATALOG_TAG)` → ana sayfa, kategori ve ziyaret edilen tüm ürün sayfaları yeniden yazılıyordu; sitemap 3000+ ürün sayfasını botlara açıyordu.
+- `catalog.ts` + `areas.ts`: `cacheLife("hours")` → `"days"` (yönetici değişikliklerinde updateTag ile yine anında yenilenir).
+- `odeme/actions.ts`: siparişten sonra önbellek yalnızca bir ürünün stoğu biterse yenileniyor.
+- `sitemap.ts`: ürün sayfaları yalnızca öne çıkan / indirimli (en fazla 200).

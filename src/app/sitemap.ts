@@ -18,7 +18,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: c.parent_id ? 0.7 : 0.8,
     })),
     ...products
-      .filter((p) => p.category_id && catIds.has(p.category_id))
+      // Vercel ISR yazımı tasarrufu: 3000+ ürün sayfasının tamamı yerine yalnızca öne çıkan / indirimli
+      // ürünler listelenir (botların her ürün sayfasını tarayıp yeniden oluşturması önlenir).
+      .filter((p) => p.category_id && catIds.has(p.category_id) && (p.is_featured || p.sale_price != null))
+      .slice(0, 200)
       .map((p) => ({
         url: abs(`/urun/${p.slug}`),
         lastModified: p.info_updated_at ? new Date(p.info_updated_at) : now,

@@ -92,7 +92,19 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (!row) return { ok: false, error: orderErrorMessage("") };
   // Yönetici telefon bildirimi + (panel kapalıysa) e-posta/WhatsApp — yanıtı geciktirmeden
   after(() => notifyOrderPlaced(row, input.name.trim()));
-  // Katalog saatlik önbellekte: satılan ürünlerin stoğu vitrinde hemen güncellensin
-  updateTag(CATALOG_TAG);
+  // Vercel ISR yazımı tasarrufu: vitrin önbelleği her siparişte değil, yalnızca bir ürün stoğu
+  // bittiğinde yenilenir (stok yeterliliği zaten sipariş sırasında veritabanında denetleniyor).
+  try {
+    const sb = await createClient();
+    const { data: out } = await sb
+      .from("products")
+      .select("id")
+      .in("id", items.map((i) => i.product_id))
+      .lte("stock", 0)
+      .limit(1);
+    if (out?.length) updateTag(CATALOG_TAG);
+  } catch {
+    /* önbellek yenilenemese de sipariş tamamdır */
+  }
   return { ok: true, id: row.order_id, token: row.access_token, orderNo: Number(row.order_no) };
 }
