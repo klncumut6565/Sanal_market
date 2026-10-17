@@ -31,7 +31,7 @@ function usePendingCount() {
       if (alive && count != null) setN(count);
     };
     check();
-    const t = setInterval(check, 10_000);
+    const t = setInterval(() => document.visibilityState === "visible" && check(), 30_000);
     const vis = () => document.visibilityState === "visible" && check();
     document.addEventListener("visibilitychange", vis);
     return () => {

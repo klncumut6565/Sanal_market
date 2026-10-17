@@ -165,7 +165,7 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   const [liveOn, setLiveOn] = useState(false);
   useEffect(() => {
     const first = setTimeout(refresh, 0);
-    const t = setInterval(() => void refresh(), 15_000);
+    const t = setInterval(() => document.visibilityState === "visible" && void refresh(), 60_000);
     const clock = setInterval(() => setNow(Date.now()), 30_000);
     const vis = () => document.visibilityState === "visible" && void refresh();
     document.addEventListener("visibilitychange", vis);

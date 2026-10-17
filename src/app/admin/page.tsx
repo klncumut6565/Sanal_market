@@ -50,7 +50,7 @@ export default async function AdminHome({ searchParams }: { searchParams: Promis
 
   return (
     <div className="space-y-6">
-      <AutoRefresh seconds={30} />
+      <AutoRefresh seconds={180} realtime={["orders"]} />
       <div className="flex flex-wrap items-end justify-between gap-2">
         <h1 className="text-2xl font-black">Genel bakış</h1>
         <p className="text-sm">

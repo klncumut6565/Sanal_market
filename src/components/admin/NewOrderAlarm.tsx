@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { RINGTONES, ringtoneUrl, type RingtoneId } from "@/lib/ringtones";
 
 const RING_MS = 20_000;
-const POLL_MS = 8_000;
+const POLL_MS = 30_000; // yedek yoklama; asıl tetik Realtime (orders INSERT)
 const PREF_KEY = "sanal-market-zil";
 /** Kilit açmak için çok kısa SESSİZ ses — gerçek zil sesi bu sırada asla duyulmaz. */
 const SILENT = "data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
@@ -172,7 +172,12 @@ export function NewOrderAlarm() {
       }
     };
     check();
-    const t = setInterval(check, POLL_MS);
+    const t = setInterval(() => document.visibilityState === "visible" && check(), POLL_MS);
+    // Anında: yeni sipariş eklendiğinde Realtime olayı gelir
+    const rt = supabase
+      .channel(`yeni-siparis-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "orders" }, () => void check())
+      .subscribe();
     // Panel açık sinyali: açıkken sipariş bildirimi e-posta/WhatsApp'a gönderilmez
     const beat = () => document.visibilityState === "visible" && supabase.rpc("admin_heartbeat").then(() => {}, () => {});
     beat();
@@ -187,6 +192,7 @@ export function NewOrderAlarm() {
     return () => {
       alive = false;
       clearInterval(t);
+      void supabase.removeChannel(rt);
       clearInterval(hb);
       document.removeEventListener("visibilitychange", onVisible);
       if (stopTimer.current) clearTimeout(stopTimer.current);

@@ -1,5 +1,7 @@
 "use server";
 import { after } from "next/server";
+import { updateTag } from "next/cache";
+import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { notifyOrderPlaced } from "@/lib/orderNotify";
 import { orderErrorMessage } from "@/lib/format";
@@ -90,5 +92,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
   if (!row) return { ok: false, error: orderErrorMessage("") };
   // Yönetici telefon bildirimi + (panel kapalıysa) e-posta/WhatsApp — yanıtı geciktirmeden
   after(() => notifyOrderPlaced(row, input.name.trim()));
+  // Katalog saatlik önbellekte: satılan ürünlerin stoğu vitrinde hemen güncellensin
+  updateTag(CATALOG_TAG);
   return { ok: true, id: row.order_id, token: row.access_token, orderNo: Number(row.order_no) };
 }

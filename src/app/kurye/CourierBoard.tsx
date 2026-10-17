@@ -42,7 +42,7 @@ export function CourierBoard({ token }: { token: string }) {
 
   useEffect(() => {
     const first = setTimeout(load, 0);
-    const t = setInterval(load, 15_000);
+    const t = setInterval(() => document.visibilityState === "visible" && load(), 30_000);
     const vis = () => document.visibilityState === "visible" && load();
     document.addEventListener("visibilitychange", vis);
     return () => {
@@ -131,7 +131,7 @@ export function CourierBoard({ token }: { token: string }) {
               ))}
             </>
           )}
-          <p className="pt-2 text-center text-xs text-muted">Sayfa her 15 saniyede bir yenilenir.</p>
+          <p className="pt-2 text-center text-xs text-muted">Sayfa her 30 saniyede bir yenilenir.</p>
         </>
       )}
     </div>

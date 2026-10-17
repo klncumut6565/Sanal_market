@@ -1,5 +1,5 @@
 "use client";
-// Yönetici için canlı kurye haritası (OpenStreetMap + Leaflet). 15 sn'de bir yenilenir.
+// Yönetici için canlı kurye haritası (OpenStreetMap + Leaflet). 30 sn'de bir yenilenir.
 // orderId verilirse o siparişin kuryesine odaklanır ve teslimat sırasındaki rota izini çizer.
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
@@ -106,7 +106,7 @@ export function CourierMap({ orderId, courierId, height = 360 }: { orderId?: str
       };
 
       await draw();
-      timer = setInterval(() => void draw(), 15_000);
+      timer = setInterval(() => document.visibilityState === "visible" && void draw(), 30_000);
     })();
 
     return () => {
@@ -129,7 +129,7 @@ export function CourierMap({ orderId, courierId, height = 360 }: { orderId?: str
             ? info.focus?.last_loc_at
               ? `Kurye konumu: ${ago(info.focus.last_loc_at, info.now)} güncellendi${orderId ? " · mavi çizgi: teslimat rotası" : ""}`
               : "Kurye henüz konum paylaşmadı (mesaide ve konum izni açık olmalı)."
-            : `${info.shown} kurye haritada · yeşil: boşta, mavi: yolda, gri: konum eski / molada · 15 sn'de bir yenilenir`}
+            : `${info.shown} kurye haritada · yeşil: boşta, mavi: yolda, gri: konum eski / molada · 30 sn'de bir yenilenir`}
       </p>
     </div>
   );

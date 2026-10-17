@@ -136,7 +136,7 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <LiveRefresh tables={["orders", "courier_settlements", "couriers", "pos_receipts"]} />
+          <LiveRefresh tables={["orders", "courier_settlements", "couriers", "pos_receipts"]} intervalMs={120_000} />
           <p className="text-xs text-muted">
             Kurye giriş adresi: <b>/giris?kurye=1</b>
           </p>

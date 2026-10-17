@@ -44,7 +44,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-4">
-      <AutoRefresh seconds={20} />
+      <AutoRefresh seconds={120} realtime={["orders"]} />
       <h1 className="text-2xl font-black">Siparişler</h1>
       <AdminPushCard />
       <CourierSettingsForm phone={courier?.courier_phone ?? null} apikey={courier?.courier_apikey ?? null} lastResult={courier?.courier_last_result ?? null} courierToken={courier?.courier_token ?? null} />

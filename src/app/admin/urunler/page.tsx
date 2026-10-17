@@ -26,7 +26,12 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const { supabase } = await requireAdmin();
   const now = new Date().getTime();
   const [{ data: products }, { data: categories }, { data: costs }] = await Promise.all([
-    fetchAll((f, t) => supabase.from("products").select("*").order("name").order("id").range(f, t)),
+    fetchAll((f, t) => supabase
+        .from("products")
+        .select("id,name,barcode,unit_label,price,sale_price,stock,critical_stock,image_url,emoji,is_active,category_id,info_updated_at")
+        .order("name")
+        .order("id")
+        .range(f, t)),
     supabase.from("categories").select("*").order("sort_order"),
     fetchAll((f, t) => supabase.from("product_costs").select("product_id,cost_price").order("product_id").range(f, t)),
   ]);

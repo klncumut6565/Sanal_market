@@ -52,7 +52,7 @@ async function OrderContent({ params, searchParams }: Props) {
 
   return (
     <div className="space-y-4">
-      {!final && <AutoRefresh seconds={20} />}
+      {!final && <AutoRefresh seconds={30} />}
       {sp.yeni && (
         <div className="rounded-2xl bg-ok p-4 text-white">
           <p className="text-lg font-black">Siparişin alındı! 🎉</p>
