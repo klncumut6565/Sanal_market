@@ -6,17 +6,17 @@ import { ProductRow } from "@/components/shop/ProductCard";
 import { ScrollRow } from "@/components/shop/ScrollRow";
 import type { Category } from "@/lib/types";
 import { Suspense } from "react";
-import { getCategories, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
+import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
 import { VoicePromo } from "@/components/shop/VoicePromo";
-import { topLevel, withDescendants } from "@/lib/categoryTree";
+import { childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
 import type { Metadata } from "next";
 import { CITY, REGION, SITE_DESCRIPTION, SITE_URL, abs, isPublicCategory, jsonLdHtml } from "@/lib/seo";
 
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
-  const [categories, products, s] = await Promise.all([getCategories(), getProducts(), getStoreSettings()]);
+  const [categories, products, s, pop] = await Promise.all([getCategories(), getProducts(), getStoreSettings(), getCategoryPopularity()]);
   const deals = products.filter((p) => p.sale_price != null && p.stock > 0);
   const featured = products.filter((p) => p.is_featured);
   const seoCats = topLevel(categories.filter(isPublicCategory));
@@ -102,12 +102,9 @@ export default async function HomePage() {
       {deals.length > 0 && <Section title="Fırsat ürünleri 🔥" products={deals} />}
       {featured.length > 0 && <Section title="Çok satanlar" products={featured} />}
 
-      {topLevel(categories).map((c) => {
-        const ids = withDescendants(categories, c.id);
-        const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
-        if (all.length === 0) return null;
-        return <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={all.slice(0, 20)} total={all.length} />;
-      })}
+      {topLevel(categories).map((c) => (
+        <CategorySection key={c.id} cat={c} categories={categories} products={products} pop={pop} />
+      ))}
 
       <section className="rounded-3xl bg-white p-5 text-sm leading-relaxed text-muted ring-1 ring-line sm:p-6">
         <h2 className="mb-2 text-base font-extrabold text-ink">{CITY} online market: market alışverişiniz kapınızda</h2>
@@ -150,16 +147,62 @@ async function AllCategoryTiles({ categories }: { categories: Category[] }) {
 
 /** Oturuma göre ek kategoriler — normal kategoriler gibi, ayrı etiket olmadan gösterilir. */
 async function MemberSections() {
-  const { categories, products } = await getMemberCatalog();
+  const [{ categories, products }, pop] = await Promise.all([getMemberCatalog(), getCategoryPopularity()]);
   if (!categories.length) return null;
   return (
     <>
-      {topLevel(categories).map((c) => {
-        const ids = withDescendants(categories, c.id);
-        const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
-        return all.length ? <Section key={c.id} title={c.name} href={`/kategori/${c.slug}`} products={all.slice(0, 20)} total={all.length} /> : null;
-      })}
+      {topLevel(categories).map((c) => (
+        <CategorySection key={c.id} cat={c} categories={categories} products={products} pop={pop} />
+      ))}
     </>
+  );
+}
+
+type Prods = Awaited<ReturnType<typeof getProducts>>;
+const SUB_ROW = 12;
+
+/**
+ * Ana kategori bölümü: alt kategorisi varsa her alt kategori ayrı tek satır (en çok tercih edilen üstte),
+ * doğrudan ana kategoriye bağlı ürünler en sonda "Diğer" satırında. Alt kategori yoksa tek satır.
+ */
+function CategorySection({ cat, categories, products, pop }: { cat: Category; categories: Category[]; products: Prods; pop: Record<string, number> }) {
+  const ids = withDescendants(categories, cat.id);
+  const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
+  if (all.length === 0) return null;
+  const subs = byPopularity(childrenOf(categories, cat.id), pop)
+    .map((sc) => ({ sc, items: all.filter((p) => p.category_id === sc.id) }))
+    .filter((x) => x.items.length > 0);
+  if (subs.length === 0) return <Section title={cat.name} href={`/kategori/${cat.slug}`} products={all.slice(0, 20)} total={all.length} />;
+  const direct = all.filter((p) => p.category_id === cat.id);
+  const n = all.length.toLocaleString("tr-TR");
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-extrabold">{cat.name}</h2>
+        <Link href={`/kategori/${cat.slug}`} className="flex items-center text-sm font-bold text-brand">
+          Tümü ({n} ürün) <ChevronRight size={16} />
+        </Link>
+      </div>
+      {subs.map(({ sc, items }) => (
+        <SubRow key={sc.id} title={sc.name} href={`/kategori/${sc.slug}`} products={items} />
+      ))}
+      {direct.length > 0 && <SubRow title={`Diğer ${cat.name}`} href={`/kategori/${cat.slug}`} products={direct} />}
+    </section>
+  );
+}
+
+function SubRow({ title, href, products }: { title: string; href: string; products: Prods }) {
+  const n = products.length.toLocaleString("tr-TR");
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between gap-2 border-l-4 border-brand pl-2.5">
+        <h3 className="min-w-0 truncate text-[15px] font-bold">{title}</h3>
+        <Link href={href} className="flex shrink-0 items-center text-xs font-bold text-brand">
+          Tümü ({n}) <ChevronRight size={14} />
+        </Link>
+      </div>
+      <ProductRow products={products.slice(0, SUB_ROW)} moreHref={products.length > SUB_ROW ? href : undefined} moreLabel={`Tümünü gör (${n})`} />
+    </div>
   );
 }
 

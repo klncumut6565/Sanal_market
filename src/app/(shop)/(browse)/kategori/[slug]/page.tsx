@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ProductGrid } from "@/components/shop/ProductCard";
 import { GridSkeleton } from "@/components/shop/Skeletons";
-import { getCategories, getMemberCatalog, getProducts } from "@/lib/data/catalog";
+import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProducts } from "@/lib/data/catalog";
 import { childrenOf, withDescendants } from "@/lib/categoryTree";
 import { CITY, breadcrumbLd, isPublicCategory, jsonLdHtml } from "@/lib/seo";
 
@@ -64,7 +64,8 @@ async function CategoryContent({ params, searchParams }: Props) {
     .sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0));
   const parent = cat.parent_id ? categories.find((c) => c.id === cat.parent_id) : null;
   const top = parent ?? cat;
-  const subs = childrenOf(categories, top.id);
+  // Alt kategoriler müşterilerin en çok tercih ettiği sırada
+  const subs = byPopularity(childrenOf(categories, top.id), await getCategoryPopularity());
   const chip = "shrink-0 rounded-full px-3.5 py-1.5 text-sm font-bold ring-1 transition";
   const crumbs = isPublicCategory(cat)
     ? breadcrumbLd([

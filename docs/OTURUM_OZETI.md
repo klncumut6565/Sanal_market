@@ -321,3 +321,8 @@
 ## 2026-10-18 — Kategori açılır listeleri gruplu
 - Yeni `CategoryOptionList`: her ana kategori bir `optgroup` başlığı (▸ BÜYÜK HARF, alt sayısı), içinde "Ad · ana kategori" ve girintili "↳ Alt (Ana)".
 - Kullanıldığı yerler: Ürünler & stok satır içi kategori seçimi (`InlineCategorySelect`), ürün düzenleme formu, hızlı ekle (liste) — iki seçim.
+
+## 2026-10-18 — Vitrin: alt kategori satırları (en çok tercih edilen önce)
+- RPC `category_popularity()` (migration 20261018030000, definer, anonim): kategori başına son 90 gün satış adedi (online siparişler iptal/çıkarılan hariç + mağaza satışları iptal hariç). `getCategoryPopularity()` günlük önbellekli; `byPopularity()` sıralar (eşitlikte yönetim sırası).
+- Ana sayfa (`CategorySection`/`SubRow`): her ana kategori başlığı altında her alt kategori ayrı tek satır (12 ürün + Tümü), doğrudan ana kategorideki ürünler sonda "Diğer …" satırı. Alt kategorisi olmayan kategoriler eskisi gibi tek satır. Üyeye özel kategoriler de aynı düzende.
+- Kategori sayfasındaki alt kategori çipleri de aynı tercih sırasında.

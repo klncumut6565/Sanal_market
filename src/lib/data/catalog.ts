@@ -81,6 +81,25 @@ export async function searchProducts(q: string): Promise<Product[]> {
   return ((data ?? []) as Product[]).map(num);
 }
 
+/** Kategori başına son 90 gün satış adedi (online + mağaza). Alt kategorileri tercih sırasına dizmek için; günlük önbellek. */
+export async function getCategoryPopularity(): Promise<Record<string, number>> {
+  "use cache";
+  cacheTag(CATALOG_TAG);
+  cacheLife("days");
+  if (!hasSupabase) return {};
+  const { data, error } = await createPublicClient().rpc("category_popularity");
+  if (error) {
+    console.error("[katalog] kategori popülerliği alınamadı:", error.message);
+    return {};
+  }
+  return Object.fromEntries(((data ?? []) as { category_id: string; qty: number | string }[]).map((r) => [r.category_id, Number(r.qty)]));
+}
+
+/** Alt kategoriler: en çok satan önce, eşitse yönetimdeki sıra. */
+export function byPopularity<T extends { id: string; sort_order: number; name: string }>(cats: T[], pop: Record<string, number>): T[] {
+  return [...cats].sort((a, b) => (pop[b.id] ?? 0) - (pop[a.id] ?? 0) || a.sort_order - b.sort_order || a.name.localeCompare(b.name, "tr"));
+}
+
 export async function getStoreSettings(): Promise<StoreSettings> {
   "use cache";
   cacheTag(SETTINGS_TAG);
