@@ -4,6 +4,7 @@ import { CategoryCardBody } from "@/components/shop/CategoryIcon";
 import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { ScrollRow } from "@/components/shop/ScrollRow";
+import { SubCategoryTabs } from "@/components/shop/SubCategoryTabs";
 import type { Category } from "@/lib/types";
 import { Suspense } from "react";
 import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
@@ -159,54 +160,48 @@ async function MemberSections() {
 }
 
 type Prods = Awaited<ReturnType<typeof getProducts>>;
-const SUB_ROW = 12;
+const SUB_ROW = 16;
 
 /**
- * Ana kategori bölümü: alt kategorisi varsa her alt kategori ayrı tek satır (en çok tercih edilen üstte),
- * doğrudan ana kategoriye bağlı ürünler en sonda "Diğer" satırında. Alt kategori yoksa tek satır.
+ * Ana kategori bölümü: başlığın hemen altında alt kategori sekmeleri yan yana (en çok tercih edilen ilk, seçili);
+ * altında seçili alt kategorinin ürün satırı. Doğrudan ana kategorideki ürünler "Diğer" sekmesinde.
+ * Alt kategori yoksa eskisi gibi tek satır.
  */
 function CategorySection({ cat, categories, products, pop }: { cat: Category; categories: Category[]; products: Prods; pop: Record<string, number> }) {
   const ids = withDescendants(categories, cat.id);
   const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
   if (all.length === 0) return null;
-  const subs = byPopularity(childrenOf(categories, cat.id), pop)
-    .map((sc) => ({ sc, items: all.filter((p) => p.category_id === sc.id) }))
+  const tabs = byPopularity(childrenOf(categories, cat.id), pop)
+    .map((sc) => ({ id: sc.id, label: sc.name, href: `/kategori/${sc.slug}`, items: all.filter((p) => p.category_id === sc.id) }))
     .filter((x) => x.items.length > 0);
-  if (subs.length === 0) return <Section title={cat.name} href={`/kategori/${cat.slug}`} products={all.slice(0, 20)} total={all.length} />;
+  if (tabs.length === 0) return <Section title={cat.name} href={`/kategori/${cat.slug}`} products={all.slice(0, 20)} total={all.length} />;
   const direct = all.filter((p) => p.category_id === cat.id);
+  if (direct.length) tabs.push({ id: `${cat.id}-diger`, label: "Diğer", href: `/kategori/${cat.slug}`, items: direct });
   const n = all.length.toLocaleString("tr-TR");
   return (
-    <section className="space-y-3">
-      <div className="flex items-center justify-between">
+    <section>
+      <div className="mb-2 flex items-center justify-between">
         <h2 className="text-lg font-extrabold">{cat.name}</h2>
         <Link href={`/kategori/${cat.slug}`} className="flex items-center text-sm font-bold text-brand">
           Tümü ({n} ürün) <ChevronRight size={16} />
         </Link>
       </div>
-      {subs.map(({ sc, items }) => (
-        <SubRow key={sc.id} title={sc.name} href={`/kategori/${sc.slug}`} products={items} />
-      ))}
-      {direct.length > 0 && <SubRow title={`Diğer ${cat.name}`} href={`/kategori/${cat.slug}`} products={direct} />}
+      <SubCategoryTabs
+        tabs={tabs.map((t) => ({ id: t.id, label: t.label, count: t.items.length }))}
+        panels={tabs.map((t) => (
+          <ProductRow
+            key={t.id}
+            products={t.items.slice(0, SUB_ROW)}
+            moreHref={t.items.length > SUB_ROW ? t.href : undefined}
+            moreLabel={`Tümünü gör (${t.items.length.toLocaleString("tr-TR")})`}
+          />
+        ))}
+      />
     </section>
   );
 }
 
-function SubRow({ title, href, products }: { title: string; href: string; products: Prods }) {
-  const n = products.length.toLocaleString("tr-TR");
-  return (
-    <div>
-      <div className="mb-2 flex items-center justify-between gap-2 border-l-4 border-brand pl-2.5">
-        <h3 className="min-w-0 truncate text-[15px] font-bold">{title}</h3>
-        <Link href={href} className="flex shrink-0 items-center text-xs font-bold text-brand">
-          Tümü ({n}) <ChevronRight size={14} />
-        </Link>
-      </div>
-      <ProductRow products={products.slice(0, SUB_ROW)} moreHref={products.length > SUB_ROW ? href : undefined} moreLabel={`Tümünü gör (${n})`} />
-    </div>
-  );
-}
-
-function Section({ title, href, products, total }: { title: string; href?: string; products: Awaited<ReturnType<typeof getProducts>>; total?: number }) {
+function Section({ title, href, products, total }: { title: string; href?: string; products: Prods; total?: number }) {
   const n = total ?? products.length;
   return (
     <section>

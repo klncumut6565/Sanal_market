@@ -326,3 +326,5 @@
 - RPC `category_popularity()` (migration 20261018030000, definer, anonim): kategori başına son 90 gün satış adedi (online siparişler iptal/çıkarılan hariç + mağaza satışları iptal hariç). `getCategoryPopularity()` günlük önbellekli; `byPopularity()` sıralar (eşitlikte yönetim sırası).
 - Ana sayfa (`CategorySection`/`SubRow`): her ana kategori başlığı altında her alt kategori ayrı tek satır (12 ürün + Tümü), doğrudan ana kategorideki ürünler sonda "Diğer …" satırı. Alt kategorisi olmayan kategoriler eskisi gibi tek satır. Üyeye özel kategoriler de aynı düzende.
 - Kategori sayfasındaki alt kategori çipleri de aynı tercih sırasında.
+
+- **Güncelleme (aynı gün):** alt kategori satırları yerine sekme düzeni — `SubCategoryTabs` (client): kategori başlığının hemen altında alt kategori düğmeleri yan yana (en çok tercih edilen ilk ve seçili, ürün sayısıyla), altında seçili alt kategorinin tek ürün satırı (16 ürün + Tümünü gör). Doğrudan ana kategorideki ürünler "Diğer" sekmesinde. Sekme değişimi sayfa yenilemeden.
