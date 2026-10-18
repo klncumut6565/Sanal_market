@@ -167,10 +167,10 @@ export async function findByBarcode(code: string): Promise<BarcodeProduct | null
   const { supabase } = await requireAdmin();
   const c = cleanBarcode(code);
   if (!c) return null;
+  // Benzersizlik kuralıyla aynı karşılaştırma (baştaki 0, boşluk vb. farkı yok sayılır: UPC-A ↔ EAN-13)
   const { data } = await supabase
-    .from("products")
+    .rpc("product_by_barcode", { p_code: c })
     .select("id,name,unit_label,price,sale_price,stock,image_url,emoji,is_active,barcode")
-    .eq("barcode", c)
     .maybeSingle();
   if (!data) return null;
   return { ...data, price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price) } as BarcodeProduct;

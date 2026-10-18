@@ -26,6 +26,7 @@ import { createClient } from "@/lib/supabase/client";
 import { formatTL } from "@/lib/format";
 import { parseNumTR } from "@/lib/numTR";
 import { useHidScanner } from "@/lib/hidScanner";
+import { barcodeKey } from "@/lib/trFold";
 import { PosHistory } from "./PosHistory";
 import { PosReceipt, type ReceiptData } from "./PosReceipt";
 import { fold, posError, r2, unitPrice, type PosLine, type PosProduct, type PosStore } from "./posTypes";
@@ -152,7 +153,7 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
 
   const byBarcode = useMemo(() => {
     const m = new Map<string, PosProduct>();
-    for (const p of products ?? []) if (p.barcode) m.set(p.barcode.trim(), p);
+    for (const p of products ?? []) if (p.barcode) m.set(barcodeKey(p.barcode), p);
     return m;
   }, [products]);
 
@@ -194,9 +195,8 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
     (raw: string): boolean | void => {
       const code = raw.trim();
       if (!code) return false;
-      const alt = code.replace(/^0+/, "");
       if (PRODUCT_LIST_ENABLED) {
-        const p = byBarcode.get(code) ?? byBarcode.get(alt);
+        const p = byBarcode.get(barcodeKey(code));
         if (p) addProduct(p, multiplier);
         else say(false, `Barkod bulunamadı: ${code}`);
         return !!p;
@@ -208,12 +208,7 @@ export function PosScreen({ store, categories }: { store: PosStore; categories: 
         return true;
       }
       void (async () => {
-        const { data } = await sb
-          .from("products")
-          .select(POS_COLS)
-          .in("barcode", alt && alt !== code ? [code, alt] : [code])
-          .limit(1)
-          .maybeSingle();
+        const { data } = await sb.rpc("product_by_barcode", { p_code: code }).select(POS_COLS).maybeSingle();
         const p = (data as PosProduct | null) ?? null;
         if (p) {
           codeCache.current.set(code, p);

@@ -312,3 +312,8 @@
 - Kurye ekranı (`CourierApp.tsx`): konum güncellemesi (15 sn'de bir `couriers` satırı) artık tam yenileme tetiklemiyor; yalnızca ad/telefon/araç/plaka/ücret/mesai gerçekten değişirse işlem. Sipariş değişiminde yalnızca açık görevler yüklenir; kazanç/geçmiş (3 RPC + hesaplaşmalar) teslim/iptal (benim siparişim listeden düşünce), hesaplaşma, ücret değişimi ya da 5 dk'da bir.
 - Yönetici Kuryeler (`LiveRefresh` yeni `ignore` prop'u): yalnızca konum sütunları değişen `couriers` olayları sayfayı yenilemez; harita kendi 30 sn döngüsüyle güncellenir.
 - Ürünler & stok toplu seçim çubuğuna "Satışa aç" / "Pasif yap" (`setProductsActive`, 200'lük parçalar, vitrin önbelleği bir kez yenilenir).
+
+## 2026-10-18 — Barkod eşleşmesi (baştaki 0 farkı)
+- Sorun: Barkodla güncelle (`findByBarcode`) ve satış ekranı birebir eşleşme arıyordu; benzersizlik kuralı ise `norm_barcode` (baştaki 0 / boşluk farkı yok). Kayıtlı "048415520577" ↔ okunan "48415520577" bulunamıyor, yeni ürün eklerken "bu barkod kayıtlı" çıkıyordu (23 ürün baştaki 0'lı).
+- RPC `product_by_barcode(p_code)` (migration 20261018020000) → `findByBarcode` ve POS barkod sorgusu bunu kullanıyor; POS bellek haritası da `barcodeKey` ile.
+- Not: 8691216016972 bugün 19:36'da "HARİBO PHANTASİA JELİBON" adına kaydedilmiş — Altın Ayıcık eklenirken uyarı bundan; hangisinin barkodu doğruysa ötekinden silinmeli.
