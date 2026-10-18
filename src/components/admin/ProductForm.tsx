@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { categoryOptions } from "@/lib/categoryTree";
+import { CategoryOptionList } from "./CategoryOptionList";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ClipboardPaste, Loader2, Plus, ScanBarcode, X } from "lucide-react";
 import { compressImage } from "@/lib/imageCompress";
@@ -267,7 +267,7 @@ export function ProductForm({
           <F label="Kategori">
             <select name="category_id" defaultValue={product?.category_id ?? initial?.category_id ?? ""} className="input">
               <option value="">— Seçin —</option>
-              {categoryOptions(categories).map((o) => <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>)}
+              <CategoryOptionList categories={categories} />
             </select>
           </F>
           <F label="Birim (ör. 1 kg, 500 g, 1 L)"><input name="unit_label" defaultValue={product?.unit_label ?? initial?.unit_label ?? ""} className="input" /></F>

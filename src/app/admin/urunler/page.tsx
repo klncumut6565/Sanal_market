@@ -13,7 +13,7 @@ import { AutoSubmitSelect } from "@/components/admin/AutoSubmitSelect";
 import { BulkSelectProvider, RowCheckbox, SelectPageCheckbox } from "@/components/admin/BulkSelect";
 import { Suspense } from "react";
 import { fold } from "@/lib/trFold";
-import { categoryOptions, childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
+import { childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
 import { CategoryFilter } from "@/components/admin/CategoryFilter";
 
 const PAGE = 100;
@@ -26,8 +26,6 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const now = new Date().getTime();
   const { data: categories } = await supabase.from("categories").select("*").order("sort_order");
   const cats = (categories ?? []) as Category[];
-  const treeOpts = categoryOptions(cats);
-  const catOpts = treeOpts.map((o) => ({ id: o.id, name: o.label }));
   // Kategori + alt kategori: eski bağlantılarda kategori=alt kategori id'si olabilir → üstünü ana, kendisini alt say
   const byId = new Map(cats.map((c) => [c.id, c]));
   const picked = sp.kategori ? byId.get(sp.kategori) : undefined;
@@ -200,7 +198,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                   </div>
                 </td>
                 <td className="pr-2">
-                  <InlineCategorySelect id={p.id} value={p.category_id} options={catOpts} />
+                  <InlineCategorySelect id={p.id} value={p.category_id} categories={cats} />
                 </td>
                 <td>
                   <form action={quickUpdateProduct} className="flex items-center gap-1">

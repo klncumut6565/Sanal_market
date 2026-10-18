@@ -2,9 +2,12 @@
 import { useState, useTransition } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { quickUpdateProduct } from "@/app/admin/actions";
+import { CategoryOptionList } from "./CategoryOptionList";
+
+type Cat = { id: string; name: string; sort_order: number; parent_id?: string | null };
 
 /** Ürün listesinde kategoriyi doğrudan seç → anında kaydeder. */
-export function InlineCategorySelect({ id, value, options }: { id: string; value: string | null; options: { id: string; name: string }[] }) {
+export function InlineCategorySelect({ id, value, categories }: { id: string; value: string | null; categories: Cat[] }) {
   const [cur, setCur] = useState(value ?? "");
   const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
@@ -28,11 +31,7 @@ export function InlineCategorySelect({ id, value, options }: { id: string; value
         className={`w-full min-w-0 max-w-40 truncate rounded-lg border px-1.5 py-1.5 text-[13px] ${cur ? "border-line" : "border-dashed border-warn text-muted"}`}
       >
         <option value="">— Kategori seç —</option>
-        {options.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
+        <CategoryOptionList categories={categories} />
       </select>
       {pending ? <Loader2 size={14} className="animate-spin text-muted" /> : done ? <Check size={14} className="text-emerald-600" /> : null}
     </div>

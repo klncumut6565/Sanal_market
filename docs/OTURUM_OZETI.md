@@ -317,3 +317,7 @@
 - Sorun: Barkodla güncelle (`findByBarcode`) ve satış ekranı birebir eşleşme arıyordu; benzersizlik kuralı ise `norm_barcode` (baştaki 0 / boşluk farkı yok). Kayıtlı "048415520577" ↔ okunan "48415520577" bulunamıyor, yeni ürün eklerken "bu barkod kayıtlı" çıkıyordu (23 ürün baştaki 0'lı).
 - RPC `product_by_barcode(p_code)` (migration 20261018020000) → `findByBarcode` ve POS barkod sorgusu bunu kullanıyor; POS bellek haritası da `barcodeKey` ile.
 - Not: 8691216016972 bugün 19:36'da "HARİBO PHANTASİA JELİBON" adına kaydedilmiş — Altın Ayıcık eklenirken uyarı bundan; hangisinin barkodu doğruysa ötekinden silinmeli.
+
+## 2026-10-18 — Kategori açılır listeleri gruplu
+- Yeni `CategoryOptionList`: her ana kategori bir `optgroup` başlığı (▸ BÜYÜK HARF, alt sayısı), içinde "Ad · ana kategori" ve girintili "↳ Alt (Ana)".
+- Kullanıldığı yerler: Ürünler & stok satır içi kategori seçimi (`InlineCategorySelect`), ürün düzenleme formu, hızlı ekle (liste) — iki seçim.

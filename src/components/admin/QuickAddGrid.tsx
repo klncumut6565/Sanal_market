@@ -7,6 +7,7 @@ import { ChevronLeft, Loader2, Plus, Save, ScanBarcode, Trash2 } from "lucide-re
 import { BarcodeScanner } from "./BarcodeScanner";
 import { useHidScanner } from "@/lib/hidScanner";
 import { categoryOptions } from "@/lib/categoryTree";
+import { CategoryOptionList } from "./CategoryOptionList";
 import { createClient } from "@/lib/supabase/client";
 import { quickAddProducts, type QuickRow } from "@/app/admin/actions";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
@@ -225,9 +226,7 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
           Varsayılan kategori
           <select value={defCat} onChange={(e) => applyDefaultCat(e.target.value)} className="input w-auto py-2">
             <option value="">— Seç —</option>
-            {catOpts.map((o) => (
-              <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>
-            ))}
+            <CategoryOptionList categories={categories} />
           </select>
         </label>
       </div>
@@ -264,9 +263,7 @@ export function QuickAddGrid({ categories }: { categories: Category[] }) {
                           className="h-9 w-full rounded-lg border border-transparent bg-transparent px-1.5 hover:border-line focus:border-brand focus:outline-none"
                         >
                           <option value="">—</option>
-                          {catOpts.map((o) => (
-                            <option key={o.id} value={o.id}>{o.depth ? `  ↳ ${o.label}` : o.label}</option>
-                          ))}
+                          <CategoryOptionList categories={categories} />
                         </select>
                       ) : (
                         <div className="relative flex items-center">
