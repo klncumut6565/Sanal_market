@@ -25,6 +25,7 @@ export function ProductForm({
   initialBarcode,
   initial,
   cost,
+  returnTo,
 }: {
   product?: Product;
   categories: Category[];
@@ -32,6 +33,8 @@ export function ProductForm({
   /** Fotoğraftan tanıma gibi yerlerden gelen ön doldurma (yalnızca yeni üründe) */
   initial?: { name?: string; unit_label?: string; category_id?: string; image_url?: string };
   cost?: number | null;
+  /** Kaydet / Vazgeç sonrası dönülecek liste adresi (filtreler korunur) */
+  returnTo?: string;
 }) {
   const [priceS, setPriceS] = useState(product?.price != null ? String(product.price) : "");
   const [saleS, setSaleS] = useState(product?.sale_price != null ? String(product.sale_price) : "");
@@ -142,6 +145,7 @@ export function ProductForm({
 
   return (
     <form action={action} className="space-y-4">
+      {returnTo && <input type="hidden" name="return_to" value={returnTo} />}
       {scanning && (
         <BarcodeScanner
           onResult={(code) => {
@@ -330,7 +334,7 @@ export function ProductForm({
       {state.error && <p className="rounded-lg bg-brand-soft p-3 text-sm font-semibold text-brand">{state.error}</p>}
       <div className="flex gap-2">
         <button disabled={pending || uploading} className="btn-primary">{pending && <Loader2 size={16} className="animate-spin" />} Kaydet</button>
-        <Link href="/admin/urunler" className="btn-ghost">Vazgeç</Link>
+        <Link href={returnTo ?? "/admin/urunler"} className="btn-ghost">Vazgeç</Link>
       </div>
     </form>
   );

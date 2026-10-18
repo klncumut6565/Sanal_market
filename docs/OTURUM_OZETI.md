@@ -302,3 +302,8 @@
   - Masaüstü: fare üzerindeyken 2,5× mercek yakınlaştırma (imleci takip eder).
   - Tıklama / mobilde dokunma: tam ekran görüntüleyici (portal) — iki parmakla büyütme (5×'e kadar), çift dokunma, büyütülmüşken sürükleme, kaydırarak görsel değiştirme, aşağı çekerek kapatma, tekerlek, +/− düğmeleri, Esc ve ok tuşları.
   - Büyük görsel (~1920 px, next/image optimize) yalnızca yakınlaştırma başlayınca indirilir.
+
+## 2026-10-18 — Ürünler & stok: veritabanında filtreleme + filtre korunması
+- Yeni RPC `admin_product_page` (migration 20261018010000, security definer + is_admin kontrolü): arama (Türkçe katlama `tr_fold`), kategori, stok/mükerrer/barkodsuz/görselsiz, marj filtreleri, sıralama ve 100'lük sayfalama veritabanında. Dönen: sayfa satırları (+alış, mükerrer sayıları), toplam, kategori sayıları, mükerrer grup sayısı, ortalama marj, (filtreliyse) tüm id'ler.
+- Her açılış/filtre/güncellemede ≈1,2 MB (tüm ürünler + tüm alış fiyatları) yerine ≈50 KB; sorgu ~130 ms (RLS satır başı is_admin çağrısı definer ile atlandı).
+- Düzenle → `?geri=<liste adresi>`; kaydet, vazgeç ve sil aynı filtre + sayfaya döner (`safeProductsReturn` yalnızca /admin/urunler kabul eder).

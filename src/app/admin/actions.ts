@@ -93,7 +93,12 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
   }
 
   updateTag(CATALOG_TAG);
-  redirect("/admin/urunler");
+  redirect(safeProductsReturn(str(fd, "return_to")));
+}
+
+/** Ürün listesine dönüş adresi: yalnızca /admin/urunler (filtre parametreleriyle) kabul edilir. */
+function safeProductsReturn(v: string) {
+  return /^\/admin\/urunler(\?[^\s]*)?$/.test(v) ? v : "/admin/urunler";
 }
 
 export async function deleteProduct(fd: FormData) {

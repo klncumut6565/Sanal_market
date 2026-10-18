@@ -12,8 +12,7 @@ import { LiveSearchInput } from "@/components/admin/LiveSearchInput";
 import { AutoSubmitSelect } from "@/components/admin/AutoSubmitSelect";
 import { BulkSelectProvider, RowCheckbox, SelectPageCheckbox } from "@/components/admin/BulkSelect";
 import { Suspense } from "react";
-import { fetchAll } from "@/lib/data/fetchAll";
-import { barcodeKey, fold, matchWords, nameKey } from "@/lib/trFold";
+import { fold } from "@/lib/trFold";
 import { categoryOptions, childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
 import { CategoryFilter } from "@/components/admin/CategoryFilter";
 
@@ -25,18 +24,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const now = new Date().getTime();
-  const [{ data: products }, { data: categories }, { data: costs }] = await Promise.all([
-    fetchAll((f, t) => supabase
-        .from("products")
-        .select("id,name,barcode,unit_label,price,sale_price,stock,critical_stock,image_url,emoji,is_active,category_id,info_updated_at")
-        .order("name")
-        .order("id")
-        .range(f, t)),
-    supabase.from("categories").select("*").order("sort_order"),
-    fetchAll((f, t) => supabase.from("product_costs").select("product_id,cost_price").order("product_id").range(f, t)),
-  ]);
-  const costOf = new Map((costs ?? []).map((c) => [c.product_id as string, Number(c.cost_price)]));
-  const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
+  const { data: categories } = await supabase.from("categories").select("*").order("sort_order");
   const cats = (categories ?? []) as Category[];
   const treeOpts = categoryOptions(cats);
   const catOpts = treeOpts.map((o) => ({ id: o.id, name: o.label }));
@@ -46,11 +34,39 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const topId = picked ? (picked.parent_id && byId.has(picked.parent_id) ? picked.parent_id : picked.id) : "";
   const subId = picked && picked.id !== topId ? picked.id : sp.alt && byId.get(sp.alt)?.parent_id === topId ? sp.alt : "";
   const catFilter = subId ? withDescendants(cats, subId) : topId ? withDescendants(cats, topId) : null;
-  // Türkçe karakter ve büyük/küçük harf duyarsız, kelime bazlı ("yeni raki 70" → YENİ RAKI 70CL)
-  // Mükerrer şüphesi: aynı ad (yazım farkı yok sayılır) veya aynı barkod (baştaki 0 / boşluk farkı yok sayılır)
-  const allProducts = (products ?? []) as Product[];
-  const perCat = new Map<string, number>();
-  for (const p of allProducts) if (p.category_id) perCat.set(p.category_id, (perCat.get(p.category_id) ?? 0) + 1);
+  const rawQ = (sp.q ?? "").trim();
+  const q = fold(rawQ);
+  const filtered = !!(q || sp.kategori || sp.stok || sp.marj);
+
+  // Filtreleme / sıralama / sayfalama veritabanında (admin_product_page): her açılışta tüm ürünler
+  // yerine yalnızca bu sayfanın 100 satırı + özet bilgiler gelir (Supabase veri çıkışı tasarrufu).
+  const { data: res, error: listErr } = await supabase.rpc("admin_product_page", {
+    p_q: rawQ,
+    p_cats: catFilter ? [...catFilter] : null,
+    p_stok: sp.stok ?? "",
+    p_marj: sp.marj ?? "",
+    p_sira: sp.sira ?? "",
+    p_page: Math.max(1, Number(sp.s) || 1),
+    p_size: PAGE,
+    p_want_ids: filtered,
+  });
+  type Row = Product & { cost: number | null; dup_n: number; dup_b: number };
+  const r = (res ?? {}) as {
+    total?: number;
+    page?: number;
+    rows?: Row[];
+    ids?: string[] | null;
+    cat_counts?: Record<string, number>;
+    dup_groups?: number;
+    with_cost?: number;
+    avg_margin?: number | null;
+  };
+  const shown = (r.rows ?? []).map((p) => ({ ...p, price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price) }));
+  const total = r.total ?? 0;
+  const costOf = new Map(shown.filter((p) => p.cost != null).map((p) => [p.id, Number(p.cost)]));
+  const marginOf = (p: Product) => calcMargin(Number(p.sale_price ?? p.price), costOf.get(p.id));
+  const dupOf = (p: Row) => (p.dup_n > 0 || p.dup_b > 0 ? { n: p.dup_n, b: p.dup_b } : null);
+  const perCat = new Map(Object.entries(r.cat_counts ?? {}));
   const catTops = topLevel(cats).map((c) => ({
     id: c.id,
     name: c.name,
@@ -58,59 +74,9 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   }));
   const catSubs: Record<string, { id: string; name: string; count: number }[]> = {};
   for (const t of catTops) catSubs[t.id] = childrenOf(cats, t.id).map((c) => ({ id: c.id, name: c.name, count: perCat.get(c.id) ?? 0 }));
-  const nameCount = new Map<string, number>();
-  const bcCount = new Map<string, number>();
-  for (const p of allProducts) {
-    const nk = nameKey(p.name);
-    if (nk.length >= 3) nameCount.set(nk, (nameCount.get(nk) ?? 0) + 1);
-    const bk = barcodeKey(p.barcode);
-    if (bk) bcCount.set(bk, (bcCount.get(bk) ?? 0) + 1);
-  }
-  const dupOf = (p: Product) => {
-    const n = (nameCount.get(nameKey(p.name)) ?? 1) - 1;
-    const b = (bcCount.get(barcodeKey(p.barcode)) ?? 1) - 1;
-    return n > 0 || b > 0 ? { n, b } : null;
-  };
-  const dupGroups = new Set(allProducts.filter((p) => dupOf(p)).map((p) => nameKey(p.name))).size;
-  const rawQ = (sp.q ?? "").trim();
-  const q = fold(rawQ);
-  const list = ((products ?? []) as Product[]).filter(
-    (p) =>
-      (!q || matchWords(p.name, rawQ) || (p.barcode ?? "").includes(rawQ.replace(/\s/g, ""))) &&
-      (!catFilter || (!!p.category_id && catFilter.has(p.category_id))) &&
-      (sp.stok !== "kritik" || p.stock <= p.critical_stock) &&
-      (sp.stok !== "mukerrer" || !!dupOf(p)) &&
-      (sp.stok !== "barkodsuz" || !p.barcode?.trim()) &&
-      (sp.stok !== "gorselsiz" || !p.image_url) &&
-      (sp.marj !== "dusuk" || ((m) => !!m && m.marginPct < 10)(marginOf(p))) &&
-      (sp.marj !== "girilmemis" || !costOf.has(p.id)),
-  );
-  if (q) {
-    // Ada göre en iyi eşleşme en üstte: tam eşleşme > başlıyor > kelime başı > içeriyor
-    const rank = (p: Product) => {
-      const n = fold(p.name);
-      if (n === q || p.barcode === rawQ) return 0;
-      if (n.startsWith(q)) return 1;
-      if (n.split(/\s+/).some((w) => w.startsWith(q))) return 2;
-      return 3;
-    };
-    list.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name, "tr"));
-  }
-  if (sp.marj === "dusuk") list.sort((a, b) => (marginOf(a)?.marginPct ?? 0) - (marginOf(b)?.marginPct ?? 0));
-  // Sıralama seçimi (seçilirse arama/marj sıralamasının yerine geçer); fiyat = geçerli satış fiyatı (indirimliyse indirimli)
-  const priceOf = (p: Product) => Number(p.sale_price ?? p.price);
-  const byName = (a: Product, b: Product) => a.name.localeCompare(b.name, "tr");
-  if (sp.sira === "fiyat-artan") list.sort((a, b) => priceOf(a) - priceOf(b) || byName(a, b));
-  else if (sp.sira === "fiyat-azalan") list.sort((a, b) => priceOf(b) - priceOf(a) || byName(a, b));
-  else if (sp.sira === "ad-za") list.sort((a, b) => byName(b, a));
-  else if (sp.sira === "eski") list.sort((a, b) => (a.info_updated_at ?? "").localeCompare(b.info_updated_at ?? "") || byName(a, b));
-  else if (sp.sira === "yeni") list.sort((a, b) => (b.info_updated_at ?? "").localeCompare(a.info_updated_at ?? "") || byName(a, b));
-  else if (sp.stok === "mukerrer") list.sort((a, b) => nameKey(a.name).localeCompare(nameKey(b.name)) || barcodeKey(a.barcode).localeCompare(barcodeKey(b.barcode)));
-  else if (!q && sp.marj !== "dusuk") list.sort(byName);
-  // Genel ortalama marj (alış fiyatı girilmiş aktif ürünler)
-  const pageCount = Math.max(1, Math.ceil(list.length / PAGE));
-  const pageNo = Math.min(pageCount, Math.max(1, Number(sp.s) || 1));
-  const shown = list.slice((pageNo - 1) * PAGE, pageNo * PAGE);
+  const dupGroups = r.dup_groups ?? 0;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE));
+  const pageNo = r.page ?? 1;
   const pageHref = (n: number) => {
     const u = new URLSearchParams();
     for (const [k, v] of Object.entries(sp)) if (v && k !== "s") u.set(k, v);
@@ -118,8 +84,10 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
     const qs = u.toString();
     return `/admin/urunler${qs ? `?${qs}` : ""}`;
   };
-  const withCost = ((products ?? []) as Product[]).filter((p) => p.is_active && costOf.has(p.id));
-  const avgMargin = withCost.length ? withCost.reduce((a, p) => a + (marginOf(p)?.marginPct ?? 0), 0) / withCost.length : null;
+  // Düzenleme sayfasından kaydedince aynı filtre + sayfaya dönülsün
+  const backHref = pageHref(pageNo);
+  const withCostCount = r.with_cost ?? 0;
+  const avgMargin = r.avg_margin ?? null;
 
   return (
     <div className="space-y-4">
@@ -161,8 +129,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
         <button className="btn-ghost">Filtrele</button>
       </form>
       <p className="text-sm text-muted">
-        {q || sp.kategori || sp.stok || sp.marj ? "Bulunan" : "Toplam"} ürün: <b className="text-ink">{list.length}</b>
-        {" "}· Alış fiyatı girilmiş ürün: <b className="text-ink">{withCost.length}</b>
+        {filtered ? "Bulunan" : "Toplam"} ürün: <b className="text-ink">{total}</b>
+        {" "}· Alış fiyatı girilmiş ürün: <b className="text-ink">{withCostCount}</b>
         {dupGroups > 0 && sp.stok !== "mukerrer" && (
           <>
             {" "}·{" "}
@@ -180,7 +148,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
 
       <BulkSelectProvider
         pageIds={shown.map((p) => p.id)}
-        allIds={(q || sp.kategori || sp.stok || sp.marj) && list.length <= 3000 ? list.map((p) => p.id) : null}
+        allIds={filtered && r.ids ? r.ids : null}
         names={Object.fromEntries(shown.map((p) => [p.id, p.name]))}
       >
       <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-line">
@@ -306,7 +274,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                 </td>
                 <td className="pr-3 text-right">
                   <div className="flex items-center justify-end gap-2 whitespace-nowrap">
-                    <Link href={`/admin/urunler/${p.id}`} className="font-bold text-brand">Düzenle</Link>
+                    <Link href={`/admin/urunler/${p.id}?geri=${encodeURIComponent(backHref)}`} className="font-bold text-brand">Düzenle</Link>
                     <DeleteProductButton id={p.id} name={p.name} />
                   </div>
                 </td>
@@ -314,7 +282,8 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
             ))}
           </tbody>
         </table>
-        {list.length === 0 && <p className="p-6 text-center text-muted">Ürün bulunamadı.</p>}
+        {listErr && <p className="p-6 text-center font-semibold text-red-700">Ürünler yüklenemedi: {listErr.message}</p>}
+        {!listErr && total === 0 && <p className="p-6 text-center text-muted">Ürün bulunamadı.</p>}
       </div>
       </BulkSelectProvider>
       {pageCount > 1 && (
@@ -332,7 +301,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
             ))}
           {pageNo < pageCount && <Link href={pageHref(pageNo + 1)} className="btn-ghost px-3 py-1.5">Sonraki →</Link>}
           <span className="ml-2 text-muted">
-            {(pageNo - 1) * PAGE + 1}–{Math.min(pageNo * PAGE, list.length)} / {list.length}
+            {(pageNo - 1) * PAGE + 1}–{Math.min(pageNo * PAGE, total)} / {total}
           </span>
         </nav>
       )}

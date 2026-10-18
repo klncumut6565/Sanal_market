@@ -6,8 +6,11 @@ import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 
 export const metadata = { title: "Ürünü düzenle" };
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProductPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ geri?: string }> }) {
   const { id } = await params;
+  const { geri } = await searchParams;
+  // Listeye dönüş: filtre / sayfa korunur (yalnızca ürün listesi adresleri)
+  const back = geri && /^\/admin\/urunler(\?\S*)?$/.test(geri) ? geri : "/admin/urunler";
   const { supabase } = await requireAdmin();
   const [{ data: product }, { data: categories }, { data: cost }] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle(),
@@ -20,10 +23,10 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-black">Ürünü düzenle</h1>
         <span className="text-sm">
-          <DeleteProductButton id={id} name={(product as Product).name} redirectTo="/admin/urunler" label="Ürünü sil" />
+          <DeleteProductButton id={id} name={(product as Product).name} redirectTo={back} label="Ürünü sil" />
         </span>
       </div>
-      <ProductForm product={product as Product} categories={(categories ?? []) as Category[]} cost={cost ? Number(cost.cost_price) : null} />
+      <ProductForm product={product as Product} categories={(categories ?? []) as Category[]} cost={cost ? Number(cost.cost_price) : null} returnTo={back} />
     </div>
   );
 }
