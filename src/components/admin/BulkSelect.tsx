@@ -1,8 +1,8 @@
 "use client";
 import { createContext, useContext, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Trash2, X } from "lucide-react";
-import { deleteProductsByIds } from "@/app/admin/actions";
+import { EyeOff, ShoppingCart, Trash2, X } from "lucide-react";
+import { deleteProductsByIds, setProductsActive } from "@/app/admin/actions";
 
 type Ctx = {
   selected: Set<string>;
@@ -124,6 +124,15 @@ function BulkBar({ allIds, names }: { allIds: string[] | null; names: Record<str
       router.refresh();
     });
 
+  const setActive = (active: boolean) =>
+    start(async () => {
+      setErr(null);
+      const r = await setProductsActive([...selected], active);
+      if (!r.ok) setErr(r.error ?? "Güncellenemedi.");
+      else clear();
+      router.refresh();
+    });
+
   return (
     <>
       <div className="sticky bottom-3 z-40 mx-auto flex w-fit max-w-full flex-wrap items-center gap-2 rounded-2xl bg-ink px-4 py-2.5 text-sm text-white shadow-2xl">
@@ -133,12 +142,20 @@ function BulkBar({ allIds, names }: { allIds: string[] | null; names: Record<str
             Bulunan {allIds!.length} ürünün tümünü seç
           </button>
         )}
+        <button type="button" disabled={pending} onClick={() => setActive(true)} className="flex items-center gap-1.5 rounded-xl bg-emerald-600 px-3 py-1.5 font-bold disabled:opacity-60">
+          <ShoppingCart size={15} /> Satışa aç
+        </button>
+        <button type="button" disabled={pending} onClick={() => setActive(false)} className="flex items-center gap-1.5 rounded-xl bg-zinc-600 px-3 py-1.5 font-bold disabled:opacity-60">
+          <EyeOff size={15} /> Pasif yap
+        </button>
         <button type="button" onClick={() => (setErr(null), setOpen(true))} className="flex items-center gap-1.5 rounded-xl bg-red-600 px-3 py-1.5 font-bold">
           <Trash2 size={15} /> Seçili ürünleri sil
         </button>
         <button type="button" onClick={clear} className="flex items-center gap-1 rounded-xl px-2 py-1.5 font-semibold hover:bg-white/10">
           <X size={15} /> Seçimi kaldır
         </button>
+        {pending && !open && <span className="text-xs text-white/70">Güncelleniyor…</span>}
+        {err && !open && <span className="w-full text-xs font-semibold text-red-300">{err}</span>}
       </div>
       {open && (
         <div role="dialog" aria-modal="true" className="fixed inset-0 z-[60] grid place-items-center bg-black/40 p-4" onClick={() => !pending && setOpen(false)}>

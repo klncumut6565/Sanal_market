@@ -112,6 +112,9 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   const [now, setNow] = useState(() => Date.now());
   const [loadedAt, setLoadedAt] = useState<number | null>(null);
   const known = useRef<Set<string> | null>(null);
+  const meRef = useRef(initialMe);
+  const moneyAt = useRef(0);
+  const moneyRef = useRef<() => Promise<void>>(async () => {});
   const sb = useMemo(() => createClient(), []);
   const loc = useCourierLocation(me.on_duty);
 
@@ -134,12 +137,16 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
       alertNewTask();
       say("📦 Yeni görev atandı");
     }
+    // Benim bir siparişim listeden düştüyse (teslim / iptal) kazanç ve geçmiş de güncellensin
+    const gone = !!known.current && [...known.current].some((id) => !mineIds.includes(id));
     known.current = new Set(mineIds);
+    if (gone) void moneyRef.current();
     setLive(list);
     setLoadedAt(Date.now());
   }, [sb, me.user_id]);
 
   const loadMoney = useCallback(async () => {
+    moneyAt.current = Date.now();
     const t = periodRange("bugun", openTime);
     const p = periodRange(period, openTime);
     // Teslim edilen siparişler kişisel veri olmadan gelir (müşteri adı/telefon/adres yok, yalnızca mahalle)
@@ -159,20 +166,31 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   }, [sb, me.user_id, openTime, period]);
 
   const refresh = useCallback(() => Promise.all([loadLive(), loadMoney()]), [loadLive, loadMoney]);
+  useEffect(() => {
+    moneyRef.current = loadMoney;
+    meRef.current = me;
+  }, [loadMoney, me]);
 
   // CANLI: Supabase Realtime (anında) + 15 sn'de bir tam yenileme (yedek). Yönetici atama, hesaplaşma,
   // ücret/araç değişikliği ya da sipariş durumu değiştirince kurye ekranı kendiliğinden güncellenir.
   const [liveOn, setLiveOn] = useState(false);
   useEffect(() => {
+    // Veri tasarrufu: sipariş değişiminde yalnızca açık görevler yüklenir; kazanç/geçmiş (3 sorgu)
+    // yalnızca teslim, hesaplaşma, ücret değişimi ya da 5 dakikada bir yüklenir.
     const first = setTimeout(refresh, 0);
-    const t = setInterval(() => document.visibilityState === "visible" && void refresh(), 60_000);
+    const moneyStale = () => Date.now() - moneyAt.current > 5 * 60_000;
+    const tick = () => {
+      if (document.visibilityState !== "visible") return;
+      void loadLive();
+      if (moneyStale()) void loadMoney();
+    };
+    const t = setInterval(tick, 60_000);
     const clock = setInterval(() => setNow(Date.now()), 30_000);
-    const vis = () => document.visibilityState === "visible" && void refresh();
-    document.addEventListener("visibilitychange", vis);
+    document.addEventListener("visibilitychange", tick);
     let debounce: ReturnType<typeof setTimeout> | undefined;
     const soon = () => {
       clearTimeout(debounce);
-      debounce = setTimeout(() => void refresh(), 400);
+      debounce = setTimeout(() => void loadLive(), 400);
     };
     const ch = sb
       .channel(`kurye-${me.user_id}`)
@@ -180,12 +198,26 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "courier_settlements", filter: `courier_id=eq.${me.user_id}` }, (p) => {
         const n = p.new as { cash_amount?: number; pos_amount?: number; order_count?: number };
         say(`✅ Hesaplaşma yapıldı: ${n.order_count ?? ""} teslimat · ${tl(Number(n.cash_amount ?? 0))} nakit teslim alındı`);
-        soon();
+        void loadMoney();
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "couriers", filter: `user_id=eq.${me.user_id}` }, (p) => {
+        // Konum her 15 sn'de bu satırı günceller: yalnızca kurye bilgisi gerçekten değiştiyse işlem yap
         const n = p.new as Partial<CourierMe>;
-        setMe((m) => ({ ...m, full_name: n.full_name ?? m.full_name, phone: n.phone ?? m.phone, vehicle: n.vehicle ?? m.vehicle, plate: n.plate ?? m.plate, per_delivery_fee: n.per_delivery_fee != null ? Number(n.per_delivery_fee) : m.per_delivery_fee, on_duty: n.on_duty ?? m.on_duty }));
-        soon();
+        const m = meRef.current;
+        const next = {
+          ...m,
+          full_name: n.full_name ?? m.full_name,
+          phone: n.phone ?? m.phone,
+          vehicle: n.vehicle ?? m.vehicle,
+          plate: n.plate ?? m.plate,
+          per_delivery_fee: n.per_delivery_fee != null ? Number(n.per_delivery_fee) : m.per_delivery_fee,
+          on_duty: n.on_duty ?? m.on_duty,
+        };
+        const keys = ["full_name", "phone", "vehicle", "plate", "per_delivery_fee", "on_duty"] as const;
+        if (keys.every((k) => next[k] === m[k])) return;
+        meRef.current = next;
+        setMe(next);
+        if (next.per_delivery_fee !== m.per_delivery_fee) void loadMoney();
       })
       .subscribe((st) => setLiveOn(st === "SUBSCRIBED"));
     return () => {
@@ -193,10 +225,10 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
       clearTimeout(debounce);
       clearInterval(t);
       clearInterval(clock);
-      document.removeEventListener("visibilitychange", vis);
+      document.removeEventListener("visibilitychange", tick);
       void sb.removeChannel(ch);
     };
-  }, [refresh, sb, me.user_id]);
+  }, [refresh, loadLive, loadMoney, sb, me.user_id]);
 
   async function act(key: string, fn: () => Promise<CourierResult>, okText: string) {
     setBusy(key);

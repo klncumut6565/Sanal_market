@@ -307,3 +307,8 @@
 - Yeni RPC `admin_product_page` (migration 20261018010000, security definer + is_admin kontrolü): arama (Türkçe katlama `tr_fold`), kategori, stok/mükerrer/barkodsuz/görselsiz, marj filtreleri, sıralama ve 100'lük sayfalama veritabanında. Dönen: sayfa satırları (+alış, mükerrer sayıları), toplam, kategori sayıları, mükerrer grup sayısı, ortalama marj, (filtreliyse) tüm id'ler.
 - Her açılış/filtre/güncellemede ≈1,2 MB (tüm ürünler + tüm alış fiyatları) yerine ≈50 KB; sorgu ~130 ms (RLS satır başı is_admin çağrısı definer ile atlandı).
 - Düzenle → `?geri=<liste adresi>`; kaydet, vazgeç ve sil aynı filtre + sayfaya döner (`safeProductsReturn` yalnızca /admin/urunler kabul eder).
+
+## 2026-10-18 — Kurye paneli veri tasarrufu + toplu satışa aç / pasif yap
+- Kurye ekranı (`CourierApp.tsx`): konum güncellemesi (15 sn'de bir `couriers` satırı) artık tam yenileme tetiklemiyor; yalnızca ad/telefon/araç/plaka/ücret/mesai gerçekten değişirse işlem. Sipariş değişiminde yalnızca açık görevler yüklenir; kazanç/geçmiş (3 RPC + hesaplaşmalar) teslim/iptal (benim siparişim listeden düşünce), hesaplaşma, ücret değişimi ya da 5 dk'da bir.
+- Yönetici Kuryeler (`LiveRefresh` yeni `ignore` prop'u): yalnızca konum sütunları değişen `couriers` olayları sayfayı yenilemez; harita kendi 30 sn döngüsüyle güncellenir.
+- Ürünler & stok toplu seçim çubuğuna "Satışa aç" / "Pasif yap" (`setProductsActive`, 200'lük parçalar, vitrin önbelleği bir kez yenilenir).

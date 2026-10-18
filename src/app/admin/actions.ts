@@ -784,6 +784,28 @@ export async function fetchRemoteImage(url: string): Promise<{ ok: true; base64:
 }
 
 /** Toplu silme: seçili ürünleri 200'lük parçalar halinde siler. Silinen adedi döndürür. */
+/** Toplu satışa aç / pasif yap: tek işlem, vitrin önbelleği bir kez yenilenir. */
+export async function setProductsActive(ids: string[], active: boolean): Promise<{ ok: boolean; changed: number; error?: string }> {
+  const { supabase } = await requireAdmin();
+  const clean = [...new Set(ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))];
+  let changed = 0;
+  for (let i = 0; i < clean.length; i += 200) {
+    const part = clean.slice(i, i + 200);
+    const { error, count } = await supabase.from("products").update({ is_active: active }, { count: "exact" }).in("id", part).neq("is_active", active);
+    if (error) {
+      if (changed) {
+        updateTag(CATALOG_TAG);
+        revalidatePath("/admin/urunler");
+      }
+      return { ok: false, changed, error: `Güncellenemedi (${changed} ürün değişti): ${error.message}` };
+    }
+    changed += count ?? 0;
+  }
+  if (changed) updateTag(CATALOG_TAG);
+  revalidatePath("/admin/urunler");
+  return { ok: true, changed };
+}
+
 export async function deleteProductsByIds(ids: string[]): Promise<{ ok: boolean; deleted: number; error?: string }> {
   const { supabase } = await requireAdmin();
   const clean = [...new Set(ids.filter((x) => /^[0-9a-f-]{36}$/i.test(x)))];
