@@ -15,6 +15,8 @@ import { Suspense } from "react";
 import { fold } from "@/lib/trFold";
 import { childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
 import { CategoryFilter } from "@/components/admin/CategoryFilter";
+import { ImageCompressor } from "@/components/admin/ImageCompressor";
+import { nonWebpStatus } from "@/app/admin/imageActions";
 
 const PAGE = 100;
 
@@ -24,7 +26,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const { supabase } = await requireAdmin();
   const now = new Date().getTime();
-  const { data: categories } = await supabase.from("categories").select("*").order("sort_order");
+  const [{ data: categories }, imgStatus] = await Promise.all([supabase.from("categories").select("*").order("sort_order"), nonWebpStatus()]);
   const cats = (categories ?? []) as Category[];
   // Kategori + alt kategori: eski bağlantılarda kategori=alt kategori id'si olabilir → üstünü ana, kendisini alt say
   const byId = new Map(cats.map((c) => [c.id, c]));
@@ -98,6 +100,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
           <Link href="/admin/urunler/yeni" className="btn-primary py-2.5"><Plus size={18} /> Yeni ürün</Link>
         </div>
       </div>
+      <ImageCompressor status={imgStatus} />
 
       <form className="flex flex-wrap gap-2">
         <Suspense fallback={<input name="q" defaultValue={sp.q} placeholder="Ürün adı veya barkod" className="input max-w-xs" />}>

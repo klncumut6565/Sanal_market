@@ -3,12 +3,11 @@ import Link from "next/link";
 import { CategoryOptionList } from "./CategoryOptionList";
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ClipboardPaste, Loader2, Plus, ScanBarcode, X } from "lucide-react";
-import { compressImage } from "@/lib/imageCompress";
+import { uploadImageBlob, uploadImageFromUrl } from "@/lib/imageUpload";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { DuplicateHint } from "./DuplicateHint";
 import { useHidScanner } from "@/lib/hidScanner";
-import { createClient } from "@/lib/supabase/client";
-import { fetchRemoteImage, saveProduct, type ActionState } from "@/app/admin/actions";
+import { saveProduct, type ActionState } from "@/app/admin/actions";
 import type { Category, Product } from "@/lib/types";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
@@ -64,33 +63,20 @@ export function ProductForm({
     setUploadError(null);
     if (!file.type.startsWith("image/")) return setUploadError("Bu bir görsel değil.");
     setUploading(true);
-    const img = await compressImage(file);
-    if (img.size > 3 * 1024 * 1024) {
-      setUploading(false);
-      return setUploadError("Görsel en fazla 3 MB olmalı.");
-    }
-    const ext = img.type === "image/webp" ? "webp" : img.type === "image/png" ? "png" : "jpg";
-    const path = `${crypto.randomUUID()}.${ext}`;
-    const supabase = createClient();
-    const { error } = await supabase.storage.from("product-images").upload(path, img, { cacheControl: "31536000", contentType: img.type });
-    if (error) setUploadError("Yükleme başarısız: " + error.message);
-    else addImage(supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl);
-    setUploading(false);
-  }
-
-  /** Kopyalanan görsel bağlantısını (Google görseller → "Resim adresini kopyala") indirip yükler */
-  async function uploadFromUrl(url: string) {
-    setUploadError(null);
-    if (url.startsWith("data:image/")) {
-      const blob = await (await fetch(url)).blob();
-      return upload(blob);
-    }
-    setUploading(true);
-    const r = await fetchRemoteImage(url);
+    const r = await uploadImageBlob(file);
     setUploading(false);
     if (!r.ok) return setUploadError(r.error);
-    const bin = Uint8Array.from(atob(r.base64), (c) => c.charCodeAt(0));
-    await upload(new Blob([bin], { type: r.type }));
+    addImage(r.url);
+  }
+
+  /** Kopyalanan görsel bağlantısını (Google görseller → "Resim adresini kopyala") sunucuda indirip WebP olarak yükler */
+  async function uploadFromUrl(url: string) {
+    setUploadError(null);
+    setUploading(true);
+    const r = await uploadImageFromUrl(url);
+    setUploading(false);
+    if (!r.ok) return setUploadError(r.error);
+    addImage(r.url);
   }
   const uploadRef = useRef({ upload, uploadFromUrl });
   useEffect(() => {

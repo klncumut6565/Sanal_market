@@ -328,3 +328,11 @@
 - Kategori sayfasındaki alt kategori çipleri de aynı tercih sırasında.
 
 - **Güncelleme (aynı gün):** alt kategori satırları yerine sekme düzeni — `SubCategoryTabs` (client): kategori başlığının hemen altında alt kategori düğmeleri yan yana (en çok tercih edilen ilk ve seçili, ürün sayısıyla), altında seçili alt kategorinin tek ürün satırı (16 ürün + Tümünü gör). Doğrudan ana kategorideki ürünler "Diğer" sekmesinde. Sekme değişimi sayfa yenilemeden.
+
+## 2026-10-19 — Ürün görselleri: sunucuda WebP + depo filtresi + toplu sıkıştırma
+- Neden: 334 görselin 143'ü JPEG (~330 KB ort., 47 MB = deponun %92'si). iPhone Safari tuvalde WebP üretemediği için `compressImage` JPEG'e düşüyordu (bugün bile 15 JPEG yüklenmiş).
+- `src/lib/server/productImage.ts` (sharp): ≤1000 px, WebP q78 (250 KB üstüyse q65 → 800 px q60), EXIF yönü, saydam → beyaz. `downloadRemoteImage` ortak.
+- `src/app/admin/imageActions.ts`: `uploadProductImage(fd)`, `uploadProductImageFromUrl(url)` — tüm yükleme yolları (ürün formu, yapıştır/pano/bağlantı, fotoğrafla tanı, kategori görseli) `imageUpload.ts` üzerinden buraya gider. `compressNextImages(batch)` mevcut JPEG'leri WebP'ye çevirir, ürün `image_url`/`extra_images` ve kategori adreslerini günceller, eski dosyayı siler; 1 günden eski kullanılmayan dosyaları da siler.
+- Ürünler & stok sayfasında `ImageCompressor` bandı ("Görselleri sıkıştır", ilerlemeli; yalnızca sıkıştırılmamış görsel varsa görünür).
+- Depo filtresi (migration 20261019010000): `product-images` kovası yalnızca `image/webp`, en fazla 1 MB. RPC `admin_nonwebp_images()`.
+- `next.config.ts`: `experimental.serverActions.bodySizeLimit = "7mb"`; `sharp` package.json'a eklendi.

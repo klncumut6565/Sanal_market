@@ -3,6 +3,8 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
+  // Görsel yükleme sunucu eylemiyle (WebP dönüşümü sunucuda): telefondan gelen küçültülmüş fotoğraf için pay
+  experimental: { serverActions: { bodySizeLimit: "7mb" } },
   images: {
     remotePatterns: [{ protocol: "https", hostname: "*.supabase.co" }],
     // Ürün görselleri değişmez adlarla (uuid) yüklenir: Vercel optimize edilmiş kopyayı 31 gün önbellekte tutar,

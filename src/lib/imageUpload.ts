@@ -1,30 +1,33 @@
 "use client";
-// Görsel yükleme yardımcıları (ürün ve kategori görselleri): küçült → depoya yükle,
+// Görsel yükleme yardımcıları (ürün ve kategori görselleri): tarayıcıda küçült → sunucuda WebP'ye çevir → depoya yükle;
 // bağlantıdan indir (sunucu üzerinden), panodan oku.
-import { createClient } from "@/lib/supabase/client";
 import { compressImage } from "@/lib/imageCompress";
-import { fetchRemoteImage } from "@/app/admin/actions";
+import { uploadProductImage, uploadProductImageFromUrl } from "@/app/admin/imageActions";
 
 export type UploadResult = { ok: true; url: string } | { ok: false; error: string };
 
-export async function uploadImageBlob(blob: Blob, folder = "", max = 1000): Promise<UploadResult> {
+export async function uploadImageBlob(blob: Blob, folder = "", max = 1600): Promise<UploadResult> {
   if (!blob.type.startsWith("image/")) return { ok: false, error: "Bu bir görsel değil." };
-  const img = await compressImage(blob, max);
-  if (img.size > 3 * 1024 * 1024) return { ok: false, error: "Görsel en fazla 3 MB olmalı." };
-  const ext = img.type === "image/webp" ? "webp" : img.type === "image/png" ? "png" : "jpg";
-  const path = `${folder ? folder.replace(/\/$/, "") + "/" : ""}${crypto.randomUUID()}.${ext}`;
-  const sb = createClient();
-  const { error } = await sb.storage.from("product-images").upload(path, img, { cacheControl: "31536000", contentType: img.type });
-  if (error) return { ok: false, error: "Yükleme başarısız: " + error.message };
-  return { ok: true, url: sb.storage.from("product-images").getPublicUrl(path).data.publicUrl };
+  // Tarayıcıda yalnızca küçült (gönderim hızlı olsun); asıl WebP sıkıştırma sunucuda yapılır (iPhone dahil her cihazda aynı sonuç)
+  const img = await compressImage(blob, max, 0.9);
+  if (img.size > 6 * 1024 * 1024) return { ok: false, error: "Görsel çok büyük (6 MB üstü)." };
+  const fd = new FormData();
+  fd.set("file", img, "gorsel");
+  fd.set("folder", folder);
+  try {
+    return await uploadProductImage(fd);
+  } catch {
+    return { ok: false, error: "Yükleme başarısız. Bağlantınızı kontrol edip tekrar deneyin." };
+  }
 }
 
-export async function uploadImageFromUrl(url: string, folder = "", max = 1000): Promise<UploadResult> {
+export async function uploadImageFromUrl(url: string, folder = "", max = 1600): Promise<UploadResult> {
   if (url.startsWith("data:image/")) return uploadImageBlob(await (await fetch(url)).blob(), folder, max);
-  const r = await fetchRemoteImage(url);
-  if (!r.ok) return r;
-  const bin = Uint8Array.from(atob(r.base64), (c) => c.charCodeAt(0));
-  return uploadImageBlob(new Blob([bin], { type: r.type }), folder, max);
+  try {
+    return await uploadProductImageFromUrl(url, folder);
+  } catch {
+    return { ok: false, error: "Görsel aktarılamadı. Görsele sağ tıklayıp 'Resmi kopyala' ile deneyin." };
+  }
 }
 
 /** Yapıştırma olayından görsel dosyası ya da görsel bağlantısı çıkarır */
