@@ -296,3 +296,9 @@
 - `catalog.ts` + `areas.ts`: `cacheLife("hours")` → `"days"` (yönetici değişikliklerinde updateTag ile yine anında yenilenir).
 - `odeme/actions.ts`: siparişten sonra önbellek yalnızca bir ürünün stoğu biterse yenileniyor.
 - `sitemap.ts`: ürün sayfaları yalnızca öne çıkan / indirimli (en fazla 200).
+
+## 2026-10-18 — Ürün görseli yakınlaştırma
+- `ProductGallery.tsx` yeniden yazıldı (tek görselli ürünlerde de çalışır):
+  - Masaüstü: fare üzerindeyken 2,5× mercek yakınlaştırma (imleci takip eder).
+  - Tıklama / mobilde dokunma: tam ekran görüntüleyici (portal) — iki parmakla büyütme (5×'e kadar), çift dokunma, büyütülmüşken sürükleme, kaydırarak görsel değiştirme, aşağı çekerek kapatma, tekerlek, +/− düğmeleri, Esc ve ok tuşları.
+  - Büyük görsel (~1920 px, next/image optimize) yalnızca yakınlaştırma başlayınca indirilir.
