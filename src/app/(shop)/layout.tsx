@@ -5,6 +5,7 @@ import { getStoreSettings } from "@/lib/data/catalog";
 import { Brand } from "@/components/Brand";
 import { VoiceAssistant } from "@/components/shop/VoiceAssistant";
 import { BottomNav } from "@/components/shop/BottomNav";
+import { WhatsAppButton } from "@/components/shop/WhatsAppButton";
 
 export default async function ShopLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,6 +15,9 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
       <Footer />
       <Suspense fallback={null}>
         <Voice />
+      </Suspense>
+      <Suspense fallback={null}>
+        <WhatsApp />
       </Suspense>
       <Suspense fallback={null}>
         <BottomNav />
@@ -26,6 +30,13 @@ async function Voice() {
   const s = await getStoreSettings();
   if (s.voice_enabled === false) return null;
   return <VoiceAssistant settings={s} />;
+}
+
+async function WhatsApp() {
+  const s = await getStoreSettings();
+  const phone = s.whatsapp_phone || s.phone;
+  if (!phone) return null;
+  return <WhatsAppButton phone={phone} storeName={s.store_name || "Sanal Market"} />;
 }
 
 async function Footer() {

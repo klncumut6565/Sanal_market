@@ -336,3 +336,7 @@
 - Ürünler & stok sayfasında `ImageCompressor` bandı ("Görselleri sıkıştır", ilerlemeli; yalnızca sıkıştırılmamış görsel varsa görünür).
 - Depo filtresi (migration 20261019010000): `product-images` kovası yalnızca `image/webp`, en fazla 1 MB. RPC `admin_nonwebp_images()`.
 - `next.config.ts`: `experimental.serverActions.bodySizeLimit = "7mb"`; `sharp` package.json'a eklendi.
+
+## 2026-10-19 — Müşteri WhatsApp düğmesi
+- `WhatsAppButton` (shop layout): sol altta yeşil sabit WhatsApp logosu (bilgisayarda "WhatsApp" yazılı), sesli sipariş düğmesiyle aynı yükseklikte karşı tarafta; sepet çubuğu varken yukarı kayar; ödeme sayfasında gizli.
+- Numara: Ayarlar › İşletme WhatsApp numarası (yoksa mağaza telefonu; ikisi de yoksa düğme çıkmaz). Mesaj hazır gelir: "Merhaba Sanal Market, …"; ürün sayfasında ürün adı + bağlantısı eklenir.
