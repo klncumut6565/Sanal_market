@@ -54,6 +54,6 @@ export async function attachProductImage(id: string, url: string): Promise<{ ok:
   if (!/^[0-9a-f-]{36}$/i.test(id) || !/^https:\/\//.test(url)) return { ok: false, error: "Geçersiz istek." };
   const { error } = await supabase.from("products").update({ image_url: url }).eq("id", id);
   if (error) return { ok: false, error: error.message };
-  invalidateCatalog([id]);
+  await invalidateCatalog([id]);
   return { ok: true };
 }

@@ -100,7 +100,7 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       .select("id")
       .in("id", items.map((i) => i.product_id))
       .lte("stock", 0);
-    if (out?.length) invalidateCatalog(out.map((o) => o.id));
+    if (out?.length) await invalidateCatalog(out.map((o) => o.id), { catalog: "none" });
   } catch {
     /* önbellek yenilenemese de sipariş tamamdır */
   }

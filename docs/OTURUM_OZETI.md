@@ -347,3 +347,10 @@
 - `getCategories` artık `CATEGORIES_TAG` ("categories"); popülerlik kendi etiketiyle. Ürün düzenlemesi menüyü/kategori listesini ve diğer ürün sayfalarını yeniden yazdırmıyor.
 - `src/lib/data/invalidate.ts` → `invalidateCatalog(ids, {categories})`: tüm eski `updateTag(CATALOG_TAG)` çağrıları buna çevrildi (yalnızca değişen ürünlerin sayfaları + ana sayfa/kategori sayfaları; kategori işlemlerinde menü de).
 - Ana sayfa alt kategori sekmesi başına ürün 16 → 10 (sayfa küçüldü; ISR yazımı 8 KB birimle sayılıyor).
+
+## 2026-10-19 (öğlen) — ISR yazımı: Vercel rota dökümüne göre ikinci tur
+- Döküm: en çok yazan `/index` (ana sayfa, büyük sayfa → 8 KB'lık birim başına sayılıyor; her yenilemede birkaç `.segment` dosyası), `/urun/[slug]`, `/admin/urunler` (PPR kabuğu `revalidatePath` ile her düzenlemede yeniden yazılıyordu).
+- `invalidateCatalog` artık async: ürün sayfası anında; ana sayfa + kategori sayfaları (CATALOG_TAG) en fazla 30 dk'da bir — RPC `catalog_flush` (tablo `cache_flush`, migration 20261019020000). Süre dolmadıysa "bekliyor"; `CatalogAutoFlush` (yönetim paneli, 5 dk'da bir) süre dolunca uygular. Kategori işlemleri anında. Sipariş sonrası stok bitişi yalnızca ürün sayfası.
+- Tüm `revalidatePath` (admin, kuryeler, siparişlerim eylemleri) → `refresh()` (Next 16): sayfa kabuğu önbelleği yeniden yazılmaz, istemci yine tazelenir.
+- Ana sayfa: yalnızca ilk alt kategori sekmesinin ürünleri sayfaya gömülü; diğer sekmeler dokunulunca tarayıcıdan 10 ürün (Supabase anon, RLS). Fırsat / çok satanlar en fazla 20.
+- Görsel sıkıştırma: eski dosya hemen silinmiyor (önbellek eski adresi gösterebilir); kullanılmayanlar 1 gün sonra bir sonraki çalıştırmada siliniyor; kategori menüsü yalnızca kategori görseli değiştiyse yenileniyor.

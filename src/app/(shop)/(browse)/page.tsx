@@ -100,8 +100,8 @@ export default async function HomePage() {
         <MemberSections />
       </Suspense>
 
-      {deals.length > 0 && <Section title="Fırsat ürünleri 🔥" products={deals} />}
-      {featured.length > 0 && <Section title="Çok satanlar" products={featured} />}
+      {deals.length > 0 && <Section title="Fırsat ürünleri 🔥" products={deals.slice(0, 20)} total={deals.length} />}
+      {featured.length > 0 && <Section title="Çok satanlar" products={featured.slice(0, 20)} total={featured.length} />}
 
       {topLevel(categories).map((c) => (
         <CategorySection key={c.id} cat={c} categories={categories} products={products} pop={pop} />
@@ -172,11 +172,11 @@ function CategorySection({ cat, categories, products, pop }: { cat: Category; ca
   const all = products.filter((p) => !!p.category_id && ids.has(p.category_id));
   if (all.length === 0) return null;
   const tabs = byPopularity(childrenOf(categories, cat.id), pop)
-    .map((sc) => ({ id: sc.id, label: sc.name, href: `/kategori/${sc.slug}`, items: all.filter((p) => p.category_id === sc.id) }))
+    .map((sc) => ({ id: sc.id, label: sc.name, href: `/kategori/${sc.slug}`, categoryId: sc.id as string | null, items: all.filter((p) => p.category_id === sc.id) }))
     .filter((x) => x.items.length > 0);
   if (tabs.length === 0) return <Section title={cat.name} href={`/kategori/${cat.slug}`} products={all.slice(0, 20)} total={all.length} />;
   const direct = all.filter((p) => p.category_id === cat.id);
-  if (direct.length) tabs.push({ id: `${cat.id}-diger`, label: "Diğer", href: `/kategori/${cat.slug}`, items: direct });
+  if (direct.length) tabs.push({ id: `${cat.id}-diger`, label: "Diğer", href: `/kategori/${cat.slug}`, categoryId: cat.id, items: direct });
   const n = all.length.toLocaleString("tr-TR");
   return (
     <section>
@@ -187,15 +187,14 @@ function CategorySection({ cat, categories, products, pop }: { cat: Category; ca
         </Link>
       </div>
       <SubCategoryTabs
-        tabs={tabs.map((t) => ({ id: t.id, label: t.label, count: t.items.length }))}
-        panels={tabs.map((t) => (
+        tabs={tabs.map((t) => ({ id: t.id, label: t.label, count: t.items.length, href: t.href, categoryId: t.categoryId }))}
+        first={
           <ProductRow
-            key={t.id}
-            products={t.items.slice(0, SUB_ROW)}
-            moreHref={t.items.length > SUB_ROW ? t.href : undefined}
-            moreLabel={`Tümünü gör (${t.items.length.toLocaleString("tr-TR")})`}
+            products={tabs[0].items.slice(0, SUB_ROW)}
+            moreHref={tabs[0].items.length > SUB_ROW ? tabs[0].href : undefined}
+            moreLabel={`Tümünü gör (${tabs[0].items.length.toLocaleString("tr-TR")})`}
           />
-        ))}
+        }
       />
     </section>
   );

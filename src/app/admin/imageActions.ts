@@ -47,10 +47,11 @@ export async function nonWebpStatus(): Promise<CompressStatus> {
   const { supabase } = await requireAdmin();
   const { data } = await supabase.rpc("admin_nonwebp_images");
   const rows = (data ?? []) as { size: number; referenced: boolean }[];
+  const used = rows.filter((r) => r.referenced);
   return {
-    count: rows.length,
-    mb: Math.round(rows.reduce((a, r) => a + Number(r.size ?? 0), 0) / 104857.6) / 10,
-    orphans: rows.filter((r) => !r.referenced).length,
+    count: used.length,
+    mb: Math.round(used.reduce((a, r) => a + Number(r.size ?? 0), 0) / 104857.6) / 10,
+    orphans: rows.length - used.length,
   };
 }
 
@@ -74,6 +75,7 @@ export async function compressNextImages(batch = 6): Promise<{ ok: boolean; done
   let failed = 0;
   let saved = orphans.length ? rows.filter((r) => orphans.includes(r.name)).reduce((a, r) => a + Number(r.size), 0) : 0;
   const touched = new Set<string>();
+  let catTouched = false;
   const pub = (p: string) => supabase.storage.from(PRODUCT_BUCKET).getPublicUrl(p).data.publicUrl;
 
   for (const r of todo) {
@@ -85,7 +87,6 @@ export async function compressNextImages(batch = 6): Promise<{ ok: boolean; done
       const newPath = `${dir}${crypto.randomUUID()}.webp`;
       const { error: uErr } = await supabase.storage.from(PRODUCT_BUCKET).upload(newPath, webp, { contentType: "image/webp", cacheControl: "31536000", upsert: false });
       if (uErr) throw new Error(uErr.message);
-      const oldUrl = pub(r.name);
       const newUrl = pub(newPath);
       const like = `%/product-images/${r.name}`;
 
@@ -104,22 +105,20 @@ export async function compressNextImages(batch = 6): Promise<{ ok: boolean; done
         }
       }
       // Kategori görseli
-      updErr ||= !!(await supabase.from("categories").update({ image_url: newUrl }).like("image_url", like)).error;
+      const catUpd = await supabase.from("categories").update({ image_url: newUrl }).like("image_url", like).select("id");
+      updErr ||= !!catUpd.error;
+      if (catUpd.data?.length) catTouched = true;
 
-      // Eski adres artık hiçbir yerde yoksa eski dosyayı sil
-      const [{ count: c1 }, { count: c2 }] = await Promise.all([
-        supabase.from("products").select("id", { count: "exact", head: true }).like("image_url", like),
-        supabase.from("categories").select("id", { count: "exact", head: true }).like("image_url", like),
-      ]);
       if (updErr) throw new Error("kayıt güncellenemedi");
-      if (!c1 && !c2 && oldUrl !== newUrl) await supabase.storage.from(PRODUCT_BUCKET).remove([r.name]);
+      // Eski dosya HEMEN silinmez: vitrin önbelleği (en geç 30 dk'da yenilenir) bir süre eski adresi gösterebilir.
+      // Hiçbir yerde kullanılmayan eski dosyalar 1 gün sonra bir sonraki çalıştırmada silinir.
       saved += Math.max(0, Number(r.size) - webp.length);
       done++;
     } catch {
       failed++;
     }
   }
-  if (done) invalidateCatalog([...touched], { categories: true });
+  if (done) await invalidateCatalog([...touched], { categories: catTouched });
   const remaining = rows.filter((r) => r.referenced).length - done;
   return { ok: true, done, failed, remaining: Math.max(0, remaining), savedKb: Math.round(saved / 1024) };
 }

@@ -1,7 +1,7 @@
 "use server";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { requireAdmin } from "@/lib/data/auth";
 import { notifyCourier } from "@/lib/courier";
 import { formatTL } from "@/lib/format";
@@ -33,7 +33,7 @@ export async function decideCourier(fd: FormData) {
   const approve = str(fd, "approve") === "1";
   if (!isId(userId)) return;
   const { error } = await supabase.rpc("admin_courier_decide", { p_user_id: userId, p_approve: approve, p_fee: num(str(fd, "fee")) ?? 0 });
-  revalidatePath("/admin/kuryeler");
+  refresh();
   if (error) go("/admin/kuryeler", "hata", em(error));
   go("/admin/kuryeler", "ok", approve ? "Kurye onaylandı. Kişi giriş yaptığında kurye paneline yönlendirilir." : "Kurye yetkisi kapatıldı.");
 }
@@ -50,7 +50,7 @@ export async function updateCourier(fd: FormData) {
     p_phone: str(fd, "phone") || null,
     p_active: fd.get("active") == null ? null : str(fd, "active") === "1",
   });
-  revalidatePath("/admin/kuryeler");
+  refresh();
   if (error) go("/admin/kuryeler", "hata", em(error));
   go("/admin/kuryeler", "ok", "Kurye bilgileri güncellendi.");
 }
@@ -60,7 +60,7 @@ export async function settleCourier(fd: FormData) {
   const courierId = str(fd, "courier_id");
   if (!isId(courierId)) return;
   const { data, error } = await supabase.rpc("admin_settle_courier", { p_courier_id: courierId, p_note: str(fd, "note") || null });
-  revalidatePath("/admin/kuryeler");
+  refresh();
   if (error) go(back(fd, "/admin/kuryeler"), "hata", em(error));
   const r = data as { orders: number; cash: number; pos: number; fee: number };
   go(back(fd, "/admin/kuryeler"), "ok", `Hesaplaşıldı: ${r.orders} teslimat · nakit ${formatTL(r.cash)} teslim alındı · POS ${formatTL(r.pos)} · hak ediş ${formatTL(r.fee)}`);
@@ -82,7 +82,7 @@ export async function assignCourier(fd: FormData) {
         console.error("[kurye atama]", e);
       }
     });
-  revalidatePath(url);
+  refresh();
   redirect(url);
 }
 
@@ -92,7 +92,7 @@ export async function clearIssue(fd: FormData) {
   if (!isId(orderId)) return;
   await supabase.rpc("admin_clear_issue", { p_order_id: orderId });
   const url = back(fd, `/admin/siparisler/${orderId}`);
-  revalidatePath(url);
+  refresh();
   redirect(url);
 }
 
@@ -105,6 +105,6 @@ export async function reviewReceipt(fd: FormData) {
   const { error } = await supabase.rpc("admin_review_receipt", { p_id: id, p_status: status, p_note: str(fd, "note") || null });
   const url = back(fd, "/admin/kuryeler");
   if (error) go(url, "hata", em(error));
-  revalidatePath(url);
+  refresh();
   redirect(url);
 }

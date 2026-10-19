@@ -27,6 +27,6 @@ export async function applyProductChange(id: string, expect: ProductSnapshot, pa
   if (!Object.keys(upd).length) return { ok: false, error: "Değişiklik yok." };
   const { data, error } = await supabase.from("products").update(upd).eq("id", id).select("price,sale_price,stock,is_active").single();
   if (error || !data) return { ok: false, error: "Kaydedilemedi: " + (error?.message ?? "") };
-  invalidateCatalog([id]);
+  await invalidateCatalog([id]);
   return { ok: true, now: { price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price), stock: data.stock, is_active: data.is_active } };
 }

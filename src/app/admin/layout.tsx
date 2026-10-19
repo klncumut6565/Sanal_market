@@ -8,6 +8,7 @@ import { NewOrderAlarm } from "@/components/admin/NewOrderAlarm";
 import { AdminScanListener } from "@/components/admin/AdminScanListener";
 import { AdminVoiceAssistant } from "@/components/admin/AdminVoiceAssistant";
 import { StoreModeSwitch } from "@/components/admin/StoreModeSwitch";
+import { CatalogAutoFlush } from "@/components/admin/CatalogAutoFlush";
 
 export const metadata: Metadata = {
   title: { default: "Yönetim", template: "%s · Yönetim" },
@@ -59,6 +60,7 @@ async function Gate({ children }: { children: React.ReactNode }) {
       <NewOrderAlarm />
       <AdminScanListener />
       <AdminVoiceAssistant />
+      <CatalogAutoFlush />
       {children}
     </>
   );
