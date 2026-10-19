@@ -340,3 +340,10 @@
 ## 2026-10-19 — Müşteri WhatsApp düğmesi
 - `WhatsAppButton` (shop layout): sol altta yeşil sabit WhatsApp logosu (bilgisayarda "WhatsApp" yazılı), sesli sipariş düğmesiyle aynı yükseklikte karşı tarafta; sepet çubuğu varken yukarı kayar; ödeme sayfasında gizli.
 - Numara: Ayarlar › İşletme WhatsApp numarası (yoksa mağaza telefonu; ikisi de yoksa düğme çıkmaz). Mesaj hazır gelir: "Merhaba Sanal Market, …"; ürün sayfasında ürün adı + bağlantısı eklenir.
+
+## 2026-10-19 — Vercel ISR yazımı %100 (ücretsiz plan, Pro'ya geçilmeyecek) → hedefli önbellek yenileme
+- Sorun: her ürün düzenlemesi `updateTag(CATALOG_TAG)` ile ana sayfa + tüm kategori sayfaları + ziyaret edilen TÜM ürün sayfalarını (2000+) geçersiz kılıyordu; ürün sayfaları ve menü (kategoriler) tüm ürün listesine bağlıydı.
+- `getProductPage(slug)`: ürün + 10 benzer ürün, kendi etiketiyle (`urun-<id>`), CATALOG'a bağlı değil. Ürün sayfası bunu kullanıyor.
+- `getCategories` artık `CATEGORIES_TAG` ("categories"); popülerlik kendi etiketiyle. Ürün düzenlemesi menüyü/kategori listesini ve diğer ürün sayfalarını yeniden yazdırmıyor.
+- `src/lib/data/invalidate.ts` → `invalidateCatalog(ids, {categories})`: tüm eski `updateTag(CATALOG_TAG)` çağrıları buna çevrildi (yalnızca değişen ürünlerin sayfaları + ana sayfa/kategori sayfaları; kategori işlemlerinde menü de).
+- Ana sayfa alt kategori sekmesi başına ürün 16 → 10 (sayfa küçüldü; ISR yazımı 8 KB birimle sayılıyor).

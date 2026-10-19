@@ -11,8 +11,9 @@ import { guessCategoryEmoji } from "@/lib/categoryEmoji";
 import { revalidatePath, updateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/data/auth";
+import { invalidateCatalog } from "@/lib/data/invalidate";
 import { downloadRemoteImage } from "@/lib/server/productImage";
-import { CATALOG_TAG, SETTINGS_TAG } from "@/lib/data/catalog";
+import { SETTINGS_TAG } from "@/lib/data/catalog";
 import { AREAS_TAG } from "@/lib/data/areas";
 import { slugify } from "@/lib/format";
 import { parseNumTR } from "@/lib/numTR";
@@ -93,7 +94,7 @@ export async function saveProduct(_: ActionState, fd: FormData): Promise<ActionS
     return { error: error.code === "23505" ? "Bu bağlantı adı (slug) zaten kullanılıyor." : error.message };
   }
 
-  updateTag(CATALOG_TAG);
+  invalidateCatalog([saved?.id ?? id]);
   redirect(safeProductsReturn(str(fd, "return_to")));
 }
 
@@ -105,7 +106,7 @@ function safeProductsReturn(v: string) {
 export async function deleteProduct(fd: FormData) {
   const { supabase } = await requireAdmin();
   await supabase.from("products").delete().eq("id", str(fd, "id"));
-  updateTag(CATALOG_TAG);
+  invalidateCatalog([str(fd, "id")]);
   redirect("/admin/urunler");
 }
 
@@ -114,7 +115,7 @@ export async function deleteProductById(id: string): Promise<{ ok: boolean; erro
   const { supabase } = await requireAdmin();
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) return { ok: false, error: "Ürün silinemedi: " + error.message };
-  updateTag(CATALOG_TAG);
+  invalidateCatalog([id]);
   revalidatePath("/admin/urunler");
   return { ok: true };
 }
@@ -140,7 +141,7 @@ export async function quickUpdateProduct(fd: FormData) {
   }
   if (Object.keys(patch).length) {
     await supabase.from("products").update(patch).eq("id", id);
-    updateTag(CATALOG_TAG);
+    invalidateCatalog([id]);
     revalidatePath("/admin/urunler");
   }
 }
@@ -200,7 +201,7 @@ export async function quickPriceUpdate(input: {
     .select("id,name,unit_label,price,sale_price,stock,image_url,emoji,is_active,barcode")
     .single();
   if (error || !data) return { ok: false, error: "Kaydedilemedi: " + (error?.message ?? "ürün bulunamadı") };
-  updateTag(CATALOG_TAG);
+  invalidateCatalog([input.id]);
   return { ok: true, product: { ...data, price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price) } as BarcodeProduct };
 }
 
@@ -225,7 +226,7 @@ export async function orderItemOut(fd: FormData) {
     p_qty: replacement ? qty : null,
     p_mark_out: fd.get("mark_out") === "on",
   });
-  updateTag(CATALOG_TAG);
+  invalidateCatalog(); // stok değişti (ürün sayfaları stok bilgisini günlük yeniler; satışta stok veritabanında denetlenir)
   const code = error?.message?.split(":")[0] ?? "";
   const q = error ? `?hata=${encodeURIComponent(ITEM_ERR[code] ?? "İşlem yapılamadı: " + error.message)}` : "?guncellendi=1";
   redirect(`/admin/siparisler/${orderId}${q}`);
@@ -367,7 +368,7 @@ export async function saveCategory(_: ActionState, fd: FormData): Promise<Action
   }
   // İstenen sıraya yerleştir; o sıradaki ve sonrakiler bir kayar (boşsa en sona)
   const { error: posErr } = await supabase.rpc("admin_place_category", { p_id: res.data.id, p_pos: pos > 0 ? pos : null });
-  updateTag(CATALOG_TAG);
+  invalidateCatalog(null, { categories: true });
   if (posErr) return { error: "Kaydedildi ama sıra ayarlanamadı: " + posErr.message };
   return { ok: id ? "Güncellendi" : "Eklendi" };
 }
@@ -377,7 +378,7 @@ export async function setCategoryImage(id: string, url: string | null): Promise<
   const { supabase } = await requireAdmin();
   const { error } = await supabase.from("categories").update({ image_url: url }).eq("id", id);
   if (error) return { ok: false, error: error.message };
-  updateTag(CATALOG_TAG);
+  invalidateCatalog(null, { categories: true });
   revalidatePath("/admin/kategoriler");
   return { ok: true };
 }
@@ -385,7 +386,7 @@ export async function setCategoryImage(id: string, url: string | null): Promise<
 export async function deleteCategory(fd: FormData) {
   const { supabase } = await requireAdmin();
   await supabase.from("categories").delete().eq("id", str(fd, "id"));
-  updateTag(CATALOG_TAG);
+  invalidateCatalog(null, { categories: true });
 }
 
 // ---------------- SİPARİŞLER ----------------
@@ -394,7 +395,7 @@ export async function setOrderStatus(fd: FormData) {
   const id = str(fd, "id");
   const status = str(fd, "status") as OrderStatus;
   const { error } = await supabase.rpc("admin_set_order_status", { p_order_id: id, p_status: status });
-  if (status === "iptal" && !error) updateTag(CATALOG_TAG); // stok iade edildi
+  if (status === "iptal" && !error) invalidateCatalog(); // stok iade edildi
   // Yönetici "Teslim edildi" dediyse ve sipariş bir kuryedeyse tahsilatı sipariş ödeme yöntemiyle kaydet (kurye kasası tutarlı kalsın)
   if (status === "teslim_edildi" && !error) {
     const { data: o } = await supabase.from("orders").select("courier_id, collected_method, payment_method, total").eq("id", id).maybeSingle();
@@ -596,7 +597,7 @@ export async function quickAddProducts(rows: QuickRow[]): Promise<QuickResult[]>
     out.push({ key: r.key, ok: true, note });
     added++;
   }
-  if (added) updateTag(CATALOG_TAG);
+  if (added) invalidateCatalog();
   return out;
 }
 
@@ -774,14 +775,14 @@ export async function setProductsActive(ids: string[], active: boolean): Promise
     const { error, count } = await supabase.from("products").update({ is_active: active }, { count: "exact" }).in("id", part).neq("is_active", active);
     if (error) {
       if (changed) {
-        updateTag(CATALOG_TAG);
+        invalidateCatalog(clean);
         revalidatePath("/admin/urunler");
       }
       return { ok: false, changed, error: `Güncellenemedi (${changed} ürün değişti): ${error.message}` };
     }
     changed += count ?? 0;
   }
-  if (changed) updateTag(CATALOG_TAG);
+  if (changed) invalidateCatalog(clean);
   revalidatePath("/admin/urunler");
   return { ok: true, changed };
 }
@@ -795,14 +796,14 @@ export async function deleteProductsByIds(ids: string[]): Promise<{ ok: boolean;
     const { error, count } = await supabase.from("products").delete({ count: "exact" }).in("id", part);
     if (error) {
       if (deleted) {
-        updateTag(CATALOG_TAG);
+        invalidateCatalog(clean);
         revalidatePath("/admin/urunler");
       }
       return { ok: false, deleted, error: `Ürünler silinemedi (${deleted} silindi): ${error.message}` };
     }
     deleted += count ?? part.length;
   }
-  updateTag(CATALOG_TAG);
+  invalidateCatalog(clean);
   revalidatePath("/admin/urunler");
   return { ok: true, deleted };
 }

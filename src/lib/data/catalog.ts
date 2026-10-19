@@ -10,6 +10,10 @@ import type { Category, Product, StoreSettings } from "@/lib/types";
 
 export const CATALOG_TAG = "catalog";
 export const SETTINGS_TAG = "settings";
+/** Kategori listesi ayrı etiketli: ürün düzenlemeleri kategori listesini (ve onu kullanan tüm sayfaları) geçersiz kılmasın. */
+export const CATEGORIES_TAG = "categories";
+/** Tek ürün sayfasının etiketi: o ürün değişince yalnızca o sayfa yenilenir (2000+ ürün sayfası değil). */
+export const productTag = (id: string) => `urun-${id}`;
 
 const PRODUCT_COLS =
   "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,extra_images,emoji,is_active,is_featured,sort_order";
@@ -41,7 +45,7 @@ const num = (p: Product): Product => ({
 
 export async function getCategories(): Promise<Category[]> {
   "use cache";
-  cacheTag(CATALOG_TAG);
+  cacheTag(CATEGORIES_TAG);
   cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return [];
   const { data, error } = await createPublicClient()
@@ -67,6 +71,39 @@ export async function getProducts(): Promise<Product[]> {
   return (data ?? []).map(num);
 }
 
+/**
+ * Ürün sayfası verisi: ürün + aynı kategoriden 10 benzer ürün. Tüm ürün listesine (CATALOG_TAG) bağlı DEĞİL —
+ * Vercel ISR yazımı: bir ürün düzenlenince yalnızca o ürünün sayfası yeniden yazılır, diğer ürün sayfaları değil.
+ */
+export async function getProductPage(slug: string): Promise<{ product: Product; similar: Product[] } | null> {
+  "use cache";
+  cacheLife("days");
+  if (!hasSupabase) return null;
+  const sb = createPublicClient();
+  const { data } = await sb.from("products").select(PRODUCT_COLS).eq("slug", slug).eq("is_active", true).maybeSingle();
+  if (!data) {
+    cacheTag(`urun-slug-${slug}`);
+    return null;
+  }
+  const product = num(data as Product);
+  cacheTag(productTag(product.id), `urun-slug-${slug}`);
+  let similar: Product[] = [];
+  if (product.category_id) {
+    const { data: sim } = await sb
+      .from("products")
+      .select(PRODUCT_COLS)
+      .eq("is_active", true)
+      .eq("category_id", product.category_id)
+      .neq("id", product.id)
+      .gt("stock", 0)
+      .order("sort_order")
+      .order("name")
+      .limit(10);
+    similar = ((sim ?? []) as Product[]).map(num);
+  }
+  return { product, similar };
+}
+
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   const all = await getProducts();
   return all.find((p) => p.slug === slug) ?? null;
@@ -84,7 +121,7 @@ export async function searchProducts(q: string): Promise<Product[]> {
 /** Kategori başına son 90 gün satış adedi (online + mağaza). Alt kategorileri tercih sırasına dizmek için; günlük önbellek. */
 export async function getCategoryPopularity(): Promise<Record<string, number>> {
   "use cache";
-  cacheTag(CATALOG_TAG);
+  cacheTag("kategori-populerlik");
   cacheLife("days");
   if (!hasSupabase) return {};
   const { data, error } = await createPublicClient().rpc("category_popularity");

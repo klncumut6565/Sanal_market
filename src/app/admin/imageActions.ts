@@ -1,8 +1,7 @@
 "use server";
 // Ürün / kategori görseli yükleme ve mevcut sıkıştırılmamış görsellerin WebP'ye dönüştürülmesi (sunucuda, sharp).
-import { updateTag } from "next/cache";
+import { invalidateCatalog } from "@/lib/data/invalidate";
 import { requireAdmin } from "@/lib/data/auth";
-import { CATALOG_TAG } from "@/lib/data/catalog";
 import { PRODUCT_BUCKET, downloadRemoteImage, storagePathOf, toProductWebp } from "@/lib/server/productImage";
 
 export type ImageUploadResult = { ok: true; url: string } | { ok: false; error: string };
@@ -74,6 +73,7 @@ export async function compressNextImages(batch = 6): Promise<{ ok: boolean; done
   let done = 0;
   let failed = 0;
   let saved = orphans.length ? rows.filter((r) => orphans.includes(r.name)).reduce((a, r) => a + Number(r.size), 0) : 0;
+  const touched = new Set<string>();
   const pub = (p: string) => supabase.storage.from(PRODUCT_BUCKET).getPublicUrl(p).data.publicUrl;
 
   for (const r of todo) {
@@ -91,13 +91,16 @@ export async function compressNextImages(batch = 6): Promise<{ ok: boolean; done
 
       let updErr = false;
       // Ana görsel
-      updErr ||= !!(await supabase.from("products").update({ image_url: newUrl }).like("image_url", like)).error;
+      const main = await supabase.from("products").update({ image_url: newUrl }).like("image_url", like).select("id");
+      updErr ||= !!main.error;
+      for (const x of main.data ?? []) touched.add(x.id);
       // Ek görseller
       const { data: withExtra } = await supabase.from("products").select("id,extra_images").not("extra_images", "is", null);
       for (const p of (withExtra ?? []) as { id: string; extra_images: string[] | null }[]) {
         const ex = p.extra_images ?? [];
         if (ex.some((u) => storagePathOf(u) === r.name)) {
           updErr ||= !!(await supabase.from("products").update({ extra_images: ex.map((u) => (storagePathOf(u) === r.name ? newUrl : u)) }).eq("id", p.id)).error;
+          touched.add(p.id);
         }
       }
       // Kategori görseli
@@ -116,7 +119,7 @@ export async function compressNextImages(batch = 6): Promise<{ ok: boolean; done
       failed++;
     }
   }
-  if (done) updateTag(CATALOG_TAG);
+  if (done) invalidateCatalog([...touched], { categories: true });
   const remaining = rows.filter((r) => r.referenced).length - done;
   return { ok: true, done, failed, remaining: Math.max(0, remaining), savedKb: Math.round(saved / 1024) };
 }

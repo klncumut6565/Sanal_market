@@ -1,9 +1,8 @@
 "use server";
 // Yönetim sesli asistanının ONAYLI değişiklikleri. Asistan yalnızca öneri hazırlar; bu aksiyon
 // yalnızca yöneticinin onayından sonra çağrılır ve ürün öneri anındaki değerlerden farklıysa uygulamaz.
-import { updateTag } from "next/cache";
+import { invalidateCatalog } from "@/lib/data/invalidate";
 import { requireAdmin } from "@/lib/data/auth";
-import { CATALOG_TAG } from "@/lib/data/catalog";
 
 export type ProductSnapshot = { price: number; sale_price: number | null; stock: number; is_active: boolean };
 export type ProductPatch = Partial<ProductSnapshot>;
@@ -28,6 +27,6 @@ export async function applyProductChange(id: string, expect: ProductSnapshot, pa
   if (!Object.keys(upd).length) return { ok: false, error: "Değişiklik yok." };
   const { data, error } = await supabase.from("products").update(upd).eq("id", id).select("price,sale_price,stock,is_active").single();
   if (error || !data) return { ok: false, error: "Kaydedilemedi: " + (error?.message ?? "") };
-  updateTag(CATALOG_TAG);
+  invalidateCatalog([id]);
   return { ok: true, now: { price: Number(data.price), sale_price: data.sale_price == null ? null : Number(data.sale_price), stock: data.stock, is_active: data.is_active } };
 }

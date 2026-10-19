@@ -1,7 +1,6 @@
 "use server";
+import { invalidateCatalog } from "@/lib/data/invalidate";
 import { after } from "next/server";
-import { updateTag } from "next/cache";
-import { CATALOG_TAG } from "@/lib/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import { notifyOrderPlaced } from "@/lib/orderNotify";
 import { orderErrorMessage } from "@/lib/format";
@@ -100,9 +99,8 @@ export async function placeOrder(input: PlaceOrderInput): Promise<PlaceOrderResu
       .from("products")
       .select("id")
       .in("id", items.map((i) => i.product_id))
-      .lte("stock", 0)
-      .limit(1);
-    if (out?.length) updateTag(CATALOG_TAG);
+      .lte("stock", 0);
+    if (out?.length) invalidateCatalog(out.map((o) => o.id));
   } catch {
     /* önbellek yenilenemese de sipariş tamamdır */
   }

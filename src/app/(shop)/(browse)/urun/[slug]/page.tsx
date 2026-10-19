@@ -7,7 +7,7 @@ import { AddToCart } from "@/components/shop/AddToCart";
 import { Price } from "@/components/shop/Price";
 import { ProductGallery } from "@/components/shop/ProductGallery";
 import { ProductRow } from "@/components/shop/ProductCard";
-import { getCategories, getMemberCatalog, getProductBySlug, getProducts } from "@/lib/data/catalog";
+import { getCategories, getMemberCatalog, getProductPage, getProducts } from "@/lib/data/catalog";
 import { discountRate } from "@/lib/format";
 import { CITY, abs, breadcrumbLd, clip, isPublicCategory, jsonLdHtml, productPrice } from "@/lib/seo";
 
@@ -22,7 +22,8 @@ export async function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = (await params).slug;
-  const [p, cats] = await Promise.all([getProductBySlug(slug), getCategories()]);
+  const [pp, cats] = await Promise.all([getProductPage(slug), getCategories()]);
+  const p = pp?.product ?? null;
   const cat = p ? cats.find((c) => c.id === p.category_id) : undefined;
   // Üyeye özel / bulunamayan ürünler Google'da listelenmez
   if (!p || !isPublicCategory(cat)) return { title: p?.name ?? "Ürün", robots: { index: false, follow: false } };
@@ -51,16 +52,20 @@ export default function ProductPage({ params }: Props) {
 
 async function ProductContent({ params }: Props) {
   const slug = (await params).slug;
-  let p = await getProductBySlug(slug);
-  let [cats, all] = await Promise.all([getCategories(), getProducts()]);
+  // Ürün + benzerleri tek ürüne özel önbellekten (tüm ürün listesine bağlı değil → başka ürün düzenlenince bu sayfa yeniden yazılmaz)
+  const [pp, pubCats] = await Promise.all([getProductPage(slug), getCategories()]);
+  let p = pp?.product ?? null;
+  let cats = pubCats;
+  let similar = pp?.similar ?? [];
   if (!p) {
     // Oturuma özel ürün olabilir
-    ({ categories: cats, products: all } = await getMemberCatalog());
-    p = all.find((x) => x.slug === slug) ?? null;
+    const m = await getMemberCatalog();
+    cats = m.categories;
+    p = m.products.find((x) => x.slug === slug) ?? null;
+    if (p) similar = m.products.filter((x) => x.category_id === p!.category_id && x.id !== p!.id).slice(0, 10);
   }
   if (!p) notFound();
   const cat = cats.find((c) => c.id === p.category_id);
-  const similar = all.filter((x) => x.category_id === p.category_id && x.id !== p.id).slice(0, 10);
   const off = discountRate(p);
   const parentCat = cat?.parent_id ? cats.find((c) => c.id === cat.parent_id) : null;
   const seoLd = isPublicCategory(cat)

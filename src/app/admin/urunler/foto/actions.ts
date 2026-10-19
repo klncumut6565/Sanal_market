@@ -1,7 +1,6 @@
 "use server";
-import { updateTag } from "next/cache";
+import { invalidateCatalog } from "@/lib/data/invalidate";
 import { requireAdmin } from "@/lib/data/auth";
-import { CATALOG_TAG } from "@/lib/data/catalog";
 import { fetchAll } from "@/lib/data/fetchAll";
 import { matchWords } from "@/lib/trFold";
 import { identifyProduct, rankCandidates, type Candidate, type VisionGuess } from "@/lib/productVision";
@@ -55,6 +54,6 @@ export async function attachProductImage(id: string, url: string): Promise<{ ok:
   if (!/^[0-9a-f-]{36}$/i.test(id) || !/^https:\/\//.test(url)) return { ok: false, error: "Geçersiz istek." };
   const { error } = await supabase.from("products").update({ image_url: url }).eq("id", id);
   if (error) return { ok: false, error: error.message };
-  updateTag(CATALOG_TAG);
+  invalidateCatalog([id]);
   return { ok: true };
 }

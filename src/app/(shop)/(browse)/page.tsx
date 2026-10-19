@@ -160,7 +160,7 @@ async function MemberSections() {
 }
 
 type Prods = Awaited<ReturnType<typeof getProducts>>;
-const SUB_ROW = 16;
+const SUB_ROW = 10;
 
 /**
  * Ana kategori bölümü: başlığın hemen altında alt kategori sekmeleri yan yana (en çok tercih edilen ilk, seçili);
