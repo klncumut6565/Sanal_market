@@ -361,3 +361,7 @@
 3. Gemini Live `automaticActivityDetection.prefixPaddingMs: 200`.
 - Kontrol: birkaç gün sonra `select kind, detail from voice_events where kind in ('kesinti','bitti') order by created_at desc;`
 - **4. aşama (aynı gün): insan sesi kontrolü** — `voicing()` (audioStream.ts): ~900 Hz alçak geçiren + 80–400 Hz normalize öz-ilinti (perde) + sıfır geçiş oranı < 3000/sn. Asistan konuşurken söze girme için: ≥260 ms yüksek ses VE parçaların ≥%50'si perdeli; 700 ms boyunca perdesiz kalan uzun ses (kapı, alkış, kaşık çınlaması) elenir; hece arası ≤60 ms düşüş beklemeyi bozmaz. Model / ek paket yok. Simülasyon: "dur" 350 ms ✓, "hayır" 500 ms ✓, kapı 400 ms ✗, alkış 300 ms ✗, 3,1 kHz çınlama ✗, 1 sn gürültü ✗. Kayıtlara `perdesiz` sayacı eklendi.
+
+## 2026-10-20 — Supabase "yeni tablolara otomatik API izni kalkıyor" (30 Ekim)
+- Kontrol: 34 public tablonun hepsinde RLS açık, izinler yerinde; mevcut sistem etkilenmiyor.
+- Kural belgesi: `docs/SUPABASE_YENI_TABLO_KURALI.md` (yeni tablo migration'ında açık GRANT; toplu grant yazılmaz).
