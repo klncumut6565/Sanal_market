@@ -6,7 +6,7 @@ import { createAdminToolRunner } from "./adminToolRunner";
 import type { AdminVisual, ProductChange } from "./adminVisual";
 import { ADMIN_TOOLS, ADMIN_VOICE_INSTRUCTION } from "./adminTools";
 import { GeminiLiveProvider } from "./providers/geminiLive";
-import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate } from "./audioStream";
+import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate, type GateStats } from "./audioStream";
 import { hataTurkce } from "./hatalar";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
 import { halusinasyonMu, yankiMi } from "./halusinasyon";
@@ -64,6 +64,8 @@ export function useAdminVoice(onEnded?: () => void) {
   }, [onEnded]);
   const lastUser = useRef("");
   const startedAt = useRef(0);
+  const gateStats = useRef<GateStats | null>(null);
+  const speakStart = useRef(0);
   /** Kapanış: mikrofon hemen kapanır, son konuşma bitince oturum kapanır */
   const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
 
@@ -177,6 +179,11 @@ export function useAdminVoice(onEnded?: () => void) {
         if (!playback.isPlaying()) go("listening");
       });
       provider.onInterrupted(() => {
+        // Teşhis: asistan kaç ms konuşmuştu, kesildiği andaki ses seviyesi / eşik, şimdiye dek bastırılan kısa sesler
+        const st = gateStats.current;
+        const ms = speakStart.current ? Date.now() - speakStart.current : 0;
+        voiceLog("admin", "kesinti", `asistan_ms=${ms} rms=${st?.lastRms ?? 0} esik=${st?.lastThr ?? 0} sozegirme=${st?.bargeIns ?? 0} bastirilan=${st?.suppressed ?? 0}`, startedAt.current);
+        speakStart.current = 0;
         playback.clear();
         go("listening");
       });
@@ -241,7 +248,7 @@ export function useAdminVoice(onEnded?: () => void) {
             voiceLog("admin", "kapat_reddedildi", "", startedAt.current);
             return { ok: false, error: "Kullanıcı sohbeti bitirmek istemedi; KAPATMA, devam et." };
           }
-          voiceLog("admin", "bitti", "", startedAt.current);
+          voiceLog("admin", "bitti", `sozegirme=${gateStats.current?.bargeIns ?? 0} bastirilan=${gateStats.current?.suppressed ?? 0}`, startedAt.current);
           finishSession();
           return { ok: true, closing: true, note: "Oturum kapanıyor; veda ettiysen başka bir şey söyleme." };
         }
@@ -263,6 +270,7 @@ export function useAdminVoice(onEnded?: () => void) {
       // Asistan önce konuşsun: selamlama mikrofon açılmadan istenir
       let greeted = false;
       provider.onAudio((chunk) => {
+        if (!playbackRef.current?.isPlaying()) speakStart.current = Date.now();
         greeted = true;
         playback.enqueue(chunk);
       });
@@ -271,10 +279,11 @@ export function useAdminVoice(onEnded?: () => void) {
       lastSpeech.current = Date.now();
       // Gürültü kapısı + hoparlör yankısı koruması (audioStream.createNoiseGate)
       const gate = createNoiseGate(SES_ESIGI_RMS);
+      gateStats.current = gate.stats;
       micRef.current = await startMicCapture((pcm) => {
         const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
         if (g.voiced) lastSpeech.current = Date.now();
-        providerRef.current?.sendAudio(g.out);
+        for (const o of g.outs) providerRef.current?.sendAudio(o);
       });
       set("listening");
       // Yedek: 2,5 sn içinde asistan konuşmadıysa selamlamayı yeniden iste

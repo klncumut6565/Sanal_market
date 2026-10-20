@@ -11,7 +11,8 @@ export type VoiceEventKind =
   | "sessizlik"
   | "hata"
   | "kapat_reddedildi"
-  | "bitti";
+  | "bitti"
+  | "kesinti";
 
 export function voiceLog(mode: "musteri" | "admin", kind: VoiceEventKind, detail: string, startedAt: number) {
   try {

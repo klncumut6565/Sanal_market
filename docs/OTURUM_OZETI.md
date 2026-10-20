@@ -354,3 +354,9 @@
 - Tüm `revalidatePath` (admin, kuryeler, siparişlerim eylemleri) → `refresh()` (Next 16): sayfa kabuğu önbelleği yeniden yazılmaz, istemci yine tazelenir.
 - Ana sayfa: yalnızca ilk alt kategori sekmesinin ürünleri sayfaya gömülü; diğer sekmeler dokunulunca tarayıcıdan 10 ürün (Supabase anon, RLS). Fırsat / çok satanlar en fazla 20.
 - Görsel sıkıştırma: eski dosya hemen silinmiyor (önbellek eski adresi gösterebilir); kullanılmayanlar 1 gün sonra bir sonraki çalıştırmada siliniyor; kategori menüsü yalnızca kategori görseli değiştiyse yenileniyor.
+
+## 2026-10-20 — Sesli asistan: yanlış söze girme (kesinti) önlemleri
+1. Teşhis kaydı: Gemini "interrupted" olayında `voice_events` → kind `kesinti` (asistan_ms, rms, esik, sozegirme, bastirilan). Oturum sonu `bitti` kaydına da sozegirme/bastirilan sayıları eklendi. (Müşteri + yönetici asistanı.)
+2. `createNoiseGate` (audioStream.ts): asistan konuşurken söze girme için ses 2,5× eşiğin üstünde ve en az `BARGE_IN_MS`=260 ms KESİNTİSİZ olmalı; bu sırada parçalar bekletilir, ses sürerse hepsi gönderilir (kelimenin başı kaybolmaz), kısa patlamada sessizlik gönderilir. Gate artık `outs[]` döndürür; `gate.stats`. Simülasyon: 60 ms tıkırtı → 0 gerçek ses gönderildi (bastırıldı); 400 ms "dur" → geçti.
+3. Gemini Live `automaticActivityDetection.prefixPaddingMs: 200`.
+- Kontrol: birkaç gün sonra `select kind, detail from voice_events where kind in ('kesinti','bitti') order by created_at desc;`

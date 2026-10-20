@@ -341,11 +341,30 @@ export class AudioPlaybackQueue {
  *    asistanın sözünü kesmez, ama müşteri yüksek sesle araya girerse yine duyulur.
  *  - Konuşma algılanınca 400 ms boyunca kapı açık kalır (kelime sonları kırpılmaz).
  */
+/** Gürültü kapısı durum bilgisi (teşhis kaydı için). */
+export type GateStats = { lastRms: number; lastThr: number; suppressed: number; bargeIns: number };
+
+/** Asistan konuşurken söze girmenin sayılması için sesin kesintisiz yüksek kalması gereken süre. */
+export const BARGE_IN_MS = 260;
+
+/**
+ * Gürültü kapısı + hoparlör yankısı koruması.
+ * • Asistan susarken: ses eşiği geçince kapı açılır, 400 ms açık kalır (kelime araları kesilmez).
+ * • Asistan konuşurken (söze girme): eşik 2,5 kat ve ses en az BARGE_IN_MS boyunca KESİNTİSİZ yüksek kalmalı.
+ *   Bu süre boyunca parçalar bekletilir; ses sürerse bekletilenler de gönderilir ("Dur!" kelimesinin başı
+ *   kaybolmaz), kısa bir tıkırtı / kapı / masa sesiyse sessizlik olarak gönderilir ve asistan kesilmez.
+ * Dönüş: gönderilecek parçalar (0..n adet).
+ */
 export function createNoiseGate(base = 420) {
   const hist: { t: number; rms: number }[] = [];
   let openUntil = 0;
   let echoTailUntil = 0;
-  return (pcm: ArrayBuffer, assistantPlaying: boolean): { out: ArrayBuffer; rms: number; voiced: boolean } => {
+  let pending: ArrayBuffer[] = [];
+  let pendingSince = 0;
+  const stats: GateStats = { lastRms: 0, lastThr: 0, suppressed: 0, bargeIns: 0 };
+  const silence = (b: ArrayBuffer) => new ArrayBuffer(b.byteLength);
+
+  const gate = (pcm: ArrayBuffer, assistantPlaying: boolean): { out: ArrayBuffer; outs: ArrayBuffer[]; rms: number; voiced: boolean } => {
     const v = new Int16Array(pcm);
     let sum = 0;
     for (let i = 0; i < v.length; i++) sum += v[i] * v[i];
@@ -360,8 +379,47 @@ export function createNoiseGate(base = 420) {
     const floor = hist.length >= 6 ? Math.min(...hist.map((h) => h.rms)) : 150;
     const thr = Math.max(base, floor * 2.2) * (echo ? 2.5 : 1);
     const loud = rms > thr;
-    if (loud) openUntil = now + 400;
-    const voiced = now < openUntil;
-    return { out: voiced ? pcm : new ArrayBuffer(pcm.byteLength), rms, voiced };
+    stats.lastRms = Math.round(rms);
+    stats.lastThr = Math.round(thr);
+
+    const done = (outs: ArrayBuffer[], voiced: boolean) => ({ out: outs[outs.length - 1] ?? silence(pcm), outs, rms, voiced });
+
+    // Kapı zaten açıksa (konuşma sürüyor) olduğu gibi geçir
+    if (now < openUntil) {
+      if (loud) openUntil = now + 400;
+      return done([pcm], true);
+    }
+    if (!echo) {
+      // Asistan susuyor: bekleyen varsa (yankı kuyruğu bitti) sessizlik olarak boşalt
+      const flushed = pending.map(silence);
+      pending = [];
+      if (loud) {
+        openUntil = now + 400;
+        return done([...flushed, pcm], true);
+      }
+      return done([...flushed, silence(pcm)], false);
+    }
+    // Asistan konuşuyor: söze girme için kesintisiz yüksek ses ara
+    if (loud) {
+      if (!pending.length) pendingSince = now;
+      pending.push(pcm);
+      if (now - pendingSince >= BARGE_IN_MS) {
+        const outs = pending;
+        pending = [];
+        openUntil = now + 400;
+        stats.bargeIns++;
+        return done(outs, true);
+      }
+      return { out: silence(pcm), outs: [], rms, voiced: false };
+    }
+    if (pending.length) {
+      // Kısa ses patlaması: asistanı kesme, sessizlik gönder
+      stats.suppressed++;
+      const outs = [...pending.map(silence), silence(pcm)];
+      pending = [];
+      return done(outs, false);
+    }
+    return done([silence(pcm)], false);
   };
+  return Object.assign(gate, { stats });
 }

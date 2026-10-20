@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
 import { createMarketToolRunner, closedNote, loadCustomerContext, type CartProposal, type ShownProduct } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
-import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate } from "./audioStream";
+import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate, type GateStats } from "./audioStream";
 import { hataTurkce } from "./hatalar";
 import { MARKET_TOOLS, MARKET_VOICE_INSTRUCTION } from "./marketTools";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
@@ -66,6 +66,8 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const lastAsst = useRef("");
   const lastUser = useRef("");
   const startedAt = useRef(0);
+  const gateStats = useRef<GateStats | null>(null);
+  const speakStart = useRef(0);
   const orderDone = useRef(false);
   /** Kapanış başladı: mikrofon kapalı, son konuşma bitince oturum kapanır */
   const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
@@ -223,6 +225,11 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         if (!playback.isPlaying()) go("listening");
       });
       provider.onInterrupted(() => {
+        // Teşhis: asistan kaç ms konuşmuştu, kesildiği andaki ses seviyesi / eşik, şimdiye dek bastırılan kısa sesler
+        const st = gateStats.current;
+        const ms = speakStart.current ? Date.now() - speakStart.current : 0;
+        voiceLog("musteri", "kesinti", `asistan_ms=${ms} rms=${st?.lastRms ?? 0} esik=${st?.lastThr ?? 0} sozegirme=${st?.bargeIns ?? 0} bastirilan=${st?.suppressed ?? 0}`, startedAt.current);
+        speakStart.current = 0;
         playback.clear();
         go("listening");
       });
@@ -292,7 +299,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
             voiceLog("musteri", "kapat_reddedildi", sahte ? "gürültü/yankı" : "kapatma sözü yok", startedAt.current);
             return { ok: false, error: "Müşteri sohbeti bitirmek istemedi; KAPATMA. Veda etme, sohbete devam et; anlamadıysan 'tekrar eder misin?' de." };
           }
-          voiceLog("musteri", "bitti", orderDone.current ? "sipariş" : "müşteri kapattı", startedAt.current);
+          voiceLog("musteri", "bitti", `${orderDone.current ? "sipariş" : "müşteri kapattı"} sozegirme=${gateStats.current?.bargeIns ?? 0} bastirilan=${gateStats.current?.suppressed ?? 0}`, startedAt.current);
           finishSession();
           return { ok: true, closing: true, note: "Oturum kapanıyor. Veda ettiysen başka bir şey söyleme." };
         }
@@ -327,6 +334,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         greeted = true;
       };
       provider.onAudio((chunk) => {
+        if (!playbackRef.current?.isPlaying()) speakStart.current = Date.now();
         markGreeted();
         playback.enqueue(chunk);
       });
@@ -334,10 +342,11 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       lastSpeech.current = Date.now();
       // Gürültü kapısı + hoparlör yankısı koruması (audioStream.createNoiseGate)
       const gate = createNoiseGate(SES_ESIGI_RMS);
+      gateStats.current = gate.stats;
       micRef.current = await startMicCapture((pcm) => {
         const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
         if (g.voiced) lastSpeech.current = Date.now();
-        providerRef.current?.sendAudio(g.out);
+        for (const o of g.outs) providerRef.current?.sendAudio(o);
       });
       set("listening");
       // Yedek: 2,5 sn içinde asistan konuşmadıysa ve müşteri de konuşmadıysa selamlamayı yeniden iste
