@@ -118,7 +118,15 @@ export function AuthForm({ next, admin = false, courier = false }: { next: strin
           Şifremi unuttum
         </button>
       )}
-      {!courier && <p className="mt-3 text-center text-xs text-muted">Üye olmadan da sipariş verebilirsin.</p>}
+      {!courier && (
+        <Link
+          href={/^\/(sepet|odeme|urun|kategori|ara)(\/|$|\?)/.test(next) ? next : "/"}
+          className="mt-3 block w-full rounded-xl py-2.5 text-center text-sm font-bold text-ink ring-1 ring-line hover:ring-brand"
+        >
+          Üye olmadan devam et →
+          <span className="block text-[11px] font-semibold text-muted">Sipariş vermek için üyelik gerekmez</span>
+        </Link>
+      )}
       {mode === "in" && (
         <div className="mt-3 flex items-center justify-center gap-4 border-t border-line pt-3 text-xs font-bold text-muted">
           {courier ? (

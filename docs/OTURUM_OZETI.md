@@ -365,3 +365,6 @@
 ## 2026-10-20 — Supabase "yeni tablolara otomatik API izni kalkıyor" (30 Ekim)
 - Kontrol: 34 public tablonun hepsinde RLS açık, izinler yerinde; mevcut sistem etkilenmiyor.
 - Kural belgesi: `docs/SUPABASE_YENI_TABLO_KURALI.md` (yeni tablo migration'ında açık GRANT; toplu grant yazılmaz).
+
+## 2026-10-21 — Üye olmadan devam et
+- Misafir sipariş zaten çalışıyor (ödeme sayfası giriş istemiyor; 15 siparişin 3'ü misafir, sonuncusu 20 Eki). Giriş sayfasındaki yalnızca yazı olan "Üye olmadan da sipariş verebilirsin" → tıklanabilir "Üye olmadan devam et →" düğmesi (sepet/ödeme/ürün/kategori/arama'dan gelindiyse oraya, değilse ana sayfaya döner).
