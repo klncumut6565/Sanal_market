@@ -342,15 +342,69 @@ export class AudioPlaybackQueue {
  *  - Konuşma algılanınca 400 ms boyunca kapı açık kalır (kelime sonları kırpılmaz).
  */
 /** Gürültü kapısı durum bilgisi (teşhis kaydı için). */
-export type GateStats = { lastRms: number; lastThr: number; suppressed: number; bargeIns: number };
+export type GateStats = { lastRms: number; lastThr: number; suppressed: number; bargeIns: number; unvoiced: number };
 
 /** Asistan konuşurken söze girmenin sayılması için sesin kesintisiz yüksek kalması gereken süre. */
 export const BARGE_IN_MS = 260;
+/** Bu süre boyunca yüksek ama "insan sesi değil" (perdesiz) kalan ses söze girme sayılmaz. */
+const BARGE_IN_MAX_MS = 700;
+/** Bekleyen parçaların en az bu oranı insan sesi (perdeli) olmalı. */
+const VOICED_RATIO = 0.5;
+
+/**
+ * İnsan sesi (perdeli ses) ölçüsü: 80–400 Hz aralığında normalize öz-ilinti tepe değeri (0..1).
+ * Konuşmadaki sesli harfler düzenli titreşim içerir (yüksek değer); kapı çarpması, alkış, kaşık düşmesi,
+ * masaya vurma gibi darbe / gürültü sesleri düzensizdir (düşük değer). Model gerektirmez, telefonda hafiftir.
+ */
+export function voicing(cur: Int16Array, prev: Int16Array | null): number {
+  // Sıfır geçiş oranı: sesli harflerde düşük (< ~3000/sn); tiz çınlama / ıslık / tıslamada yüksek
+  let zc = 0;
+  for (let i = 1; i < cur.length; i++) if ((cur[i - 1] < 0) !== (cur[i] < 0)) zc++;
+  if ((zc * HEDEF_ORNEKLEME) / cur.length > 3000) return 0;
+  const n = cur.length + (prev?.length ?? 0);
+  const x = new Float32Array(n);
+  let o = 0;
+  if (prev) for (let i = 0; i < prev.length; i++) x[o++] = prev[i];
+  for (let i = 0; i < cur.length; i++) x[o++] = cur[i];
+  // ~900 Hz alçak geçiren (2 kez tek kutuplu): ses perdesi ve ilk harmonikler kalır; yüksek frekanslı
+  // çınlamalar (kaşık, bardak, bip) ayıklanır — aksi hâlde onların düzenli titreşimi de "perdeli" görünür.
+  const a = 1 - Math.exp((-2 * Math.PI * 900) / HEDEF_ORNEKLEME);
+  for (let pass = 0; pass < 2; pass++) {
+    let y = x[0];
+    for (let i = 0; i < n; i++) {
+      y += a * (x[i] - y);
+      x[i] = y;
+    }
+  }
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += x[i];
+  mean /= n;
+  for (let i = 0; i < n; i++) x[i] -= mean;
+  const minLag = Math.floor(HEDEF_ORNEKLEME / 400); // 400 Hz
+  const maxLag = Math.min(Math.floor(HEDEF_ORNEKLEME / 80), n - 80); // 80 Hz
+  let best = 0;
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let num = 0;
+    let e1 = 0;
+    let e2 = 0;
+    for (let i = 0; i + lag < n; i++) {
+      const a = x[i];
+      const b = x[i + lag];
+      num += a * b;
+      e1 += a * a;
+      e2 += b * b;
+    }
+    const r = e1 > 0 && e2 > 0 ? num / Math.sqrt(e1 * e2) : 0;
+    if (r > best) best = r;
+  }
+  return best;
+}
 
 /**
  * Gürültü kapısı + hoparlör yankısı koruması.
  * • Asistan susarken: ses eşiği geçince kapı açılır, 400 ms açık kalır (kelime araları kesilmez).
- * • Asistan konuşurken (söze girme): eşik 2,5 kat ve ses en az BARGE_IN_MS boyunca KESİNTİSİZ yüksek kalmalı.
+ * • Asistan konuşurken (söze girme): eşik 2,5 kat, ses en az BARGE_IN_MS boyunca KESİNTİSİZ yüksek kalmalı
+ *   VE bu parçaların en az yarısı insan sesi (perdeli) olmalı — kapı / alkış / kaşık gibi uzun darbe sesleri elenir.
  *   Bu süre boyunca parçalar bekletilir; ses sürerse bekletilenler de gönderilir ("Dur!" kelimesinin başı
  *   kaybolmaz), kısa bir tıkırtı / kapı / masa sesiyse sessizlik olarak gönderilir ve asistan kesilmez.
  * Dönüş: gönderilecek parçalar (0..n adet).
@@ -361,7 +415,10 @@ export function createNoiseGate(base = 420) {
   let echoTailUntil = 0;
   let pending: ArrayBuffer[] = [];
   let pendingSince = 0;
-  const stats: GateStats = { lastRms: 0, lastThr: 0, suppressed: 0, bargeIns: 0 };
+  let pendingVoiced = 0;
+  let pendingGap = 0; // söze girme beklenirken art arda sessiz parça sayısı (hece araları)
+  let prevFrame: Int16Array | null = null;
+  const stats: GateStats = { lastRms: 0, lastThr: 0, suppressed: 0, bargeIns: 0, unvoiced: 0 };
   const silence = (b: ArrayBuffer) => new ArrayBuffer(b.byteLength);
 
   const gate = (pcm: ArrayBuffer, assistantPlaying: boolean): { out: ArrayBuffer; outs: ArrayBuffer[]; rms: number; voiced: boolean } => {
@@ -399,20 +456,42 @@ export function createNoiseGate(base = 420) {
       }
       return done([...flushed, silence(pcm)], false);
     }
-    // Asistan konuşuyor: söze girme için kesintisiz yüksek ses ara
+    // Asistan konuşuyor: söze girme için kesintisiz yüksek VE insan sesi olan ses ara
     if (loud) {
-      if (!pending.length) pendingSince = now;
+      if (!pending.length) {
+        pendingSince = now;
+        pendingVoiced = 0;
+      }
+      pendingGap = 0;
       pending.push(pcm);
-      if (now - pendingSince >= BARGE_IN_MS) {
+      if (voicing(v, prevFrame) > 0.55) pendingVoiced++;
+      prevFrame = v;
+      const age = now - pendingSince;
+      if (age >= BARGE_IN_MS && pendingVoiced / pending.length >= VOICED_RATIO) {
         const outs = pending;
         pending = [];
         openUntil = now + 400;
         stats.bargeIns++;
         return done(outs, true);
       }
+      if (age >= BARGE_IN_MAX_MS) {
+        // Uzun ama insan sesi değil (darbe / gürültü): asistanı kesme
+        stats.unvoiced++;
+        const outs = pending.map(silence);
+        pending = [];
+        return done(outs, false);
+      }
+      return { out: silence(pcm), outs: [], rms, voiced: false };
+    }
+    prevFrame = v;
+    if (pending.length && pendingGap < 3) {
+      // Hece / kelime arası kısa düşüş (≤60 ms): beklemeye devam
+      pendingGap++;
+      pending.push(pcm);
       return { out: silence(pcm), outs: [], rms, voiced: false };
     }
     if (pending.length) {
+      pendingGap = 0;
       // Kısa ses patlaması: asistanı kesme, sessizlik gönder
       stats.suppressed++;
       const outs = [...pending.map(silence), silence(pcm)];

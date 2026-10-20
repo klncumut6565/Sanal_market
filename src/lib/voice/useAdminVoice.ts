@@ -182,7 +182,7 @@ export function useAdminVoice(onEnded?: () => void) {
         // Teşhis: asistan kaç ms konuşmuştu, kesildiği andaki ses seviyesi / eşik, şimdiye dek bastırılan kısa sesler
         const st = gateStats.current;
         const ms = speakStart.current ? Date.now() - speakStart.current : 0;
-        voiceLog("admin", "kesinti", `asistan_ms=${ms} rms=${st?.lastRms ?? 0} esik=${st?.lastThr ?? 0} sozegirme=${st?.bargeIns ?? 0} bastirilan=${st?.suppressed ?? 0}`, startedAt.current);
+        voiceLog("admin", "kesinti", `asistan_ms=${ms} rms=${st?.lastRms ?? 0} esik=${st?.lastThr ?? 0} sozegirme=${st?.bargeIns ?? 0} bastirilan=${st?.suppressed ?? 0} perdesiz=${st?.unvoiced ?? 0}`, startedAt.current);
         speakStart.current = 0;
         playback.clear();
         go("listening");
@@ -248,7 +248,7 @@ export function useAdminVoice(onEnded?: () => void) {
             voiceLog("admin", "kapat_reddedildi", "", startedAt.current);
             return { ok: false, error: "Kullanıcı sohbeti bitirmek istemedi; KAPATMA, devam et." };
           }
-          voiceLog("admin", "bitti", `sozegirme=${gateStats.current?.bargeIns ?? 0} bastirilan=${gateStats.current?.suppressed ?? 0}`, startedAt.current);
+          voiceLog("admin", "bitti", `sozegirme=${gateStats.current?.bargeIns ?? 0} bastirilan=${gateStats.current?.suppressed ?? 0} perdesiz=${gateStats.current?.unvoiced ?? 0}`, startedAt.current);
           finishSession();
           return { ok: true, closing: true, note: "Oturum kapanıyor; veda ettiysen başka bir şey söyleme." };
         }

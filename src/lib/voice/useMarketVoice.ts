@@ -228,7 +228,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         // Teşhis: asistan kaç ms konuşmuştu, kesildiği andaki ses seviyesi / eşik, şimdiye dek bastırılan kısa sesler
         const st = gateStats.current;
         const ms = speakStart.current ? Date.now() - speakStart.current : 0;
-        voiceLog("musteri", "kesinti", `asistan_ms=${ms} rms=${st?.lastRms ?? 0} esik=${st?.lastThr ?? 0} sozegirme=${st?.bargeIns ?? 0} bastirilan=${st?.suppressed ?? 0}`, startedAt.current);
+        voiceLog("musteri", "kesinti", `asistan_ms=${ms} rms=${st?.lastRms ?? 0} esik=${st?.lastThr ?? 0} sozegirme=${st?.bargeIns ?? 0} bastirilan=${st?.suppressed ?? 0} perdesiz=${st?.unvoiced ?? 0}`, startedAt.current);
         speakStart.current = 0;
         playback.clear();
         go("listening");
@@ -299,7 +299,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
             voiceLog("musteri", "kapat_reddedildi", sahte ? "gürültü/yankı" : "kapatma sözü yok", startedAt.current);
             return { ok: false, error: "Müşteri sohbeti bitirmek istemedi; KAPATMA. Veda etme, sohbete devam et; anlamadıysan 'tekrar eder misin?' de." };
           }
-          voiceLog("musteri", "bitti", `${orderDone.current ? "sipariş" : "müşteri kapattı"} sozegirme=${gateStats.current?.bargeIns ?? 0} bastirilan=${gateStats.current?.suppressed ?? 0}`, startedAt.current);
+          voiceLog("musteri", "bitti", `${orderDone.current ? "sipariş" : "müşteri kapattı"} sozegirme=${gateStats.current?.bargeIns ?? 0} bastirilan=${gateStats.current?.suppressed ?? 0} perdesiz=${gateStats.current?.unvoiced ?? 0}`, startedAt.current);
           finishSession();
           return { ok: true, closing: true, note: "Oturum kapanıyor. Veda ettiysen başka bir şey söyleme." };
         }
