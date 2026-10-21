@@ -124,13 +124,39 @@ export function CourierApp({ me: initialMe, openTime, storePhone }: { me: Courie
   };
 
   const loadLive = useCallback(async () => {
-    const { data, error } = await sb
-      .from("orders")
-      .select(`${ORDER_COLS},order_items(quantity,product_name,unit_label,removed)`)
-      .in("status", ["hazirlaniyor", "yolda"])
-      .order("created_at");
-    if (error) return;
-    const list = ((data ?? []) as CourierOrder[]).map(numOrder);
+    // Kendi görevlerim tam bilgiyle; havuz (atanmamış) kişisel veri OLMADAN (courier_pool: yalnızca mahalle, tutar, ürünler)
+    const [mine, poolRes] = await Promise.all([
+      sb
+        .from("orders")
+        .select(`${ORDER_COLS},order_items(quantity,product_name,unit_label,removed)`)
+        .eq("courier_id", me.user_id)
+        .in("status", ["hazirlaniyor", "yolda"])
+        .order("created_at"),
+      sb.rpc("courier_pool"),
+    ]);
+    if (mine.error) return;
+    const poolRows = ((poolRes.data ?? []) as Partial<CourierOrder>[]).map(
+      (o) =>
+        ({
+          customer_name: "",
+          phone: "",
+          address: "",
+          address_note: null,
+          note: null,
+          assigned_at: null,
+          picked_up_at: null,
+          delivered_at: null,
+          collected_method: null,
+          collected_amount: null,
+          courier_note: null,
+          delivery_issue: null,
+          delivery_issue_at: null,
+          settlement_id: null,
+          courier_id: null,
+          ...o,
+        }) as CourierOrder,
+    );
+    const list = [...((mine.data ?? []) as CourierOrder[]), ...poolRows].map(numOrder);
     // Bana yeni atanan sipariş geldiyse uyar
     const mineIds = list.filter((o) => o.courier_id === me.user_id).map((o) => o.id);
     if (known.current && mineIds.some((id) => !known.current!.has(id))) {

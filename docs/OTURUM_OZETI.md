@@ -368,3 +368,8 @@
 
 ## 2026-10-21 — Üye olmadan devam et
 - Misafir sipariş zaten çalışıyor (ödeme sayfası giriş istemiyor; 15 siparişin 3'ü misafir, sonuncusu 20 Eki). Giriş sayfasındaki yalnızca yazı olan "Üye olmadan da sipariş verebilirsin" → tıklanabilir "Üye olmadan devam et →" düğmesi (sepet/ödeme/ürün/kategori/arama'dan gelindiyse oraya, değilse ana sayfaya döner).
+
+## 2026-10-21 — ChatGPT site incelemesindeki geçerli bulgular düzeltildi
+- Kurye havuzu gizliliği (migration 20261021010000): `orders_courier_read` ve `order_items_courier_read` artık yalnızca kuryenin KENDİ açık siparişleri. Havuz `courier_pool()` RPC'si ile ad/telefon/açık adres/notlar OLMADAN (mahalle, ilçe, zaman, ödeme türü, tutar, ürünler). Kurye ekranında havuz kartı "📍 Mahalle, İlçe · 🔒 bilgiler üstlenince görünür". Not: Realtime RLS'e uyduğu için havuzdaki yeni siparişler kurye ekranına 60 sn yedek yenilemeyle gelir; atanan sipariş anında gelir.
+- Mesai şartı: `courier_claim` ve havuzdan `courier_pickup` → mesai kapalıysa `MESAI_KAPALI`. Yöneticinin atadığı sipariş mesai dışında da teslim alınabilir.
+- Hata gösterimi: `quickUpdateProduct` artık sonuç döndürüyor (geçersiz fiyat/stok, indirim ≥ fiyat, DB hatası, 0 satır); listede `QuickForm` satırda kırmızı uyarı, kategori seçiminde ✕ ve eski değere dönüş. `deleteProduct` / `deleteProductById` silinen satırı doğruluyor.

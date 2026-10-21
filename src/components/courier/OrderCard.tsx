@@ -49,9 +49,18 @@ export function OrderCard({ o, now, mode, busy, canClaim, onClaim, onPickup, onD
 
       <div className="space-y-2.5 p-4">
         <div>
-          <p className="text-lg font-extrabold leading-tight">{o.customer_name}</p>
-          <p className="mt-1 font-semibold leading-snug">📍 {o.address}</p>
-          {o.address_note && <p className="text-sm text-muted">{o.address_note}</p>}
+          {mode === "pool" ? (
+            <>
+              <p className="text-lg font-extrabold leading-tight">📍 {[o.addr_neighborhood, o.addr_district].filter(Boolean).join(", ") || "Teslimat bölgesi"}</p>
+              <p className="mt-1 text-xs font-semibold text-muted">🔒 Müşteri adı, telefonu ve açık adresi siparişi üstlenince görünür.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-lg font-extrabold leading-tight">{o.customer_name}</p>
+              <p className="mt-1 font-semibold leading-snug">📍 {o.address}</p>
+              {o.address_note && <p className="text-sm text-muted">{o.address_note}</p>}
+            </>
+          )}
           {o.delivery_slot && <p className="mt-1 text-sm font-semibold text-sky-700">⏰ {o.delivery_slot}</p>}
         </div>
 

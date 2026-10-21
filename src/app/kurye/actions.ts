@@ -13,6 +13,7 @@ const ERR: Record<string, string> = {
   YETKISIZ: "Kurye yetkin yok ya da hesabın pasif. Yöneticiye danış.",
   SIPARIS_YOK: "Sipariş bulunamadı.",
   BASKA_KURYEDE: "Bu sipariş başka bir kuryeye verilmiş.",
+  MESAI_KAPALI: "Mesain kapalı. Sipariş almak için önce mesaini başlat.",
   SIPARIS_UYGUN_DEGIL: "Bu sipariş şu an alınamaz (teslim edilmiş ya da iptal).",
   SENIN_DEGIL: "Bu sipariş sana atanmamış.",
   TESLIM_ALINDI: "Paketi teslim aldıktan sonra sipariş bırakılamaz; yöneticiye haber ver.",

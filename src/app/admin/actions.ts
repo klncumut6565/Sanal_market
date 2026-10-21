@@ -105,7 +105,8 @@ function safeProductsReturn(v: string) {
 
 export async function deleteProduct(fd: FormData) {
   const { supabase } = await requireAdmin();
-  await supabase.from("products").delete().eq("id", str(fd, "id"));
+  const { data, error } = await supabase.from("products").delete().eq("id", str(fd, "id")).select("id");
+  if (error || !data?.length) redirect(`/admin/urunler?hata=${encodeURIComponent("Ürün silinemedi" + (error ? ": " + error.message : "."))}`);
   await invalidateCatalog([str(fd, "id")]);
   redirect("/admin/urunler");
 }
@@ -113,37 +114,54 @@ export async function deleteProduct(fd: FormData) {
 /** Listeden silme (onay kutusundan sonra). Sayfada kalır. */
 export async function deleteProductById(id: string): Promise<{ ok: boolean; error?: string }> {
   const { supabase } = await requireAdmin();
-  const { error } = await supabase.from("products").delete().eq("id", id);
+  const { data, error } = await supabase.from("products").delete().eq("id", id).select("id");
   if (error) return { ok: false, error: "Ürün silinemedi: " + error.message };
+  if (!data?.length) return { ok: false, error: "Ürün silinemedi (bulunamadı ya da yetki yok)." };
   await invalidateCatalog([id]);
   refresh();
   return { ok: true };
 }
 
-export async function quickUpdateProduct(fd: FormData) {
+export type QuickUpdateResult = { ok: boolean; error?: string };
+
+/** Listeden hızlı güncelleme (fiyat / indirim / stok / satış durumu / kategori). Hata olursa ekranda gösterilir. */
+export async function quickUpdateProduct(fd: FormData): Promise<QuickUpdateResult> {
   const { supabase } = await requireAdmin();
   const id = str(fd, "id");
   const patch: Record<string, unknown> = {};
-  const stock = numOrNull(fd, "stock");
-  if (stock != null && Number.isInteger(stock) && stock >= 0) patch.stock = stock;
+  if (fd.has("stock")) {
+    const stock = numOrNull(fd, "stock");
+    if (stock == null || !Number.isInteger(stock) || stock < 0) return { ok: false, error: "Stok 0 veya pozitif tam sayı olmalı." };
+    patch.stock = stock;
+  }
   if (fd.has("toggle_active")) patch.is_active = str(fd, "toggle_active") === "1";
   if (fd.has("category_id")) patch.category_id = str(fd, "category_id") || null;
   if (fd.has("price")) {
     const price = parseNumTR(str(fd, "price"));
-    if (price != null && price > 0) patch.price = Math.round(price * 100) / 100;
+    if (price == null || !(price > 0)) return { ok: false, error: "Geçerli bir fiyat girin." };
+    patch.price = Math.round(price * 100) / 100;
   }
   if (fd.has("sale_price")) {
     const raw = str(fd, "sale_price");
     const sale = raw ? parseNumTR(raw) : null;
     const base = (patch.price as number | undefined) ?? null;
     if (!raw) patch.sale_price = null;
-    else if (sale != null && sale > 0 && (base == null || sale < base)) patch.sale_price = Math.round(sale * 100) / 100;
+    else if (sale == null || !(sale > 0)) return { ok: false, error: "İndirimli fiyatı kontrol edin." };
+    else if (base != null && sale >= base) return { ok: false, error: "İndirimli fiyat normal fiyattan düşük olmalı." };
+    else patch.sale_price = Math.round(sale * 100) / 100;
   }
-  if (Object.keys(patch).length) {
-    await supabase.from("products").update(patch).eq("id", id);
-    await invalidateCatalog([id]);
-    refresh();
-  }
+  if (!Object.keys(patch).length) return { ok: true };
+  const { data, error } = await supabase.from("products").update(patch).eq("id", id).select("id");
+  if (error) return { ok: false, error: "Kaydedilemedi: " + error.message };
+  if (!data?.length) return { ok: false, error: "Ürün bulunamadı ya da yetki yok." };
+  await invalidateCatalog([id]);
+  refresh();
+  return { ok: true };
+}
+
+/** Form için durumlu sürüm (useActionState) */
+export async function quickUpdateProductState(_: QuickUpdateResult | null, fd: FormData): Promise<QuickUpdateResult> {
+  return quickUpdateProduct(fd);
 }
 
 // ---------------- BARKOD ----------------

@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/data/auth";
 import { ProductImage } from "@/components/shop/ProductImage";
 import { formatTL } from "@/lib/format";
 import type { Category, Product } from "@/lib/types";
-import { quickUpdateProduct } from "../actions";
+import { QuickForm } from "@/components/admin/QuickForm";
 import { DeleteProductButton } from "@/components/admin/DeleteProductButton";
 import { InlineCategorySelect } from "@/components/admin/InlineCategorySelect";
 import { calcMargin, marginTone, pctTR } from "@/lib/margin";
@@ -204,7 +204,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                   <InlineCategorySelect id={p.id} value={p.category_id} categories={cats} />
                 </td>
                 <td>
-                  <form action={quickUpdateProduct} className="flex items-center gap-1">
+                  <QuickForm className="flex flex-wrap items-center gap-1">
                     <input type="hidden" name="id" value={p.id} />
                     <div className="space-y-1">
                       <label className="flex items-center gap-1">
@@ -230,7 +230,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                       </label>
                     </div>
                     <button title="Kaydet" aria-label="Kaydet" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-brand hover:bg-brand-soft"><Check size={16} strokeWidth={3} /></button>
-                  </form>
+                  </QuickForm>
                 </td>
                 <td>
                   {(() => {
@@ -249,7 +249,7 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                   })()}
                 </td>
                 <td>
-                  <form action={quickUpdateProduct} className="flex items-center gap-1">
+                  <QuickForm className="flex flex-wrap items-center gap-1">
                     <input type="hidden" name="id" value={p.id} />
                     <input
                       name="stock"
@@ -259,19 +259,19 @@ export default async function ProductsAdmin({ searchParams }: { searchParams: Pr
                       className={`w-[60px] rounded-lg border px-1.5 py-1.5 font-bold ${p.stock === 0 ? "border-brand text-brand" : p.stock <= p.critical_stock ? "border-warn text-warn" : "border-line"}`}
                     />
                     <button title="Kaydet" aria-label="Kaydet" className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-brand hover:bg-brand-soft"><Check size={16} strokeWidth={3} /></button>
-                  </form>
+                  </QuickForm>
                 </td>
                 <td>
                   <UpdatedAge iso={p.info_updated_at} now={now} />
                 </td>
                 <td>
-                  <form action={quickUpdateProduct}>
+                  <QuickForm>
                     <input type="hidden" name="id" value={p.id} />
                     <input type="hidden" name="toggle_active" value={p.is_active ? "0" : "1"} />
                     <button className={`rounded-full px-2.5 py-1 text-xs font-bold ${p.is_active ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-500"}`}>
                       {p.is_active ? "Satışta" : "Pasif"}
                     </button>
-                  </form>
+                  </QuickForm>
                 </td>
                 <td className="pr-3 text-right">
                   <div className="flex items-center justify-end gap-2 whitespace-nowrap">

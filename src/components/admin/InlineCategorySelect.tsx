@@ -10,6 +10,7 @@ type Cat = { id: string; name: string; sort_order: number; parent_id?: string | 
 export function InlineCategorySelect({ id, value, categories }: { id: string; value: string | null; categories: Cat[] }) {
   const [cur, setCur] = useState(value ?? "");
   const [done, setDone] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   return (
     <div className="flex min-w-0 items-center gap-1">
@@ -24,8 +25,14 @@ export function InlineCategorySelect({ id, value, categories }: { id: string; va
           fd.set("id", id);
           fd.set("category_id", v);
           start(async () => {
-            await quickUpdateProduct(fd);
-            setDone(true);
+            const r = await quickUpdateProduct(fd);
+            if (r.ok) {
+              setDone(true);
+              setErr(null);
+            } else {
+              setErr(r.error ?? "Kaydedilemedi");
+              setCur(value ?? "");
+            }
           });
         }}
         className={`w-full min-w-0 max-w-40 truncate rounded-lg border px-1.5 py-1.5 text-[13px] ${cur ? "border-line" : "border-dashed border-warn text-muted"}`}
@@ -33,7 +40,13 @@ export function InlineCategorySelect({ id, value, categories }: { id: string; va
         <option value="">— Kategori seç —</option>
         <CategoryOptionList categories={categories} />
       </select>
-      {pending ? <Loader2 size={14} className="animate-spin text-muted" /> : done ? <Check size={14} className="text-emerald-600" /> : null}
+      {pending ? (
+        <Loader2 size={14} className="animate-spin text-muted" />
+      ) : err ? (
+        <span title={err} className="text-xs font-black text-red-600">✕</span>
+      ) : done ? (
+        <Check size={14} className="text-emerald-600" />
+      ) : null}
     </div>
   );
 }
