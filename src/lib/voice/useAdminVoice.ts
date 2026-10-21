@@ -6,7 +6,7 @@ import { createAdminToolRunner } from "./adminToolRunner";
 import type { AdminVisual, ProductChange } from "./adminVisual";
 import { ADMIN_TOOLS, ADMIN_VOICE_INSTRUCTION } from "./adminTools";
 import { GeminiLiveProvider } from "./providers/geminiLive";
-import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate, type GateStats } from "./audioStream";
+import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate, resetAudioSession, type GateStats } from "./audioStream";
 import { hataTurkce } from "./hatalar";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
 import { halusinasyonMu, yankiMi } from "./halusinasyon";
@@ -76,6 +76,7 @@ export function useAdminVoice(onEnded?: () => void) {
     micRef.current = null;
     playbackRef.current?.close();
     playbackRef.current = null;
+    resetAudioSession(); // iPhone: görüşme modundan çık → sonraki sesler kısık çalmasın
     const p = providerRef.current;
     providerRef.current = null;
     try {
@@ -92,8 +93,8 @@ export function useAdminVoice(onEnded?: () => void) {
   const finishSession = useCallback(() => {
     if (ending.current || !providerRef.current) return;
     ending.current = { since: Date.now(), turnDone: false };
-    micRef.current?.stop();
-    micRef.current = null;
+    // Mikrofon veda sesi bitene kadar AÇIK kalır ama Gemini'ye ses gönderilmez (veda döngüsü olmasın).
+    // Konuşma ortasında mikrofonu kapatmak iPhone'da ses yolunu değiştirip vedayı kısık / ahize hoparlöründen çalıyordu.
     const t = setInterval(() => {
       const e = ending.current;
       if (!e) return clearInterval(t);
@@ -281,6 +282,7 @@ export function useAdminVoice(onEnded?: () => void) {
       const gate = createNoiseGate(SES_ESIGI_RMS);
       gateStats.current = gate.stats;
       micRef.current = await startMicCapture((pcm) => {
+        if (ending.current) return; // vedalaşma: artık dinleme yok
         const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
         if (g.voiced) lastSpeech.current = Date.now();
         for (const o of g.outs) providerRef.current?.sendAudio(o);

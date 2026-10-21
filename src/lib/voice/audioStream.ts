@@ -129,6 +129,19 @@ function prepareAudioSessionForCapture() {
   }
 }
 
+/**
+ * Sesli sohbet bittikten SONRA çağrılır: iPhone'da ses oturumu "play-and-record" (görüşme modu) kalırsa
+ * sonraki tüm sesler kulaklık hoparlöründen / kısık çalar. Normal çalma moduna döndürür.
+ */
+export function resetAudioSession() {
+  try {
+    const nav = navigator as Navigator & { audioSession?: { type: string } };
+    if (nav.audioSession && nav.audioSession.type !== "auto") nav.audioSession.type = "auto";
+  } catch {
+    /* desteklenmiyor */
+  }
+}
+
 export async function startMicCapture(onChunk: (pcm: ArrayBuffer) => void): Promise<MicCapture> {
   prepareAudioSessionForCapture();
   let stream: MediaStream;

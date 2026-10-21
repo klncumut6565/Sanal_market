@@ -373,3 +373,7 @@
 - Kurye havuzu gizliliği (migration 20261021010000): `orders_courier_read` ve `order_items_courier_read` artık yalnızca kuryenin KENDİ açık siparişleri. Havuz `courier_pool()` RPC'si ile ad/telefon/açık adres/notlar OLMADAN (mahalle, ilçe, zaman, ödeme türü, tutar, ürünler). Kurye ekranında havuz kartı "📍 Mahalle, İlçe · 🔒 bilgiler üstlenince görünür". Not: Realtime RLS'e uyduğu için havuzdaki yeni siparişler kurye ekranına 60 sn yedek yenilemeyle gelir; atanan sipariş anında gelir.
 - Mesai şartı: `courier_claim` ve havuzdan `courier_pickup` → mesai kapalıysa `MESAI_KAPALI`. Yöneticinin atadığı sipariş mesai dışında da teslim alınabilir.
 - Hata gösterimi: `quickUpdateProduct` artık sonuç döndürüyor (geçersiz fiyat/stok, indirim ≥ fiyat, DB hatası, 0 satır); listede `QuickForm` satırda kırmızı uyarı, kategori seçiminde ✕ ve eski değere dönüş. `deleteProduct` / `deleteProductById` silinen satırı doğruluyor.
+
+## 2026-10-21 — Sesli asistan: veda ve sonrası kısık ses (iPhone)
+- Neden: `finishSession` veda sesi çalarken mikrofonu kapatıyordu → iPhone ses yolunu değiştirip vedayı kısık / ahize hoparlöründen çalıyordu; oturum bitince `navigator.audioSession` "play-and-record" (görüşme modu) kaldığı için sonraki sesler de kısık.
+- Düzeltme: vedada mikrofon açık kalır ama ses gönderilmez (`ending` iken mikrofon geri çağrısı döner); mikrofon `cleanup`'ta, veda sesi bittikten sonra kapanır. `cleanup` sonunda `resetAudioSession()` → audioSession "auto". (Müşteri + yönetici asistanı.)

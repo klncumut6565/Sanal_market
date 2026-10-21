@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import type { StoreSettings } from "@/lib/types";
 import { createMarketToolRunner, closedNote, loadCustomerContext, type CartProposal, type ShownProduct } from "./marketToolRunner";
 import { GeminiLiveProvider } from "./providers/geminiLive";
-import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate, type GateStats } from "./audioStream";
+import { startMicCapture, AudioPlaybackQueue, type MicCapture, createNoiseGate, resetAudioSession, type GateStats } from "./audioStream";
 import { hataTurkce } from "./hatalar";
 import { MARKET_TOOLS, MARKET_VOICE_INSTRUCTION } from "./marketTools";
 import type { RealtimeSessionResponse, VoiceState } from "./types";
@@ -122,6 +122,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
     micRef.current = null;
     playbackRef.current?.close();
     playbackRef.current = null;
+    resetAudioSession(); // iPhone: görüşme modundan çık → sonraki sesler kısık çalmasın
     const p = providerRef.current;
     providerRef.current = null;
     try {
@@ -139,8 +140,8 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const finishSession = useCallback(() => {
     if (ending.current || !providerRef.current) return;
     ending.current = { since: Date.now(), turnDone: false };
-    micRef.current?.stop();
-    micRef.current = null;
+    // Mikrofon veda sesi bitene kadar AÇIK kalır ama Gemini'ye ses gönderilmez (veda döngüsü olmasın).
+    // Konuşma ortasında mikrofonu kapatmak iPhone'da ses yolunu değiştirip vedayı kısık / ahize hoparlöründen çalıyordu.
     const t = setInterval(() => {
       const e = ending.current;
       if (!e) return clearInterval(t);
@@ -344,6 +345,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       const gate = createNoiseGate(SES_ESIGI_RMS);
       gateStats.current = gate.stats;
       micRef.current = await startMicCapture((pcm) => {
+        if (ending.current) return; // vedalaşma: artık dinleme yok
         const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
         if (g.voiced) lastSpeech.current = Date.now();
         for (const o of g.outs) providerRef.current?.sendAudio(o);
