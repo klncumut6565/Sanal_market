@@ -14,7 +14,7 @@ export type DeliveryAreas = {
 export async function getDeliveryAreas(): Promise<DeliveryAreas> {
   "use cache";
   cacheTag(AREAS_TAG);
-  cacheLife("days");
+  cacheLife("weeks"); // bölge değişince updateTag(AREAS_TAG) ile anında yenilenir
   const sb = createPublicClient();
   const [d, n] = await Promise.all([
     sb.from("delivery_districts").select("id,name,is_active").order("sort_order"),

@@ -244,7 +244,7 @@ export async function orderItemOut(fd: FormData) {
     p_qty: replacement ? qty : null,
     p_mark_out: fd.get("mark_out") === "on",
   });
-  await invalidateCatalog(); // stok değişti (ürün sayfaları stok bilgisini günlük yeniler; satışta stok veritabanında denetlenir)
+  await invalidateCatalog(); // stok değişti (ürün sayfaları haftalık yenilenir; satışta stok veritabanında denetlenir)
   const code = error?.message?.split(":")[0] ?? "";
   const q = error ? `?hata=${encodeURIComponent(ITEM_ERR[code] ?? "İşlem yapılamadı: " + error.message)}` : "?guncellendi=1";
   redirect(`/admin/siparisler/${orderId}${q}`);

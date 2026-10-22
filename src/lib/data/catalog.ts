@@ -46,7 +46,7 @@ const num = (p: Product): Product => ({
 export async function getCategories(): Promise<Category[]> {
   "use cache";
   cacheTag(CATEGORIES_TAG);
-  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
+  cacheLife("weeks"); // Vercel ISR yazımı tasarrufu: süreli yenileme haftalık; ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return [];
   const { data, error } = await createPublicClient()
     .from("categories")
@@ -61,7 +61,7 @@ export async function getCategories(): Promise<Category[]> {
 export async function getProducts(): Promise<Product[]> {
   "use cache";
   cacheTag(CATALOG_TAG);
-  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
+  cacheLife("weeks"); // Vercel ISR yazımı tasarrufu: süreli yenileme haftalık; ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return [];
   const sb = createPublicClient();
   const { data, error } = await fetchAll((f, t) =>
@@ -77,7 +77,7 @@ export async function getProducts(): Promise<Product[]> {
  */
 export async function getProductPage(slug: string): Promise<{ product: Product; similar: Product[] } | null> {
   "use cache";
-  cacheLife("days");
+  cacheLife("weeks"); // düzenleme/satışta urun-<id> etiketiyle anında yenilenir; günlük yeniden yazım gereksiz ISR yazımıydı
   if (!hasSupabase) return null;
   const sb = createPublicClient();
   const { data } = await sb.from("products").select(PRODUCT_COLS).eq("slug", slug).eq("is_active", true).maybeSingle();
@@ -109,10 +109,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   return all.find((p) => p.slug === slug) ?? null;
 }
 
+/** Önbelleksiz: her farklı arama kelimesi ayrı bir ISR yazımı demekti (tekrar oranı düşük). Arama doğrudan RPC'ye gider. */
 export async function searchProducts(q: string): Promise<Product[]> {
-  "use cache";
-  cacheTag(CATALOG_TAG);
-  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase || q.trim().length < 2) return [];
   const { data } = await createPublicClient().rpc("search_products", { q: q.trim() });
   return ((data ?? []) as Product[]).map(num);
@@ -122,7 +120,7 @@ export async function searchProducts(q: string): Promise<Product[]> {
 export async function getCategoryPopularity(): Promise<Record<string, number>> {
   "use cache";
   cacheTag("kategori-populerlik");
-  cacheLife("days");
+  cacheLife("weeks"); // sıralama için yeterli; her gün tüm kategori sayfalarını yeniden yazdırmasın
   if (!hasSupabase) return {};
   const { data, error } = await createPublicClient().rpc("category_popularity");
   if (error) {
@@ -140,7 +138,7 @@ export function byPopularity<T extends { id: string; sort_order: number; name: s
 export async function getStoreSettings(): Promise<StoreSettings> {
   "use cache";
   cacheTag(SETTINGS_TAG);
-  cacheLife("days"); // Vercel ISR yazımı + veri tasarrufu: ürün/ayar değişince updateTag ile anında yenilenir
+  cacheLife("weeks"); // Vercel ISR yazımı tasarrufu: süreli yenileme haftalık; ürün/ayar değişince updateTag ile anında yenilenir
   if (!hasSupabase) return DEFAULT_SETTINGS;
   const { data } = await createPublicClient().from("store_settings").select("*").eq("id", 1).single();
   if (!data) return DEFAULT_SETTINGS;
