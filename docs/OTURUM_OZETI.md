@@ -396,3 +396,8 @@
 - WhatsApp: yalnızca simge (yarı saydam); "WhatsApp" yazısı fare üzerine gelince açılır, sayfayı kaplamaz.
 - Sesli asistan panelinde sohbet sürerken "Pencereyi gizle" (aşağı ok): panel kapanır, sohbet devam eder; sayfanın ORTA ALTINDA küçük, yarı saydam enerji küresi (`VoiceOrb`, TMGD VoiceOrbOverlay'in küçültülmüş hâli, tüm ekranı kaplamaz). Küreye dokununca pencere geri açılır; ✕ sohbeti bitirir. "Sesli sipariş" düğmeleri de gizli pencereyi yeniden gösterir (yeni oturum açmaz).
 - Küre gerçek sese tepki verir: `AudioPlaybackQueue.getAnalyser()` (asistan sesi, salt okuma kolu) + `useMarketVoice.getUserLevel()` (gürültü kapısından geçen müşteri sesi). `src/lib/voice/sesAnalizi.ts` TMGD'den.
+
+## 2026-10-23 — Hero ve tarif kartında kullanıcının görselleri
+- Kullanıcının gönderdiği görsel kırpıldı → `public/tasarim/hero-canta.webp` (Sanal Market çantası + ürünler, 17 KB) ve `public/tasarim/tarif-salata.webp` (salata kâsesi, 26 KB).
+- Hero: CSS çanta + emoji kompozisyonu kaldırıldı; robot + konuşma balonu + çanta görseli. Tarif kartı: soldaki 3B simgeler yerine salata görseli (sağa doğru yumuşak geçiş).
+- Not: ikinci görseldeki markalı ürünler (marka logoları) kullanılmadı.

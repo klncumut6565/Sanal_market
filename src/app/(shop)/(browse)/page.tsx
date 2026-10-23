@@ -109,29 +109,16 @@ export default async function HomePage() {
             <p className="mt-1.5 text-[15px] font-extrabold leading-tight">{CITY}&apos;da hızlı teslimat</p>
             <p className="mt-1 text-[11px] text-white/85">Motokurye ile kapına</p>
           </div>
-          {/* Robot + konuşma balonu + market sepeti (3B ürün görselleri) */}
-          <div aria-hidden className="relative mx-auto h-[250px] w-full max-w-[420px] sm:h-[300px]">
-            <div className="absolute bottom-3 right-0 h-[150px] w-[210px] rounded-[26px] bg-gradient-to-b from-[#f3ead9] to-[#e6d7bd] shadow-xl shadow-navy/10 sm:h-[170px] sm:w-[240px]">
-              <div className="absolute inset-x-0 top-3 flex justify-center">
-                <Image src="/logo-mark.svg" alt="" width={60} height={50} unoptimized className="opacity-70" />
-              </div>
-              <p className="absolute inset-x-0 top-[62px] text-center text-[13px] font-black tracking-[0.12em] text-navy/70">SANAL MARKET</p>
+          {/* Robot + konuşma balonu + market çantası (statik görsel — ISR yükü yok) */}
+          <div aria-hidden className="relative mx-auto h-[270px] w-full max-w-[460px] sm:h-[320px]">
+            <div className="absolute bottom-0 right-0 top-6 w-[62%] overflow-hidden rounded-[26px] shadow-xl shadow-navy/10 ring-1 ring-black/5">
+              <Image src="/tasarim/hero-canta.webp" alt="" fill sizes="(min-width: 768px) 290px, 60vw" priority className="object-cover object-[50%_40%]" />
             </div>
-            {[
-              ["1f966", "right-[150px] bottom-[120px] w-[74px] sm:bottom-[140px]"],
-              ["1f35e", "right-[96px] bottom-[132px] w-[70px] rotate-[18deg] sm:bottom-[152px]"],
-              ["1f95b", "right-[40px] bottom-[128px] w-[60px] sm:bottom-[148px]"],
-              ["1f34c", "right-[-6px] bottom-[96px] w-[78px] sm:bottom-[112px]"],
-              ["1f345", "right-[176px] bottom-[18px] w-[50px]"],
-              ["1f34e", "right-[-8px] bottom-[10px] w-[48px]"],
-            ].map(([f, c]) => (
-              <Image key={f} src={`/kategori3d/${f}.webp`} alt="" width={96} height={96} className={`absolute drop-shadow-md ${c}`} />
-            ))}
-            <div className="absolute bottom-0 left-0 sm:left-2">
-              <Robot size={150} className="sm:hidden" />
-              <Robot size={178} className="hidden sm:block" />
+            <div className="absolute bottom-0 left-0 z-10">
+              <Robot size={140} className="sm:hidden" />
+              <Robot size={170} className="hidden sm:block" />
             </div>
-            <div className="absolute left-[118px] top-0 max-w-[170px] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-[13px] font-semibold leading-snug text-navy shadow-lg shadow-navy/10 ring-1 ring-line sm:left-[150px] sm:top-2">
+            <div className="absolute left-[96px] top-0 z-20 max-w-[170px] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-[13px] font-semibold leading-snug text-navy shadow-lg shadow-navy/10 ring-1 ring-line sm:left-[120px]">
               Merhaba! Size nasıl yardımcı olabilirim? 😊
             </div>
           </div>
@@ -147,15 +134,12 @@ export default async function HomePage() {
 
       {/* İki tanıtım kartı (statik) */}
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="relative flex min-h-[170px] items-center overflow-hidden rounded-[24px] bg-gradient-to-r from-[#fdf8ef] via-[#f7f5f0] to-[#eef1f4] p-5 ring-1 ring-line sm:p-6">
-          <div aria-hidden className="relative mr-3 hidden h-[130px] w-[150px] shrink-0 sm:block">
-            <Image src="/kategori3d/1f957.webp" alt="" width={120} height={120} className="absolute left-1 top-1 h-[112px] w-[112px] drop-shadow-lg" />
-            <Image src="/kategori3d/1f345.webp" alt="" width={56} height={56} className="absolute bottom-0 right-2 h-12 w-12 drop-shadow" />
-            <Image src="/kategori3d/1f955.webp" alt="" width={56} height={56} className="absolute right-0 top-0 h-11 w-11 rotate-12 drop-shadow" />
-            <Image src="/kategori3d/1f96c.webp" alt="" width={56} height={56} className="absolute bottom-1 left-0 h-11 w-11 drop-shadow" />
+        <section className="relative flex min-h-[190px] items-center overflow-hidden rounded-[24px] bg-[#e4e2dc] p-5 ring-1 ring-line sm:p-6">
+          <div aria-hidden className="absolute inset-y-0 left-0 w-[46%] sm:w-[44%]">
+            <Image src="/tasarim/tarif-salata.webp" alt="" fill sizes="(min-width: 768px) 300px, 45vw" className="object-cover object-[50%_55%] [mask-image:linear-gradient(to_right,#000_70%,transparent)]" />
           </div>
-          <div className="relative min-w-0">
-            <h2 className="text-[21px] font-extrabold leading-tight text-navy sm:text-[23px]">Sağlıklı ve pratik tarifler için ihtiyacın olan her şey burada!</h2>
+          <div className="relative ml-[44%] min-w-0">
+            <h2 className="text-[18px] sm:text-[21px] font-extrabold leading-tight text-navy">Sağlıklı ve pratik tarifler için ihtiyacın olan her şey burada!</h2>
             <Link href={firstCat ? `/kategori/${firstCat.slug}` : "/ara"} className="mt-4 inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-navy shadow-sm ring-1 ring-line hover:ring-brand">
               Alışverişe Başla <ArrowRight size={16} />
             </Link>
