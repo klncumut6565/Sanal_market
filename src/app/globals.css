@@ -1,13 +1,16 @@
 @import "tailwindcss";
 
 :root {
-  --brand: #f26a12;
-  --brand-dark: #d4570a;
-  --brand-soft: #fff3ea;
-  --ink: #151c23;
-  --muted: #6b6b6b;
-  --line: #ececec;
-  --bg: #f7f7f8;
+  /* Yeni kimlik (2026-10): zümrüt yeşili + turkuaz vurgu, koyu füme / lacivert yazı, kırık beyaz zemin */
+  --brand: #0e8a6c;
+  --brand-dark: #0a6f57;
+  --brand-soft: #e6f5ef;
+  --accent: #19c6c8;
+  --navy: #12304a;
+  --ink: #15212c;
+  --muted: #66707a;
+  --line: #e7e5df;
+  --bg: #f6f5f1;
   --card: #ffffff;
   --ok: #0f9d58;
   --font-main: "Nunito Sans Variable";
@@ -18,6 +21,8 @@
   --color-brand: var(--brand);
   --color-brand-dark: var(--brand-dark);
   --color-brand-soft: var(--brand-soft);
+  --color-accent: var(--accent);
+  --color-navy: var(--navy);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
   --color-line: var(--line);
@@ -71,8 +76,8 @@ body {
 
 /* Bekleyen (onay bekleyen) sipariş uyarısı: yanıp söner. Hareket azaltma tercihinde sabit kalır. */
 @keyframes bekleyen-yanip-son {
-  0%, 100% { background-color: var(--color-brand); color: #fff; box-shadow: 0 0 0 0 rgb(232 115 42 / 0.55); }
-  50% { background-color: #fff3ea; color: var(--color-brand); box-shadow: 0 0 0 10px rgb(232 115 42 / 0); }
+  0%, 100% { background-color: var(--color-brand); color: #fff; box-shadow: 0 0 0 0 rgb(14 138 108 / 0.55); }
+  50% { background-color: #e6f5ef; color: var(--color-brand); box-shadow: 0 0 0 10px rgb(14 138 108 / 0); }
 }
 .bekleyen-yanip-son {
   animation: bekleyen-yanip-son 1.1s ease-in-out infinite;

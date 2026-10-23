@@ -377,3 +377,11 @@
 ## 2026-10-21 — Sesli asistan: veda ve sonrası kısık ses (iPhone)
 - Neden: `finishSession` veda sesi çalarken mikrofonu kapatıyordu → iPhone ses yolunu değiştirip vedayı kısık / ahize hoparlöründen çalıyordu; oturum bitince `navigator.audioSession` "play-and-record" (görüşme modu) kaldığı için sonraki sesler de kısık.
 - Düzeltme: vedada mikrofon açık kalır ama ses gönderilmez (`ending` iken mikrofon geri çağrısı döner); mikrofon `cleanup`'ta, veda sesi bittikten sonra kapanır. `cleanup` sonunda `resetAudioSession()` → audioSession "auto". (Müşteri + yönetici asistanı.)
+
+## 2026-10-23 — Yeni tasarım, 1. aşama (yeşil/turkuaz marka + robot asistan)
+- Renk: turuncu kaldırıldı → `--brand #0e8a6c`, `--accent #19c6c8`, `--navy #12304a` (globals.css, themeColor, manifest).
+- Logo: `public/logo-mark.svg` (drone + devre "S" sepet); logo.png / pwa / icon / apple-icon yeniden üretildi; `Brand.tsx` "ÇORLU / SANAL MARKET".
+- `Robot.tsx`: SVG robot, sesli asistanın gerçek durumunu gösterir (`robotStateOf`: bekleme / dinliyor / düşünüyor / konuşuyor / hata). Görsel dosyası yok, CSS animasyon.
+- `VoiceAssistant`: yüzen buton ve panel robotlu; `HeroVoice`: dönen örnek komutlar, tıklayınca asistanı açar.
+- Ana sayfa hero: VoicePromo + eski koyu hero yerine yeni bölüm (statik; ek veri / ISR yazımı yok).
+- Sonraki aşamalar: kategori kartları, ürün kartında – 1 + kontrolü, popüler ürünler, güven şeridi.

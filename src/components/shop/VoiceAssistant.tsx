@@ -6,6 +6,7 @@ import { Loader2, Mic, MicOff, X } from "lucide-react";
 import { useMarketVoice, type VoiceSettings } from "@/lib/voice/useMarketVoice";
 import { useCart, useCartHydrated } from "@/store/cart";
 import { VoiceProducts } from "./VoiceProducts";
+import { Robot, robotStateOf } from "./Robot";
 
 const STATUS: Record<string, string> = {
   idle: "",
@@ -70,12 +71,12 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
         <button
           onClick={openAssistant}
           aria-label="Sesli sipariş asistanı"
-          className={`fixed right-4 z-30 flex items-center gap-2 rounded-full bg-ink py-3 pl-3 pr-4 text-sm font-bold text-white shadow-xl ring-4 ring-white transition hover:scale-105 lg:bottom-6 ${
+          className={`fixed right-4 z-30 flex items-center gap-2 rounded-full bg-navy py-1.5 pl-1.5 pr-4 text-sm font-bold text-white shadow-xl ring-4 ring-white transition hover:scale-105 lg:bottom-6 ${
             ready && hasCart ? "bottom-[calc(136px+env(safe-area-inset-bottom))]" : "bottom-[calc(72px+env(safe-area-inset-bottom))]"
           }`}
         >
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-brand">
-            <Mic size={18} />
+          <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-full bg-white">
+            <Robot size={34} className="-mb-2" title="" />
           </span>
           Sesli sipariş
         </button>
@@ -88,9 +89,9 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
           onScrollCapture={v.touch}
           onWheel={v.touch}
         >
-          <div className="space-y-3 rounded-3xl bg-ink p-4 text-white shadow-2xl">
+          <div className="space-y-3 rounded-3xl bg-gradient-to-b from-[#123049] to-[#0b1b2a] p-4 text-white shadow-2xl ring-1 ring-accent/20">
             <div className="flex items-center justify-between">
-              <p className="font-black">🎙️ Sesli alışveriş asistanı</p>
+              <p className="font-black">Sesli alışveriş asistanı</p>
               <button onClick={close} aria-label="Kapat" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
                 <X size={18} />
               </button>
@@ -125,24 +126,31 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
             ) : (
             <>
             <div className="flex items-center gap-3">
-              <div className="relative grid h-14 w-14 shrink-0 place-items-center">
-                {active && (
-                  <span
-                    className={`absolute inset-0 rounded-full bg-brand/40 ${v.state === "user_speaking" || v.state === "speaking" ? "animate-ping" : ""}`}
-                  />
+              {/* Robot: sesli asistanın gerçek durumunu gösterir (dinliyor / düşünüyor / konuşuyor / hata) */}
+              <div className="relative shrink-0">
+                <Robot state={robotStateOf(v.state)} size={76} />
+                {!active && v.state !== "error" && (
+                  <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full bg-white/15">
+                    <MicOff size={13} />
+                  </span>
                 )}
-                <span className={`relative grid h-14 w-14 place-items-center rounded-full ${active ? "bg-brand" : "bg-white/15"}`}>
-                  {v.state === "connecting" || v.state === "tool_calling" || v.state === "processing" ? (
-                    <Loader2 size={24} className="animate-spin" />
-                  ) : active ? (
-                    <Mic size={24} />
-                  ) : (
-                    <MicOff size={24} />
-                  )}
-                </span>
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-brand">{STATUS[v.state]}</p>
+                <p className="flex items-center gap-1.5 text-sm font-bold text-accent">
+                  {(v.state === "connecting" || v.state === "tool_calling" || v.state === "processing") && <Loader2 size={14} className="animate-spin" />}
+                  {STATUS[v.state]}
+                </p>
+                {(v.state === "listening" || v.state === "user_speaking") && (
+                  <span aria-hidden className="mt-1 flex h-4 items-end gap-0.5">
+                    {[6, 12, 8, 14, 7, 11, 5].map((h, k) => (
+                      <span
+                        key={k}
+                        className={`w-1 rounded-full bg-accent ${v.state === "user_speaking" ? "animate-pulse" : "opacity-50"}`}
+                        style={{ height: h, animationDelay: `${k * 90}ms` }}
+                      />
+                    ))}
+                  </span>
+                )}
                 {v.userText && <p className="truncate text-sm opacity-80">Sen: “{v.userText}”</p>}
                 {v.state === "listening" && !v.userText && <p className="text-sm opacity-70">Konuşabilirsin, seni dinliyorum.</p>}
               </div>

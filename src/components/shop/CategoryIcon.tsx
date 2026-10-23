@@ -18,7 +18,7 @@ export function CategoryArt({ cat }: { cat: Cat }) {
     return <img src={cat.image_url} alt="" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" />;
   const src = art3d(cat.emoji ?? "🛒");
   return (
-    <span className="grid h-full w-full place-items-center bg-gradient-to-br from-[#fff4ea] via-[#ffe7d4] to-[#ffd9bd]">
+    <span className="grid h-full w-full place-items-center bg-gradient-to-br from-[#f1faf6] via-[#e3f4ee] to-[#d2efe6]">
       {src ? (
         <img src={src} alt="" loading="lazy" width={160} height={160} className="h-[62%] w-[62%] object-contain drop-shadow-md transition duration-300 group-hover:scale-110" />
       ) : (

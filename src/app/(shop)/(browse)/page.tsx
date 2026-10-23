@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { CategoryCardBody } from "@/components/shop/CategoryIcon";
-import { ChevronRight, Bike, Clock, CreditCard, Truck } from "lucide-react";
+import { ChevronRight, Bike, Bot, Clock, CreditCard, Sparkles, Truck } from "lucide-react";
 import { ProductRow } from "@/components/shop/ProductCard";
 import { ScrollRow } from "@/components/shop/ScrollRow";
 import { SubCategoryTabs } from "@/components/shop/SubCategoryTabs";
@@ -9,7 +9,8 @@ import type { Category } from "@/lib/types";
 import { Suspense } from "react";
 import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
-import { VoicePromo } from "@/components/shop/VoicePromo";
+import { HeroVoice } from "@/components/shop/HeroVoice";
+import { Robot } from "@/components/shop/Robot";
 import { childrenOf, topLevel, withDescendants } from "@/lib/categoryTree";
 import type { Metadata } from "next";
 import { CITY, REGION, SITE_DESCRIPTION, SITE_URL, abs, isPublicCategory, jsonLdHtml } from "@/lib/seo";
@@ -64,25 +65,65 @@ export default async function HomePage() {
   return (
     <div className="space-y-7">
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLdHtml(storeLd)} />
-      {s.voice_enabled !== false && <VoicePromo />}
-      <section className="relative overflow-hidden rounded-3xl bg-ink p-5 text-white sm:p-7">
-        <div aria-hidden className="absolute -right-24 -top-28 h-72 w-72 rounded-full border-[14px] border-brand/35 sm:-right-16 sm:-top-20 sm:border-brand/70" />
-        <div className="relative z-10 flex items-center gap-4">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-bold text-brand">{s.store_name}</p>
-            <h1 className="mt-1 text-[26px] font-black leading-tight sm:text-4xl">
-              İhtiyacın <span className="text-brand">Kapında!</span>
-            </h1>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
-              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><Bike size={14} className="text-brand" /> Motokurye servisi</span>
-              <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><CreditCard size={14} className="text-brand" /> Kapıda nakit / kart</span>
+      {/* KARŞILAMA: başlık + konuşarak sipariş + asistan robotu (görseller statik dosya / SVG — ISR yükü yok) */}
+      <section className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-[#eaf6f1] via-white to-[#e7f4f6] p-5 ring-1 ring-line sm:p-8">
+        <div aria-hidden className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-accent/10 blur-2xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 left-1/3 h-64 w-64 rounded-full bg-brand/10 blur-2xl" />
+        <div className="relative grid items-center gap-6 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+          <div className="min-w-0">
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-soft px-3 py-1 text-xs font-bold text-brand ring-1 ring-brand/15">
+              <Sparkles size={13} /> Geleceğin marketi, şimdi seninle!
+            </p>
+            <h1 className="mt-3 text-[30px] font-black leading-[1.08] tracking-tight text-navy sm:text-[44px]">Bugün neye ihtiyacın var?</h1>
+            <p className="mt-3 max-w-md text-[15px] leading-relaxed text-muted">
+              {s.voice_enabled !== false
+                ? "Yapay zekâ destekli asistanımızla konuş, siparişini kolayca ver. Çorlu Sanal Market her zaman yanında!"
+                : "Çorlu'da market alışverişin kapında. Ürünlerini seç, motokuryemiz getirsin."}
+            </p>
+            {s.voice_enabled !== false && (
+              <div className="mt-5">
+                <HeroVoice />
+                <p className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand">
+                  <Bot size={14} /> Yapay zekâ ile konuşarak sipariş ver
+                </p>
+              </div>
+            )}
+            <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold text-navy">
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 ring-1 ring-line"><Bike size={14} className="text-brand" /> Motokurye servisi</span>
+              <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 ring-1 ring-line"><CreditCard size={14} className="text-brand" /> Kapıda nakit / kart</span>
               {s.working_hours && (
-                <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5"><Clock size={14} className="text-brand" /> {s.working_hours}</span>
+                <span className="flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 ring-1 ring-line"><Clock size={14} className="text-brand" /> {s.working_hours}</span>
               )}
-              <span className="flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5"><Truck size={14} /> {formatTL(s.free_delivery_threshold)} üzeri ücretsiz</span>
+              <span className="flex items-center gap-1.5 rounded-full bg-brand px-3 py-1.5 text-white"><Truck size={14} /> {formatTL(s.free_delivery_threshold)} üzeri ücretsiz</span>
             </div>
           </div>
-          <Image src="/logo-mark.png" alt="" width={240} height={171} priority className="relative hidden w-44 shrink-0 sm:block md:w-56" />
+
+          {/* Robot + konuşma balonu + market sepeti (3B ürün görselleri) */}
+          <div aria-hidden className="relative mx-auto h-[250px] w-full max-w-[420px] sm:h-[300px]">
+            <div className="absolute bottom-3 right-0 h-[150px] w-[210px] rounded-[26px] bg-gradient-to-b from-[#f3ead9] to-[#e6d7bd] shadow-xl shadow-navy/10 sm:h-[170px] sm:w-[240px]">
+              <div className="absolute inset-x-0 top-3 flex justify-center">
+                <Image src="/logo-mark.svg" alt="" width={60} height={50} unoptimized className="opacity-70" />
+              </div>
+              <p className="absolute inset-x-0 top-[62px] text-center text-[13px] font-black tracking-[0.12em] text-navy/70">SANAL MARKET</p>
+            </div>
+            {[
+              ["1f966", "right-[150px] bottom-[120px] w-[74px] sm:bottom-[140px]"],
+              ["1f35e", "right-[96px] bottom-[132px] w-[70px] rotate-[18deg] sm:bottom-[152px]"],
+              ["1f95b", "right-[40px] bottom-[128px] w-[60px] sm:bottom-[148px]"],
+              ["1f34c", "right-[-6px] bottom-[96px] w-[78px] sm:bottom-[112px]"],
+              ["1f345", "right-[176px] bottom-[18px] w-[50px]"],
+              ["1f34e", "right-[-8px] bottom-[10px] w-[48px]"],
+            ].map(([f, c]) => (
+              <Image key={f} src={`/kategori3d/${f}.webp`} alt="" width={96} height={96} className={`absolute drop-shadow-md ${c}`} />
+            ))}
+            <div className="absolute bottom-0 left-0 sm:left-2">
+              <Robot size={150} className="sm:hidden" />
+              <Robot size={178} className="hidden sm:block" />
+            </div>
+            <div className="absolute left-[118px] top-0 max-w-[170px] rounded-2xl rounded-bl-sm bg-white px-3 py-2 text-[13px] font-semibold leading-snug text-navy shadow-lg shadow-navy/10 ring-1 ring-line sm:left-[150px] sm:top-2">
+              Merhaba! Size nasıl yardımcı olabilirim? 😊
+            </div>
+          </div>
         </div>
       </section>
 

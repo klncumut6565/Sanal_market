@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ kind: strin
     scope: "/",
     display: "standalone",
     background_color: "#ffffff",
-    theme_color: "#e8732a",
+    theme_color: "#0e8a6c",
     lang: "tr",
     icons: [
       { src: "/pwa-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
