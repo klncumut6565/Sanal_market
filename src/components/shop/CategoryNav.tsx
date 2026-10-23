@@ -1,5 +1,8 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { LayoutGrid } from "lucide-react";
+import { art3d } from "@/lib/categoryArt";
 import { CategoryIcon } from "@/components/shop/CategoryIcon";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
@@ -79,6 +82,59 @@ export function CategoryChips({ categories }: { categories: Category[] }) {
           <CategoryIcon cat={c} imgClass="h-5 w-5 -my-1" /> {c.name}
         </Link>
       ))}
+    </nav>
+  );
+}
+
+/**
+ * Üstte yatay kategori kartları (kenar menüsü yerine): 3D simge + ad + ürün sayısı.
+ * hideOnHome: ana sayfada şerit hero'nun altında ayrıca gösterildiği için düzen içindeki kopya gizlenir.
+ */
+export function CategoryStrip({ categories, counts = {}, hideOnHome = false }: { categories: Category[]; counts?: Record<string, number>; hideOnHome?: boolean }) {
+  const active = useActiveSlug();
+  const activeCat = categories.find((c) => c.slug === active);
+  const activeTop = activeCat?.parent_id ?? activeCat?.id;
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    el?.scrollIntoView({ block: "nearest", inline: "center" });
+  }, [activeTop]);
+  if (hideOnHome && active === "") return null;
+  const card =
+    "group flex w-[86px] shrink-0 snap-start flex-col items-center justify-center gap-1 rounded-2xl px-1.5 py-2.5 text-center transition sm:w-[100px]";
+  return (
+    <nav ref={ref} aria-label="Kategoriler" className="no-scrollbar -mx-4 flex snap-x gap-2.5 overflow-x-auto px-4 py-1.5">
+      <Link
+        href="/"
+        aria-current={active === "" ? "page" : undefined}
+        className={`${card} ${active === "" ? "bg-brand text-white shadow-lg shadow-brand/25" : "bg-white ring-1 ring-line hover:ring-brand/40"}`}
+      >
+        <span className="grid h-11 w-11 place-items-center"><LayoutGrid size={26} strokeWidth={1.8} /></span>
+        <span className="text-[12px] font-bold leading-tight">Tümü</span>
+      </Link>
+      {topLevel(categories).map((c) => {
+        const on = activeTop === c.id;
+        const src = c.image_url || art3d(c.emoji);
+        const n = counts[c.id];
+        return (
+          <Link
+            key={c.id}
+            href={`/kategori/${c.slug}`}
+            aria-current={on ? "page" : undefined}
+            className={`${card} ${on ? "bg-brand-soft ring-2 ring-brand" : "bg-white shadow-[0_2px_10px_rgba(18,48,74,0.05)] ring-1 ring-line hover:ring-brand/40"}`}
+          >
+            <span className="grid h-11 w-11 place-items-center overflow-hidden rounded-xl">
+              {src ? (
+                <img src={src} alt="" loading="lazy" width={44} height={44} className={`h-11 w-11 ${c.image_url ? "object-cover" : "object-contain drop-shadow"} transition group-hover:scale-110`} />
+              ) : (
+                <span className="text-3xl">{c.emoji ?? "🛒"}</span>
+              )}
+            </span>
+            <span className="line-clamp-2 text-[12px] font-bold leading-tight text-navy">{c.name}</span>
+            {n != null && <span className="text-[10.5px] font-semibold text-muted">{n.toLocaleString("tr-TR")} ürün</span>}
+          </Link>
+        );
+      })}
     </nav>
   );
 }

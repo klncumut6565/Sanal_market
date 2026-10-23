@@ -11,7 +11,7 @@ export function ProductCard({ product }: { product: Product }) {
   const off = discountRate(product);
   const soldOut = product.stock <= 0;
   return (
-    <div className="group relative flex flex-col rounded-2xl bg-card p-2.5 ring-1 ring-line transition hover:shadow-md">
+    <div className="group relative flex flex-col rounded-2xl bg-card p-2.5 shadow-[0_2px_10px_rgba(18,48,74,0.05)] ring-1 ring-line transition hover:shadow-lg hover:ring-brand/30">
       <Link href={`/urun/${product.slug}`} className={soldOut ? "opacity-50" : ""}>
         <ProductImage src={product.image_url} emoji={product.emoji} alt={product.name} />
       </Link>
@@ -27,14 +27,16 @@ export function ProductCard({ product }: { product: Product }) {
         </span>
       )}
       <div className="mt-2 flex flex-1 flex-col">
-        <div className="flex items-end justify-between gap-2">
-          <Price price={product.price} sale={product.sale_price} />
-          <AddToCart product={product} />
-        </div>
-        <Link href={`/urun/${product.slug}`} className="mt-1 line-clamp-2 text-[13.5px] font-semibold leading-snug">
+        <Link href={`/urun/${product.slug}`} className="line-clamp-2 text-[13px] font-bold uppercase leading-snug tracking-tight text-navy">
           {product.name}
         </Link>
         {product.unit_label && <span className="mt-0.5 text-xs text-muted">{product.unit_label}</span>}
+        <div className="mt-auto pt-2">
+          <Price price={product.price} sale={product.sale_price} />
+        </div>
+        <div className="mt-2">
+          <AddToCart product={product} />
+        </div>
       </div>
     </div>
   );
@@ -42,7 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
 
 export function ProductGrid({ products }: { products: Product[] }) {
   return (
-    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7">
       {products.map((p) => (
         <ProductCard key={p.id} product={p} />
       ))}
@@ -51,7 +53,7 @@ export function ProductGrid({ products }: { products: Product[] }) {
 }
 
 export function ProductRow({ products, moreHref, moreLabel = "Tümünü gör" }: { products: Product[]; moreHref?: string; moreLabel?: string }) {
-  const cell = "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-[23%] xl:w-[18.5%] 2xl:w-[15.6%]";
+  const cell = "w-[44%] shrink-0 snap-start sm:w-[30%] lg:w-[18.5%] xl:w-[15.6%] 2xl:w-[13.4%]";
   return (
     <ScrollRow>
       {products.map((p) => (

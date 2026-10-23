@@ -38,3 +38,12 @@ export function HeroVoice() {
     </button>
   );
 }
+
+/** Banner düğmesi: sesli asistanı açar. */
+export function OpenVoiceButton({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <button type="button" onClick={() => window.dispatchEvent(new Event(OPEN_EVENT))} className={className}>
+      {children}
+    </button>
+  );
+}

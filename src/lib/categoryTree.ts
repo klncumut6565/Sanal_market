@@ -27,3 +27,14 @@ export function categoryOptions<T extends C>(cats: T[]): { id: string; label: st
   }
   return out;
 }
+
+/** Ana kategori id → (alt kategoriler dahil) ürün sayısı */
+export function topCounts(cats: C[], products: { category_id: string | null }[]): Record<string, number> {
+  const parentOf = new Map(cats.map((c) => [c.id, c.parent_id && cats.some((x) => x.id === c.parent_id) ? c.parent_id : c.id]));
+  const out: Record<string, number> = {};
+  for (const p of products) {
+    const t = p.category_id ? parentOf.get(p.category_id) : undefined;
+    if (t) out[t] = (out[t] ?? 0) + 1;
+  }
+  return out;
+}

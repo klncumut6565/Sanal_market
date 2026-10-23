@@ -385,3 +385,9 @@
 - `VoiceAssistant`: yüzen buton ve panel robotlu; `HeroVoice`: dönen örnek komutlar, tıklayınca asistanı açar.
 - Ana sayfa hero: VoicePromo + eski koyu hero yerine yeni bölüm (statik; ek veri / ISR yazımı yok).
 - Sonraki aşamalar: kategori kartları, ürün kartında – 1 + kontrolü, popüler ürünler, güven şeridi.
+
+## 2026-10-23 — Yeni tasarım, 2. aşama (örnek görsele göre ana sayfa)
+- Kenar menüsü (sidebar) kaldırıldı → `CategoryStrip`: üstte yatay kategori kartları (3B simge + ad + ürün sayısı, `topCounts`). Ana sayfada hero'nun altında, diğer sayfalarda en üstte (`hideOnHome`).
+- Ana sayfa sırası: hero (+ hızlı teslimat kartı) → kategori şeridi → 2 tanıtım kartı (tarifler / "Konuş, sipariş ver" → asistanı açar) → Popüler Ürünler → Kategoriler ızgarası (ürün sayılı) → güven şeridi → kategori bölümleri.
+- Ürün kartı: ad üstte (büyük harf), fiyat, altta "– adet +" seçici + yeşil sepet düğmesi (`AddToCart` kart görünümü; sepetteyse yeşil adet kontrolü). Sepet mantığı aynı (`add` + `setQty`).
+- Izgaralar sidebar kalktığı için geniş ekranda 6–7 sütun. Ek veri sorgusu / ISR yükü yok (aynı önbellekli katalog).

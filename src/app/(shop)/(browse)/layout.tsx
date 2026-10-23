@@ -1,32 +1,31 @@
-import { CategoryChips, CategorySidebar } from "@/components/shop/CategoryNav";
+import { CategoryStrip } from "@/components/shop/CategoryNav";
 import { MobileCartBar } from "@/components/shop/CartContents";
 import { Suspense } from "react";
-import { getCategories, getMemberCatalog, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
+import { getCategories, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
+import { topCounts } from "@/lib/categoryTree";
 import type { Category } from "@/lib/types";
 
-// Üye oturumu varsa üyeye özel kategoriler de menüye eklenir (istek anında, Suspense içinde)
-async function MemberNav({ categories, kind }: { categories: Category[]; kind: "sidebar" | "chips" }) {
-  const all = mergeCategories(categories, (await getMemberCatalog()).categories);
-  return kind === "sidebar" ? <CategorySidebar categories={all} /> : <CategoryChips categories={all} />;
+type Counts = Record<string, number>;
+
+// Üye oturumu varsa üyeye özel kategoriler de şeride eklenir (istek anında, Suspense içinde)
+async function MemberNav({ categories, counts }: { categories: Category[]; counts: Counts }) {
+  const m = await getMemberCatalog();
+  const all = mergeCategories(categories, m.categories);
+  return <CategoryStrip categories={all} counts={{ ...counts, ...topCounts(m.categories, m.products) }} hideOnHome />;
 }
 
+// Kenar menüsü yok: kategoriler üstte yatay kartlar (ana sayfada hero'nun altında, diğer sayfalarda en üstte)
 export default async function BrowseLayout({ children }: { children: React.ReactNode }) {
-  const [categories, settings] = await Promise.all([getCategories(), getStoreSettings()]);
+  const [categories, settings, products] = await Promise.all([getCategories(), getStoreSettings(), getProducts()]);
+  const counts = topCounts(categories, products);
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pt-3 lg:grid lg:grid-cols-[180px_minmax(0,1fr)] lg:gap-4 lg:pt-5">
-      <div className="hidden lg:block">
-        <Suspense fallback={<CategorySidebar categories={categories} />}>
-          <MemberNav categories={categories} kind="sidebar" />
+    <div className="mx-auto max-w-[1440px] px-4 pt-3 lg:pt-5">
+      <div className="mb-4">
+        <Suspense fallback={<CategoryStrip categories={categories} counts={counts} hideOnHome />}>
+          <MemberNav categories={categories} counts={counts} />
         </Suspense>
       </div>
-      <div className="min-w-0">
-        <div className="mb-3 lg:hidden">
-          <Suspense fallback={<CategoryChips categories={categories} />}>
-            <MemberNav categories={categories} kind="chips" />
-          </Suspense>
-        </div>
-        {children}
-      </div>
+      <div className="min-w-0">{children}</div>
       <MobileCartBar settings={settings} />
     </div>
   );

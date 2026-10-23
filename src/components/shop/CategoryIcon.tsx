@@ -29,15 +29,18 @@ export function CategoryArt({ cat }: { cat: Cat }) {
 }
 
 /** Ana sayfa kategori kartı (örnek: üstte fotoğraf, altta ad + ok düğmesi). */
-export function CategoryCardBody({ cat }: { cat: Cat }) {
+export function CategoryCardBody({ cat, count }: { cat: Cat; count?: number }) {
   return (
     <>
       <span className="block aspect-[6/5] w-full overflow-hidden rounded-t-2xl">
         <CategoryArt cat={cat} />
       </span>
       <span className="flex min-h-[3.6rem] items-start justify-between gap-2 px-3 py-2.5">
-        <span className="line-clamp-2 text-left text-[13.5px] font-extrabold leading-snug text-ink">{cat.name}</span>
-        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-bg text-ink transition group-hover:bg-brand group-hover:text-white">
+        <span className="min-w-0 text-left">
+          <span className="line-clamp-2 text-[13.5px] font-extrabold leading-snug text-navy">{cat.name}</span>
+          {count != null && <span className="mt-0.5 block text-[11.5px] font-semibold text-muted">{count.toLocaleString("tr-TR")} ürün</span>}
+        </span>
+        <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-soft text-brand transition group-hover:bg-brand group-hover:text-white">
           <ArrowRight size={15} />
         </span>
       </span>

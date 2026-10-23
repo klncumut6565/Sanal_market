@@ -1,5 +1,6 @@
 "use client";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { Minus, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { useState } from "react";
 import { useCart, useCartHydrated } from "@/store/cart";
 import type { Product } from "@/lib/types";
 
@@ -9,6 +10,7 @@ export function AddToCart({ product, variant = "card" }: { product: Product; var
   const add = useCart((s) => s.add);
   const setQty = useCart((s) => s.setQty);
   const qty = ready ? (line?.qty ?? 0) : 0;
+  const [pick, setPick] = useState(1); // sepete eklemeden önce seçilen adet (kart görünümü)
   const max = Math.min(product.stock, product.max_per_order);
   const soldOut = product.stock <= 0;
 
@@ -24,20 +26,36 @@ export function AddToCart({ product, variant = "card" }: { product: Product; var
         <Plus size={18} /> Sepete ekle
       </button>
     ) : (
-      <button
-        onClick={() => add(product)}
-        aria-label={`${product.name} sepete ekle`}
-        className="grid h-9 w-9 place-items-center rounded-full border border-line bg-white text-brand shadow-sm transition hover:border-brand hover:bg-brand hover:text-white active:scale-95"
-      >
-        <Plus size={20} strokeWidth={2.5} />
-      </button>
+      // Kart: – adet + seçici ve sepet düğmesi
+      <div className="flex w-full items-center gap-1.5">
+        <div className="flex h-9 flex-1 items-center justify-between rounded-xl bg-bg px-0.5 text-sm ring-1 ring-line">
+          <button onClick={() => setPick((n) => Math.max(1, n - 1))} aria-label="Azalt" className="grid h-8 w-7 place-items-center rounded-lg text-muted hover:text-ink disabled:opacity-30" disabled={pick <= 1}>
+            <Minus size={15} strokeWidth={2.5} />
+          </button>
+          <span className="font-bold tabular-nums">{pick}</span>
+          <button onClick={() => setPick((n) => Math.min(max, n + 1))} aria-label="Artır" className="grid h-8 w-7 place-items-center rounded-lg text-muted hover:text-ink disabled:opacity-30" disabled={pick >= max}>
+            <Plus size={15} strokeWidth={2.5} />
+          </button>
+        </div>
+        <button
+          onClick={() => {
+            add(product);
+            if (pick > 1) setQty(product.id, pick);
+            setPick(1);
+          }}
+          aria-label={`${product.name} sepete ekle`}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand text-white shadow-sm transition hover:bg-brand-dark active:scale-95"
+        >
+          <ShoppingCart size={17} strokeWidth={2.4} />
+        </button>
+      </div>
     );
   }
 
   return (
     <div
       className={`flex items-center justify-between rounded-full bg-brand text-white shadow-sm ${
-        variant === "wide" ? "h-12 w-full px-2 text-base" : "h-9 w-[104px] px-1 text-sm"
+        variant === "wide" ? "h-12 w-full px-2 text-base" : "h-9 w-full rounded-xl px-1 text-sm"
       }`}
     >
       <button
