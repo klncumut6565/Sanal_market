@@ -202,12 +202,40 @@ export function createMarketToolRunner(deps: {
     }
 
     if (name === "list_categories") {
+      // Ana kategori ↔ alt kategori ayrımı: yalnızca ANA kategoriler sayılır, alt kategoriler altında iç içe verilir
       const [cats, { data: prods }] = await Promise.all([
         shopCategories(sb),
         fetchAll((f, t) => sb.from("products").select("category_id").eq("is_active", true).gt("stock", 0).order("id").range(f, t)),
       ]);
-      const categories = cats.map((c) => ({ name: c.name, products_in_stock: (prods ?? []).filter((p) => p.category_id === c.id).length }));
-      return { count: categories.length, categories, note: "Kategorilerin hepsini adlarıyla say." };
+      const { data: tree } = await sb.from("categories").select("id,parent_id").in("id", cats.map((c) => c.id));
+      const parentOf = new Map(((tree ?? []) as { id: string; parent_id: string | null }[]).map((c) => [c.id, c.parent_id]));
+      const ids = new Set(cats.map((c) => c.id));
+      const isTop = (id: string) => {
+        const p = parentOf.get(id);
+        return !p || !ids.has(p);
+      };
+      const count = new Map<string, number>();
+      for (const p of prods ?? []) if (p.category_id) count.set(p.category_id, (count.get(p.category_id) ?? 0) + 1);
+      const want = String(args.parent ?? "").trim();
+      const tops = cats.filter((c) => isTop(c.id));
+      const subsOf = (id: string) => cats.filter((c) => parentOf.get(c.id) === id);
+      if (want) {
+        const n = (t: string) => norm(t);
+        const top = tops.find((c) => n(c.name) === n(want)) ?? tops.find((c) => n(c.name).includes(n(want)) || n(want).includes(n(c.name)));
+        if (!top) return { error: "Bu adla ana kategori bulunamadı.", main_categories: tops.map((c) => c.name) };
+        const subs = subsOf(top.id).map((c) => ({ name: c.name, products_in_stock: count.get(c.id) ?? 0 }));
+        return { main_category: top.name, subcategory_count: subs.length, subcategories: subs, note: "Bunlar bu ana kategorinin ALT kategorileri; adlarıyla say." };
+      }
+      const main = tops.map((c) => {
+        const subs = subsOf(c.id);
+        const total = (count.get(c.id) ?? 0) + subs.reduce((a, x) => a + (count.get(x.id) ?? 0), 0);
+        return { name: c.name, products_in_stock: total, subcategory_count: subs.length, subcategories: subs.map((x) => x.name) };
+      });
+      return {
+        main_category_count: main.length,
+        main_categories: main,
+        note: "Müşteri 'kategorileri say' derse YALNIZCA ana kategorilerin (main_categories.name) adlarını say; alt kategorileri SAYMA. Alt kategorileri yalnızca müşteri bir kategorinin alt kategorilerini sorarsa söyle.",
+      };
     }
 
     if (name === "remember_preference" || name === "forget_preference") {

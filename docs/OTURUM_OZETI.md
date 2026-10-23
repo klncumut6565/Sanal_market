@@ -414,3 +414,7 @@
   - `click_on_screen` (görünen öğeye ada veya sıraya göre tıklar: "Coco Star'ı aç", "üçüncü ürün", "zeytin sekmesi")
 - Ekran araçları veritabanına gitmez. Asistan penceresi/küresi `data-asistan-ui` ile hariç; panelin altında kalan öğeler görünür sayılmaz. Telefonda ekran komutundan önce pencere otomatik gizlenir (orta altta küre, sohbet sürer).
 - Mağaza düzeninde içerik `<main id="icerik">` içinde.
+
+## 2026-10-23 — Sesli asistan: kategori / alt kategori ayrımı
+- `list_categories` artık yalnızca ANA kategorileri sayar (her birinin altında alt kategori adları ve toplam stoklu ürün sayısı iç içe). `parent` verilirse yalnızca o ana kategorinin alt kategorilerini döner ("kahvaltılığın alt kategorileri").
+- Talimata kural: "kategori" = ana reyon, "alt kategori" = içindeki bölüm; kategoriler sorulunca alt kategoriler sayılmaz. (Şu an 12 ana, 31 alt kategori.)
