@@ -434,3 +434,11 @@
 - Sesle "pencereyi gizle / küçült / ekranı kapat": yeni `hide_window` aracı; `end_session` gizleme sözünde kapatmaz, gizler. `go_to_page` artık satış ekranı, kâr raporu, kuryeler sayfalarını da açar.
 - `ADMIN_VOICE_OPEN_EVENT` / `OpenAdminVoiceButton`: paneldeki diğer düğmeler asistanı açar (açık sohbet varsa yalnızca pencereyi gösterir).
 - Sonraki adım önerisi: Siparişler / Ürünler tablolarının satır tasarımı, Satış ekranı (POS) görünümü.
+
+## 2026-10-24 — Site geç açılıyor: teşhis + düzeltme
+- Teşhis (Supabase edge logları, 24 sa): tüm katalog sorgusu (`getProducts`, ~2300 ürün, 2 sayfa) **100 kez** çalışmış, ortalama 2 sn, en fazla 6,8 sn; kullanıcının tıkladığı saatte (00:xx) ort. 3,8 sn. Sebep: `"use cache"` varsayılan olarak SUNUCU ÖRNEĞİNİN BELLEĞİNDE tutulur; istek anında çizilen sayfalarda (kategori sayfası `?sayfa=` → searchParams; derlemede hazırlanmayan ürün sayfaları) soğuk Vercel örneği tüm katalogu baştan indiriyordu. Dünkü değişiklikle düzen (layout) de kategori sayıları için `getProducts` çağırıyordu → her istek-anı sayfasında tetikleniyordu.
+- Düzeltme:
+  - Düzen: `getProducts` yerine `getCategoryCounts()` (yeni RPC `category_product_counts`, ~43 satır) + `rollupCounts`.
+  - Kategori sayfası: `getCategoryProducts(ids)` — yalnızca o kategori ve alt kategorilerinin ürünleri.
+  - Liste sorguları (`getProducts`, `getCategoryProducts`, üye kataloğu) `LIST_COLS`: açıklama ve ek görseller çıkarıldı (yalnızca ürün sayfasında `getProductPage` ile gelir) → katalog indirmesi küçüldü.
+- Ayrıca görülen: `search_products` RPC ort. 2,7 sn (arama / sesli asistan). Üye girişliyken (yönetici dahil) ana sayfa her istekte üyeye özel ~700 ürünü (alkol/tütün) önbelleksiz çekiyor (~0,8 sn, akışla geliyor, sayfayı bekletmiyor). İkisi sonraki iyileştirme adayı.

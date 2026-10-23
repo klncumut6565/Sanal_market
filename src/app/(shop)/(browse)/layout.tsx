@@ -1,8 +1,8 @@
 import { CategoryStrip } from "@/components/shop/CategoryNav";
 import { MobileCartBar } from "@/components/shop/CartContents";
 import { Suspense } from "react";
-import { getCategories, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
-import { topCounts } from "@/lib/categoryTree";
+import { getCategories, getCategoryCounts, getMemberCatalog, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
+import { rollupCounts, topCounts } from "@/lib/categoryTree";
 import type { Category } from "@/lib/types";
 
 type Counts = Record<string, number>;
@@ -16,8 +16,9 @@ async function MemberNav({ categories, counts }: { categories: Category[]; count
 
 // Kenar menüsü yok: kategoriler üstte yatay kartlar (ana sayfada hero'nun altında, diğer sayfalarda en üstte)
 export default async function BrowseLayout({ children }: { children: React.ReactNode }) {
-  const [categories, settings, products] = await Promise.all([getCategories(), getStoreSettings(), getProducts()]);
-  const counts = topCounts(categories, products);
+  // Tüm ürün listesi DEĞİL, yalnızca kategori başına sayılar (istek anında çizilen sayfalarda soğuk sunucuyu bekletmesin)
+  const [categories, settings, perCat] = await Promise.all([getCategories(), getStoreSettings(), getCategoryCounts()]);
+  const counts = rollupCounts(categories, perCat);
   return (
     <div className="mx-auto max-w-[1440px] px-4 pt-3 lg:pt-5">
       <div className="mb-4">

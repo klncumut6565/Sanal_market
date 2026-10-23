@@ -38,3 +38,14 @@ export function topCounts(cats: C[], products: { category_id: string | null }[])
   }
   return out;
 }
+
+/** Kategori başına sayılardan ana kategori toplamı (alt kategoriler dahil) */
+export function rollupCounts(cats: C[], perCategory: Record<string, number>): Record<string, number> {
+  const ids = new Set(cats.map((c) => c.id));
+  const out: Record<string, number> = {};
+  for (const c of cats) {
+    const top = c.parent_id && ids.has(c.parent_id) ? c.parent_id : c.id;
+    out[top] = (out[top] ?? 0) + (perCategory[c.id] ?? 0);
+  }
+  return out;
+}

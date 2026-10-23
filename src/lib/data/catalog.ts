@@ -17,6 +17,10 @@ export const productTag = (id: string) => `urun-${id}`;
 
 const PRODUCT_COLS =
   "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,extra_images,emoji,is_active,is_featured,sort_order";
+/** Liste / kart sütunları: açıklama ve ek görseller yalnızca ürün sayfasında gerekir (tüm katalog indirmesi ~yarıya iner). */
+const LIST_COLS =
+  "id,category_id,name,slug,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,emoji,is_active,is_featured,sort_order";
+const listNum = (p: Product): Product => num({ ...p, description: p.description ?? null });
 
 const DEFAULT_SETTINGS: StoreSettings = {
   store_name: "Sanal Market",
@@ -65,10 +69,41 @@ export async function getProducts(): Promise<Product[]> {
   if (!hasSupabase) return [];
   const sb = createPublicClient();
   const { data, error } = await fetchAll((f, t) =>
-    sb.from("products").select(PRODUCT_COLS).eq("is_active", true).order("sort_order").order("name").order("id").range(f, t),
+    sb.from("products").select(LIST_COLS).eq("is_active", true).order("sort_order").order("name").order("id").range(f, t),
   );
   if (error) console.error("[katalog] ürünler alınamadı:", error.message);
-  return (data ?? []).map(num);
+  return ((data ?? []) as Product[]).map(listNum);
+}
+
+/**
+ * Kategori sayfası: yalnızca o kategorinin (ve alt kategorilerinin) ürünleri. Sayfa ?sayfa= ile istek anında çizildiği için
+ * burada tüm katalogu (2000+ ürün) indirmek sunucu örneği soğukken 2-4 sn bekletiyordu.
+ */
+export async function getCategoryProducts(categoryIds: string[]): Promise<Product[]> {
+  "use cache";
+  cacheTag(CATALOG_TAG);
+  cacheLife("weeks");
+  if (!hasSupabase || !categoryIds.length) return [];
+  const sb = createPublicClient();
+  const { data, error } = await fetchAll((f, t) =>
+    sb.from("products").select(LIST_COLS).eq("is_active", true).in("category_id", categoryIds).order("sort_order").order("name").order("id").range(f, t),
+  );
+  if (error) console.error("[katalog] kategori ürünleri alınamadı:", error.message);
+  return ((data ?? []) as Product[]).map(listNum);
+}
+
+/** Kategori başına aktif ürün sayısı (şeritteki "N ürün"); tüm ürün listesini indirmez. */
+export async function getCategoryCounts(): Promise<Record<string, number>> {
+  "use cache";
+  cacheTag(CATALOG_TAG);
+  cacheLife("weeks");
+  if (!hasSupabase) return {};
+  const { data, error } = await createPublicClient().rpc("category_product_counts");
+  if (error) {
+    console.error("[katalog] kategori sayıları alınamadı:", error.message);
+    return {};
+  }
+  return Object.fromEntries(((data ?? []) as { category_id: string; n: number }[]).map((r) => [r.category_id, Number(r.n)]));
 }
 
 /**
@@ -199,7 +234,7 @@ export const getMemberCatalog = cache(async (): Promise<{ categories: Category[]
   const { data: prods } = await fetchAll((f, t) =>
     sb
       .from("products")
-      .select(PRODUCT_COLS)
+      .select(LIST_COLS)
       .eq("is_active", true)
       .in("category_id", cats.map((c) => c.id))
       .order("sort_order")
@@ -207,7 +242,7 @@ export const getMemberCatalog = cache(async (): Promise<{ categories: Category[]
       .order("id")
       .range(f, t),
   );
-  return { categories: cats, products: (prods ?? []).map(num) };
+  return { categories: cats, products: ((prods ?? []) as Product[]).map(listNum) };
 });
 
 /** Herkese açık + üyeye özel kategoriler, diziliş sırasına göre. */

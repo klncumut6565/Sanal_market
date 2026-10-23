@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ProductGrid } from "@/components/shop/ProductCard";
 import { GridSkeleton } from "@/components/shop/Skeletons";
-import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProducts } from "@/lib/data/catalog";
+import { byPopularity, getCategories, getCategoryPopularity, getCategoryProducts, getMemberCatalog } from "@/lib/data/catalog";
 import { childrenOf, withDescendants } from "@/lib/categoryTree";
 import { CITY, breadcrumbLd, isPublicCategory, jsonLdHtml } from "@/lib/seo";
 
@@ -49,16 +49,18 @@ export default function CategoryPage({ params, searchParams }: Props) {
 async function CategoryContent({ params, searchParams }: Props) {
   const { slug } = await params;
   const shownPages = Math.max(1, Math.min(100, Number((await searchParams).sayfa) || 1));
-  let [categories, products] = await Promise.all([getCategories(), getProducts()]);
+  let categories = await getCategories();
   let cat = categories.find((c) => c.slug === slug);
+  let products: Awaited<ReturnType<typeof getCategoryProducts>> | null = null;
   if (!cat) {
     // Oturuma özel kategori olabilir
     ({ categories, products } = await getMemberCatalog());
     cat = categories.find((c) => c.slug === slug);
   }
   if (!cat) notFound();
-  // Ana kategoride alt kategorilerin ürünleri de listelenir
+  // Ana kategoride alt kategorilerin ürünleri de listelenir — yalnızca bu kategorilerin ürünleri indirilir
   const ids = withDescendants(categories, cat.id);
+  if (!products) products = await getCategoryProducts([...ids].sort());
   const list = products
     .filter((p) => !!p.category_id && ids.has(p.category_id))
     .sort((a, b) => Number(b.stock > 0) - Number(a.stock > 0));
