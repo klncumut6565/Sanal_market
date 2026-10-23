@@ -32,13 +32,13 @@ export default async function NeighborhoodPage({ params }: { params: Promise<{ i
         </form>
       </div>
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-1 font-extrabold">Cadde / sokak ekle</h2>
         <p className="mb-2 text-xs text-muted">Her satıra bir isim yaz veya listeyi yapıştır. Aynı isim tekrar eklenmez.</p>
         <StreetBulkForm neighborhoodId={nb.id} />
       </section>
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Kayıtlı cadde / sokaklar <span className="text-sm text-muted">({list.length})</span></h2>
         {list.length === 0 ? (
           <p className="text-sm text-muted">Henüz sokak yok. Müşteriler bu mahallede sokak adını kendisi yazar.</p>

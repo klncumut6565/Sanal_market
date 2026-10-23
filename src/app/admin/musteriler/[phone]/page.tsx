@@ -37,7 +37,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
     <div className="max-w-3xl space-y-4">
       <Link href="/admin/musteriler" className="text-sm font-semibold text-muted hover:text-brand">← Müşteriler</Link>
 
-      <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="text-2xl font-black">{name}</h1>
@@ -109,7 +109,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
       </section>
 
       {addresses.length > 0 && (
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+        <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <h2 className="mb-2 font-extrabold">Teslimat adresleri</h2>
           <ul className="space-y-1 text-sm">
             {addresses.map((a) => (
@@ -120,7 +120,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
       )}
 
       {notes.length > 0 && (
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+        <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <h2 className="mb-2 font-extrabold">Müşteri notları</h2>
           <ul className="space-y-1 text-sm">
             {notes.slice(0, 10).map((o) => (
@@ -132,7 +132,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         </section>
       )}
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Sipariş geçmişi</h2>
         <OrderTable orders={list} />
       </section>

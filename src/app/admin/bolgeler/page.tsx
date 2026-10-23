@@ -59,7 +59,7 @@ export default async function AreasPage() {
         <p className="text-sm text-muted">Tekirdağ · Müşteriler adresini buradaki ilçe, mahalle ve sokaklardan seçer.</p>
       </div>
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">İlçeler</h2>
         <div className="flex flex-wrap gap-2">
           {(districts ?? []).map((d) => (
@@ -115,7 +115,7 @@ export default async function AreasPage() {
         )}
       </section>
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 flex items-center gap-2 font-extrabold"><MapPin size={18} className="text-brand" /> Çorlu mahalleleri</h2>
         <ul className="divide-y divide-line">
           {neighborhoods

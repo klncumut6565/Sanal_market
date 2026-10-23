@@ -151,7 +151,10 @@ const pct = (cur: number, prev: number) => (prev > 0 ? r2(((cur - prev) / prev) 
 
 const PAGES: Record<string, string> = {
   genel_bakis: "/admin",
+  satis: "/admin/satis",
   siparisler: "/admin/siparisler",
+  rapor: "/admin/rapor",
+  kuryeler: "/admin/kuryeler",
   urunler: "/admin/urunler",
   kritik_stok: "/admin/urunler?stok=kritik",
   barkod: "/admin/barkod",

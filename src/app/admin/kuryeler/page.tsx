@@ -249,7 +249,7 @@ export default async function CouriersPage({ searchParams }: { searchParams: Pro
           const posWaiting = posOrders.filter((o) => recOf(o.id).some((x) => x.review_status === "bekliyor")).length;
           const avg = avgMin(d);
           return (
-            <article key={r.user_id} className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+            <article key={r.user_id} className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="truncate text-lg font-black">{r.full_name ?? r.email}</p>

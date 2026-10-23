@@ -16,7 +16,7 @@ export function WaBotCard({ enabled, ready, chats, botNumberHint, verifyToken }:
   const [pending, start] = useTransition();
   const fmt = (d: string) => new Intl.DateTimeFormat("tr-TR", { dateStyle: "short", timeStyle: "short", timeZone: "Europe/Istanbul" }).format(new Date(d));
   return (
-    <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+    <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
       <h2 className="flex items-center gap-2 text-lg font-extrabold">
         <Bot size={20} className="text-brand" /> WhatsApp sipariş botu
       </h2>

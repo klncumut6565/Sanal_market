@@ -424,3 +424,13 @@
 - `catalog.ts`: `getProductPopularity()` (haftalık önbellek, etiket `urun-populerlik`) + `rankProducts()`. Ana sayfadaki tüm listeler (kategori bölümleri, üye bölümleri, fırsatlar) bu sırada.
 - "Popüler Ürünler": son 90 günde satılan ürünler (≥6 varsa); yoksa öne çıkanlar / indirimdekiler.
 - Tarayıcıdan yüklenen alt kategori sekmeleri artık `category_top_products` RPC ile aynı sırada (yine 10 ürün; sayfa boyutu / ISR değişmedi).
+
+## 2026-10-23 — Yönetim paneli yeni tasarım + pembe-mor sesli asistan
+- Panel kabuğu (`admin/layout.tsx`): 240 px yan menü, "YÖNETİM PANELİ" rozeti + "Mağaza" bağlantısı, arka planda yumuşak marka ışıkları, menünün altında pembe-mor "Asistana sor" kartı.
+- `AdminNav`: başlıklı gruplar (İşletme / Operasyon / Katalog / Sistem), simge kutuları, aktif sayfa yeşil→turkuaz geçişli; telefonda yatay kaydırmalı şerit. Bekleyen sipariş yanıp sönmesi aynı.
+- Genel bakış: lacivert→yeşil karşılama bandı (selam, mağaza açık/kapalı, iş günü, "Sesli asistana sor"), simgeli istatistik kartları, "Tümü →" bağlantılı son siparişler / kritik stok.
+- Tüm panel sayfalarında kartlar `rounded-3xl` + hafif gölge; sayfa başlıklarının önünde marka renginde dikey vurgu (`.admin-main h1`).
+- Sesli asistan (`AdminVoiceAssistant`): PEMBE-MOR tema (müşteri asistanından ayırt edilsin), robot (`Robot tone="pink"`), "Pencereyi gizle" düğmesi → sohbet sürer, ana içerik alanının ORTA ALTINDA yarı saydam pembe-mor küre (`VoiceOrb tema="yonetim"`, gerçek sese tepki verir). Küreye dokununca pencere açılır, ✕ bitirir.
+- Sesle "pencereyi gizle / küçült / ekranı kapat": yeni `hide_window` aracı; `end_session` gizleme sözünde kapatmaz, gizler. `go_to_page` artık satış ekranı, kâr raporu, kuryeler sayfalarını da açar.
+- `ADMIN_VOICE_OPEN_EVENT` / `OpenAdminVoiceButton`: paneldeki diğer düğmeler asistanı açar (açık sohbet varsa yalnızca pencereyi gösterir).
+- Sonraki adım önerisi: Siparişler / Ürünler tablolarının satır tasarımı, Satış ekranı (POS) görünümü.

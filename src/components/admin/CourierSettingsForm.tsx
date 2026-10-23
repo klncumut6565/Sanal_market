@@ -12,7 +12,7 @@ export function CourierSettingsForm({ phone, apikey, lastResult, courierToken }:
   const [state, action, pending] = useActionState<ActionState, FormData>(saveCourierSettings, {});
   const [tState, tAction, tPending] = useActionState<ActionState, FormData>(testCourier, {});
   return (
-    <details className="rounded-2xl bg-white p-3 ring-1 ring-line" open={!phone}>
+    <details className="rounded-3xl bg-white p-3 shadow-sm shadow-navy/5 ring-1 ring-line" open={!phone}>
       <summary className="flex cursor-pointer items-center gap-2 text-sm font-bold">
         <Bike size={18} className="text-brand" /> Kurye WhatsApp:
         <span className={phone ? "" : "text-brand"}>{phone ? displayPhone(phone) : "numara girilmedi"}</span>

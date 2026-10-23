@@ -85,7 +85,7 @@ export function QuickBarcode() {
     <div className="space-y-4">
       {scanning && <BarcodeScanner onResult={onScan} onClose={() => setScanning(false)} />}
 
-      <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <button onClick={() => setScanning(true)} className="btn-primary w-full py-4 text-lg">
           <ScanBarcode size={24} /> Kamerayla barkod okut
         </button>
@@ -175,7 +175,7 @@ export function QuickBarcode() {
       )}
 
       {history.length > 0 && (
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+        <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <h2 className="mb-2 text-sm font-extrabold">Bu oturumda güncellenenler</h2>
           <ul className="divide-y divide-line text-sm">
             {history.map((h, i) => (

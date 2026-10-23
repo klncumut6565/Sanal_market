@@ -8,7 +8,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
   const [state, action, pending] = useActionState<ActionState, FormData>(saveSettings, {});
   return (
     <form action={action} className="space-y-4">
-      <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <label className="flex items-center gap-2 font-bold">
           <input type="checkbox" name="is_open" defaultChecked={s.is_open} className="h-5 w-5 accent-brand" /> Market açık (sipariş alınıyor)
         </label>
@@ -35,12 +35,12 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
           </div>
         </fieldset>
       </section>
-      <section className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line sm:grid-cols-3">
         <F label="Teslimat ücreti (₺)"><input name="delivery_fee" inputMode="decimal" defaultValue={s.delivery_fee} className="input" /></F>
         <F label="Ücretsiz teslimat eşiği (₺)"><input name="free_delivery_threshold" inputMode="decimal" defaultValue={s.free_delivery_threshold} className="input" /></F>
         <F label="Minimum sipariş (₺)"><input name="min_order_amount" inputMode="decimal" defaultValue={s.min_order_amount} className="input" /></F>
       </section>
-      <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <label className="flex items-center gap-2 font-bold">
           <input type="checkbox" name="voice_enabled" defaultChecked={s.voice_enabled ?? true} className="h-5 w-5 accent-brand" /> 🎙️ Sesli sipariş asistanı açık
         </label>
@@ -50,7 +50,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
         </div>
         <p className="text-xs text-muted">Sınırlar Gemini kullanım maliyetini kontrol altında tutar. Bir oturum en fazla 10 dakika sürer.</p>
       </section>
-      <section className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-2 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <p className="font-bold">Sipariş hedef süreleri (dakika)</p>
         <p className="text-xs text-muted">Siparişler panosundaki gösterge çubuğu bu sürelere göre yeşilden kırmızıya döner.</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -59,7 +59,7 @@ export function SettingsForm({ settings: s }: { settings: StoreSettings }) {
           <F label="Teslimat (yolda)"><input name="sla_delivery_min" type="number" min={1} max={240} defaultValue={s.sla_delivery_min ?? 20} className="input" /></F>
         </div>
       </section>
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <F label="Teslimat saatleri (her satıra bir seçenek)">
           <textarea name="delivery_slots" defaultValue={s.delivery_slots.join("\n")} className="input min-h-40 font-mono text-sm" />
         </F>

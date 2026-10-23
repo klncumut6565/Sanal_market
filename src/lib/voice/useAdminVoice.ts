@@ -22,9 +22,11 @@ const icerir = (t: string, list: string[]) => {
   return list.some((k) => n.includes(` ${k}`));
 };
 const ASIST_VEDA = ["görüşürüz", "hoşça kal", "hoşçakal", "güle güle", "iyi günler", "iyi akşamlar", "iyi çalışmalar", "kapatıyorum"];
+/** Pencereyi gizleme sözleri — sohbet BİTMEZ, yalnızca pencere gizlenir (orta altta pembe-mor küre kalır) */
+const GIZLE = ["gizle", "küçült", "pencereyi kapat", "ekranı kapat", "paneli kapat", "aşağı al", "pencereyi indir"];
 const KULLANICI_KAPAT = ["kapat", "kapatabilirsin", "bu kadar", "yeter", "görüşürüz", "hoşça kal", "hoşçakal", "teşekkürler", "sağ ol", "sağol"];
 
-export function useAdminVoice(onEnded?: () => void) {
+export function useAdminVoice(onEnded?: () => void, onHide?: () => void) {
   const router = useRouter();
   const [state, setState] = useState<VoiceState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,8 @@ export function useAdminVoice(onEnded?: () => void) {
   const providerRef = useRef<GeminiLiveProvider | null>(null);
   const micRef = useRef<MicCapture | null>(null);
   const playbackRef = useRef<AudioPlaybackQueue | null>(null);
+  /** Gürültü kapısından geçen kullanıcı sesi (0..1) — küre animasyonu okur */
+  const userLevelRef = useRef(0);
   const stateRef = useRef<VoiceState>("idle");
   const userBuf = useRef("");
   const asstBuf = useRef("");
@@ -59,9 +63,11 @@ export function useAdminVoice(onEnded?: () => void) {
   );
 
   const onEndedRef = useRef(onEnded);
+  const onHideRef = useRef(onHide);
   useEffect(() => {
     onEndedRef.current = onEnded;
-  }, [onEnded]);
+    onHideRef.current = onHide;
+  }, [onEnded, onHide]);
   const lastUser = useRef("");
   const startedAt = useRef(0);
   const gateStats = useRef<GateStats | null>(null);
@@ -74,6 +80,7 @@ export function useAdminVoice(onEnded?: () => void) {
     timers.current = [];
     micRef.current?.stop();
     micRef.current = null;
+    userLevelRef.current = 0;
     playbackRef.current?.close();
     playbackRef.current = null;
     resetAudioSession(); // iPhone: görüşme modundan çık → sonraki sesler kısık çalmasın
@@ -170,8 +177,10 @@ export function useAdminVoice(onEnded?: () => void) {
         userBuf.current = "";
         lastSpeech.current = Date.now();
         const sahte = halusinasyonMu(lastUser.current) || yankiMi(lastUser.current, asstBuf.current);
+        const gizle = !sahte && icerir(lastUser.current, GIZLE);
+        if (gizle) onHideRef.current?.(); // "sohbeti gizle" → yalnızca pencere gizlenir, sohbet sürer
         if (ending.current) ending.current.turnDone = true;
-        else if (!sahte && icerir(lastUser.current, KULLANICI_KAPAT) && icerir(asstBuf.current, ASIST_VEDA)) {
+        else if (!gizle && !sahte && icerir(lastUser.current, KULLANICI_KAPAT) && icerir(asstBuf.current, ASIST_VEDA)) {
           // Yedek: araç çağrılmadan vedalaştıysa da kapat
           finishSession();
           const e2 = ending.current as { turnDone: boolean } | null;
@@ -243,8 +252,17 @@ export function useAdminVoice(onEnded?: () => void) {
         timers.current.push(t);
       });
       provider.onToolCall(async (name, args) => {
+        if (name === "hide_window") {
+          onHideRef.current?.();
+          return { ok: true, note: "Pencere gizlendi, sohbet devam ediyor. Vedalaşma; Türkçe kısa onay ver ve dinlemeye devam et." };
+        }
         if (name === "end_session") {
           const said = (userBuf.current || lastUser.current).trim();
+          // "Sohbeti gizle" kapatma değildir: pencereyi gizle, sohbet sürsün
+          if (said && icerir(said, GIZLE)) {
+            onHideRef.current?.();
+            return { ok: false, error: "Kullanıcı sohbeti BİTİRMEDİ, yalnızca pencereyi gizlemek istedi; pencere gizlendi. KAPATMA, veda etme; Türkçe 'Tamam, dinliyorum.' de." };
+          }
           if (!said || halusinasyonMu(said) || yankiMi(said, asstBuf.current) || !icerir(said, [...KULLANICI_KAPAT, ...ASIST_VEDA, "evet", "yok"])) {
             voiceLog("admin", "kapat_reddedildi", "", startedAt.current);
             return { ok: false, error: "Kullanıcı sohbeti bitirmek istemedi; KAPATMA, devam et." };
@@ -284,6 +302,7 @@ export function useAdminVoice(onEnded?: () => void) {
       micRef.current = await startMicCapture((pcm) => {
         if (ending.current) return; // vedalaşma: artık dinleme yok
         const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
+        userLevelRef.current = g.voiced ? Math.min(1, g.rms / 6000) : 0;
         if (g.voiced) lastSpeech.current = Date.now();
         for (const o of g.outs) providerRef.current?.sendAudio(o);
       });
@@ -327,5 +346,8 @@ export function useAdminVoice(onEnded?: () => void) {
     if (runnerRef.current?.cancelPending(id)) providerRef.current?.sendText("[SİSTEM] Kullanıcı değişiklikten ekrandan vazgeçti. Kısaca 'Tamam, vazgeçtim' de.");
   }, []);
 
-  return { state, error, userText, assistantText, actions, visuals, change, confirmChange, cancelChange, start, stop };
+  const getAssistantAnalyser = useCallback(() => playbackRef.current?.getAnalyser() ?? null, []);
+  const getUserLevel = useCallback(() => userLevelRef.current, []);
+
+  return { state, error, userText, assistantText, actions, visuals, change, confirmChange, cancelChange, start, stop, getAssistantAnalyser, getUserLevel };
 }

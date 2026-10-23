@@ -71,7 +71,7 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
       {hata && <p className="rounded-lg bg-brand-soft p-3 text-sm font-semibold text-brand">{hata === "1" ? "Durum değiştirilemedi." : hata}</p>}
       {guncellendi && <p className="rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">Sipariş güncellendi. Müşteriye bilgi vermek için aşağıdaki “Sipariş güncellendi” WhatsApp mesajını kullanabilirsin.</p>}
 
-      <section className="space-y-4 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-4 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <OrderSteps order={order} />
         {isOpen(order.status) && (
           <SlaBar since={stageStart(order)} targetMin={stageTargetMin(order.status, settings)} label={STAGES[order.status as "alindi"].waitingFor} />
@@ -129,7 +129,7 @@ export default async function AdminOrderPage({ params, searchParams }: { params:
 
       <WhatsAppActions order={order} storeName={settings.store_name} items={itemList} />
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Ürünler (toplama listesi)</h2>
         <OrderItems order={order} items={itemList} alternatives={alternatives} editable={editable} />
         <dl className="mt-3 space-y-1 border-t border-line pt-3 text-sm">

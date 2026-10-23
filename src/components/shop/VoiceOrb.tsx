@@ -25,8 +25,10 @@ const ETIKET: Record<VoiceState, string> = {
   error: "HATA",
 };
 
-/** Durum → [ton, doygunluk %, yoğunluk 0..1] — marka yeşili / turkuaz tonları */
-const PALET: Record<VoiceState, [number, number, number]> = {
+export type OrbTema = "market" | "yonetim";
+
+/** Durum → [ton, doygunluk %, yoğunluk 0..1] — marka yeşili / turkuaz tonları (müşteri) */
+const PALET_MARKET: Record<VoiceState, [number, number, number]> = {
   idle: [168, 70, 0],
   connecting: [180, 25, 0.5],
   listening: [170, 78, 0.72],
@@ -37,6 +39,20 @@ const PALET: Record<VoiceState, [number, number, number]> = {
   reconnecting: [180, 25, 0.5],
   error: [0, 80, 0.6],
 };
+
+/** Yönetim asistanı: pembe → mor skala (fuşya / orkide / menekşe) */
+const PALET_YONETIM: Record<VoiceState, [number, number, number]> = {
+  idle: [300, 70, 0],
+  connecting: [290, 30, 0.5],
+  listening: [305, 82, 0.72],
+  user_speaking: [285, 90, 0.95],
+  processing: [325, 88, 0.85],
+  tool_calling: [270, 82, 0.85],
+  speaking: [315, 92, 1],
+  reconnecting: [290, 30, 0.5],
+  error: [0, 80, 0.6],
+};
+const PALETLER: Record<OrbTema, Record<VoiceState, [number, number, number]>> = { market: PALET_MARKET, yonetim: PALET_YONETIM };
 
 type Halka = { rx: number; oran: number; egim: number; hiz: number; f1: number; f2: number; k1: number; k2: number; bant: 0 | 1 | 2 };
 type Parcacik = { r: number; a: number; w: number; boy: number; ph: number };
@@ -57,6 +73,8 @@ export function VoiceOrb({
   onAc,
   onBitir,
   raised = false,
+  tema = "market",
+  konumClass,
 }: {
   durum: VoiceState;
   asistanAnalyser: () => AnalyserNode | null;
@@ -65,11 +83,15 @@ export function VoiceOrb({
   onBitir: () => void;
   /** Mobilde alttaki sepet çubuğu görünüyorsa biraz daha yukarıda dur */
   raised?: boolean;
+  /** Renk teması: "market" yeşil/turkuaz, "yonetim" pembe-mor */
+  tema?: OrbTema;
+  /** Konum sınıflarını tamamen değiştirmek için (ör. yönetim panelinde yan menü payı) */
+  konumClass?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const propsRef = useRef({ durum, asistanAnalyser, kullaniciSeviyesi });
+  const propsRef = useRef({ durum, asistanAnalyser, kullaniciSeviyesi, palet: PALETLER[tema] });
   useEffect(() => {
-    propsRef.current = { durum, asistanAnalyser, kullaniciSeviyesi };
+    propsRef.current = { durum, asistanAnalyser, kullaniciSeviyesi, palet: PALETLER[tema] };
   });
 
   useEffect(() => {
@@ -118,7 +140,7 @@ export function VoiceOrb({
 
     const okuyucu = new AnalizOkuyucu();
     let enerji = 0;
-    let [ton, doyg] = PALET.listening;
+    let [ton, doyg] = propsRef.current.palet.listening;
     let yogun = 0;
     let zaman = 0;
     const bantlar: [number, number, number] = [0, 0, 0];
@@ -135,7 +157,7 @@ export function VoiceOrb({
       rafId = requestAnimationFrame(ciz);
       const dt = Math.min(0.1, Math.max(0.001, (simdi - onceki) / 1000));
       onceki = simdi;
-      const { durum: d, asistanAnalyser: getA, kullaniciSeviyesi: getK } = propsRef.current;
+      const { durum: d, asistanAnalyser: getA, kullaniciSeviyesi: getK, palet: PALET } = propsRef.current;
       if (!azHareket) zaman += dt;
       const t = zaman;
       const sn = simdi / 1000;
@@ -288,14 +310,13 @@ export function VoiceOrb({
     };
   }, []);
 
-  const etiket = ETIKET[durum];
+  const etiket = tema === "yonetim" && durum === "tool_calling" ? "VERİLERE BAKIYOR" : ETIKET[durum];
+  const rozet = tema === "yonetim" ? "bg-[#3b1252]/55 hover:bg-[#3b1252]/85" : "bg-navy/45 hover:bg-navy/80";
+  const konum =
+    konumClass ??
+    `left-1/2 -translate-x-1/2 lg:bottom-3 ${raised ? "bottom-[calc(124px+env(safe-area-inset-bottom))]" : "bottom-[calc(60px+env(safe-area-inset-bottom))]"}`;
   return (
-    <div
-      data-asistan-ui
-      className={`pointer-events-none fixed left-1/2 z-40 flex -translate-x-1/2 flex-col items-center lg:bottom-3 ${
-        raised ? "bottom-[calc(124px+env(safe-area-inset-bottom))]" : "bottom-[calc(60px+env(safe-area-inset-bottom))]"
-      }`}
-    >
+    <div data-asistan-ui className={`pointer-events-none fixed z-40 flex flex-col items-center ${konum}`}>
       <div className="relative h-[170px] w-[170px] sm:h-[200px] sm:w-[200px]">
         <canvas ref={canvasRef} aria-hidden className="absolute inset-0 h-full w-full" style={{ opacity: KURE_OPAKLIK }} />
         <button
@@ -308,14 +329,14 @@ export function VoiceOrb({
       </div>
       <div className="-mt-5 flex items-center gap-1.5">
         {etiket && (
-          <span className="rounded-full bg-navy/45 px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.25em] text-white backdrop-blur-sm">{etiket}</span>
+          <span className={`rounded-full ${rozet} px-2.5 py-0.5 text-[10px] font-semibold tracking-[0.25em] text-white backdrop-blur-sm`}>{etiket}</span>
         )}
         <button
           type="button"
           onClick={onBitir}
           aria-label="Sesli sohbeti bitir"
           title="Bitir"
-          className="pointer-events-auto grid h-6 w-6 place-items-center rounded-full bg-navy/45 text-white backdrop-blur-sm hover:bg-navy/80"
+          className={`pointer-events-auto grid h-6 w-6 place-items-center rounded-full ${rozet} text-white backdrop-blur-sm`}
         >
           <X size={13} />
         </button>

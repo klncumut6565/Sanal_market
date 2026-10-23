@@ -92,3 +92,19 @@ body {
 }
 .animate-pulse-ring { animation: pulse-ring 1.2s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .animate-pulse-ring { animation: none; } }
+
+/* Yönetim paneli: sayfa başlıklarının önünde marka renginde dikey vurgu (müşteri ekranı bölüm başlıklarıyla aynı dil) */
+.admin-main h1:not([data-hero]) {
+  position: relative;
+  padding-left: 0.85rem;
+}
+.admin-main h1:not([data-hero])::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.2em;
+  bottom: 0.2em;
+  width: 5px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--accent), var(--brand));
+}

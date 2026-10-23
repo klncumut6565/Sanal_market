@@ -21,7 +21,7 @@ export function NotifySettingsForm({ n, hasResendKey, panelOpen, cloud = false }
   const [state, action, pending] = useActionState<ActionState, FormData>(saveNotifySettings, {});
   const [tState, tAction, tPending] = useActionState<ActionState, FormData>(testNotify, {});
   return (
-    <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+    <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
       <h2 className="flex items-center gap-2 text-lg font-extrabold">
         <BellRing size={20} className="text-brand" /> Sipariş bildirimleri
       </h2>

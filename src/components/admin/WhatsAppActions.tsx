@@ -36,7 +36,7 @@ export function WhatsAppActions({ order, storeName, items = [] }: Props) {
   const [custom, setCustom] = useState("");
 
   return (
-    <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+    <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
       <h2 className="flex items-center gap-2 font-extrabold">
         <MessageCircle size={18} className="text-[#25D366]" /> WhatsApp ile mesaj
       </h2>

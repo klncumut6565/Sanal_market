@@ -52,7 +52,7 @@ function Bars({ v }: { v: Extract<AdminVisual, { kind: "bars" }> }) {
         <div className="flex h-28 items-end gap-[3px]">
           {v.items.map((x, i) => (
             <div key={i} className="group relative flex h-full flex-1 flex-col justify-end" title={`${x.label}: ${fmt(x.value)}`}>
-              <div className="rounded-t-[3px] bg-brand transition group-hover:bg-white" style={{ height: `${Math.max(x.value > 0 ? 3 : 0, (x.value / max) * 100)}%` }} />
+              <div className="rounded-t-[3px] bg-gradient-to-t from-fuchsia-500 to-violet-400 transition group-hover:bg-white" style={{ height: `${Math.max(x.value > 0 ? 3 : 0, (x.value / max) * 100)}%` }} />
             </div>
           ))}
         </div>
@@ -75,7 +75,7 @@ function Bars({ v }: { v: Extract<AdminVisual, { kind: "bars" }> }) {
             </span>
           </div>
           <div className="mt-0.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div className="h-full rounded-full bg-brand" style={{ width: `${(x.value / max) * 100}%` }} />
+            <div className="h-full rounded-full bg-gradient-to-r from-violet-400 to-fuchsia-400" style={{ width: `${(x.value / max) * 100}%` }} />
           </div>
         </li>
       ))}

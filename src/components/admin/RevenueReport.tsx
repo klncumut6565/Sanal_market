@@ -109,7 +109,7 @@ export async function RevenueReport({ supabase, openTime, from, to }: { supabase
       </div>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-5">
         {cards.map((c) => (
-          <Link key={c.label} href={`/admin?${c.q}#rapor`} className="rounded-2xl bg-white p-3.5 ring-1 ring-line hover:ring-brand">
+          <Link key={c.label} href={`/admin?${c.q}#rapor`} className="rounded-3xl bg-white p-3.5 shadow-sm shadow-navy/5 ring-1 ring-line hover:ring-brand">
             <p className="text-sm font-bold">{c.label}</p>
             <p className="text-xs text-muted">{c.sub}</p>
             <p className="mt-1.5 text-xl font-black tabular-nums">{formatTL(c.a.revenue)}</p>
@@ -118,7 +118,7 @@ export async function RevenueReport({ supabase, openTime, from, to }: { supabase
         ))}
       </div>
 
-      <div id="rapor" className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <div id="rapor" className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <form className="flex flex-wrap items-end gap-2">
           <label className="space-y-1">
             <span className="block text-xs font-bold">Başlangıç</span>

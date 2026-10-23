@@ -44,20 +44,42 @@ const CSS = `
 @keyframes rb-blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
 @keyframes rb-pulse{0%,100%{opacity:.35}50%{opacity:1}}
 @keyframes rb-ear{0%,100%{fill:#bfe9ef}50%{fill:#19c6c8}}
+@keyframes rb-ear-p{0%,100%{fill:#f3d4f4}50%{fill:#d946ef}}
+.rb[data-t=pink][data-s=listening] .rb-ear{animation-name:rb-ear-p}
 @keyframes rb-talk{from{transform:scaleY(.35)}to{transform:scaleY(1.15)}}
 @keyframes rb-dot{0%,100%{opacity:.25;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
 @keyframes rb-spin{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.rb *{animation:none!important}}
 `;
 
-export function Robot({ state = "idle", size = 160, className = "", title = "Sanal Market asistanı" }: { state?: RobotState; size?: number; className?: string; title?: string }) {
+/** Renk teması: "teal" müşteri asistanı (marka turkuazı), "pink" yönetim asistanı (pembe-mor). */
+export type RobotTone = "teal" | "pink";
+const TONES: Record<RobotTone, { eye: string; glow: string; ear: string; visor: [string, string] }> = {
+  teal: { eye: "#3ef0f2", glow: "#19c6c8", ear: "#bfe9ef", visor: ["#1b2b3a", "#070d14"] },
+  pink: { eye: "#f5a8ff", glow: "#d946ef", ear: "#f3d4f4", visor: ["#2a1840", "#0e0718"] },
+};
+
+export function Robot({
+  state = "idle",
+  size = 160,
+  className = "",
+  title = "Sanal Market asistanı",
+  tone = "teal",
+}: {
+  state?: RobotState;
+  size?: number;
+  className?: string;
+  title?: string;
+  tone?: RobotTone;
+}) {
   // Sayfada birden çok robot olabilir (biri gizli olsa bile gradyanlar bozulmasın) → benzersiz kimlikler
   const u = useId().replace(/:/g, "");
   const id = (n: string) => `${n}-${u}`;
-  const eye = state === "error" ? "#ff8a7a" : "#3ef0f2";
-  const glow = state === "error" ? "#ff6b5b" : "#19c6c8";
+  const T = TONES[tone];
+  const eye = state === "error" ? "#ff8a7a" : T.eye;
+  const glow = state === "error" ? "#ff6b5b" : T.glow;
   return (
-    <svg viewBox="0 0 200 240" width={size} height={size * 1.2} className={`rb ${className}`} data-s={state} role="img" aria-label={title}>
+    <svg viewBox="0 0 200 240" width={size} height={size * 1.2} className={`rb ${className}`} data-s={state} data-t={tone} role="img" aria-label={title}>
       <style>{CSS}</style>
       <defs>
         <linearGradient id={id("rb-shell")} x1="0" y1="0" x2="0" y2="1">
@@ -65,8 +87,8 @@ export function Robot({ state = "idle", size = 160, className = "", title = "San
           <stop offset="1" stopColor="#dfe6ec" />
         </linearGradient>
         <linearGradient id={id("rb-visor")} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor="#1b2b3a" />
-          <stop offset="1" stopColor="#070d14" />
+          <stop offset="0" stopColor={T.visor[0]} />
+          <stop offset="1" stopColor={T.visor[1]} />
         </linearGradient>
         <radialGradient id={id("rb-base")} cx="0.5" cy="0.5" r="0.5">
           <stop offset="0" stopColor={glow} stopOpacity="0.55" />
@@ -98,8 +120,8 @@ export function Robot({ state = "idle", size = 160, className = "", title = "San
         {/* kafa */}
         <rect x="34" y="22" width="132" height="110" rx="54" fill={`url(#${id("rb-shell")})`} stroke="#cfd8df" strokeWidth="1.2" />
         {/* kulaklıklar */}
-        <rect className="rb-ear" x="24" y="58" width="16" height="38" rx="8" fill="#bfe9ef" />
-        <rect className="rb-ear" x="160" y="58" width="16" height="38" rx="8" fill="#bfe9ef" />
+        <rect className="rb-ear" x="24" y="58" width="16" height="38" rx="8" fill={T.ear} />
+        <rect className="rb-ear" x="160" y="58" width="16" height="38" rx="8" fill={T.ear} />
         {/* yüz ekranı */}
         <rect x="50" y="44" width="100" height="72" rx="32" fill={`url(#${id("rb-visor")})`} />
         <rect x="58" y="49" width="56" height="9" rx="4.5" fill="#ffffff" opacity="0.08" />

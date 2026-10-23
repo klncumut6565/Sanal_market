@@ -97,7 +97,7 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
       <section className="space-y-2">
         <h2 className="font-extrabold">Yöneticiler ({admins.length})</h2>
         {admins.map((r) => (
-          <div key={r.user_id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-3.5 ring-1 ring-line">
+          <div key={r.user_id} className="flex flex-wrap items-center gap-3 rounded-3xl bg-white p-3.5 shadow-sm shadow-navy/5 ring-1 ring-line">
             <ShieldCheck size={20} className="shrink-0 text-ok" />
             {who(r)}
             {isOwner && !r.is_owner && btn(r, false, "Yetkiyi kaldır", ShieldX, "ring-1 ring-line text-brand")}
@@ -106,7 +106,7 @@ export default async function AdminsPage({ searchParams }: { searchParams: Promi
       </section>
 
       {isOwner && (
-        <section className="space-y-2 rounded-2xl bg-white p-4 ring-1 ring-line">
+        <section className="space-y-2 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <h2 className="font-extrabold">E-postayla yetki ver</h2>
           <p className="text-sm text-muted">Kişinin önce siteye üye olmuş olması gerekir.</p>
           <form action={ownerGrantByEmail} className="flex flex-wrap gap-2">

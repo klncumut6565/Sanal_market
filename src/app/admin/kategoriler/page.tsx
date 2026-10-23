@@ -22,7 +22,7 @@ export default async function CategoriesAdmin() {
   return (
     <div className="max-w-4xl space-y-4">
       <h1 className="text-2xl font-black">Kategoriler</h1>
-      <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <div className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Yeni ana kategori</h2>
         <CategoryRowForm total={parents.length} parents={parentOpts} />
       </div>
@@ -31,7 +31,7 @@ export default async function CategoriesAdmin() {
           const subs = childrenOf(all, c.id);
           const subCount = subs.reduce((a, s) => a + (countMap.get(s.id) ?? 0), 0);
           return (
-            <div key={c.id} className="rounded-2xl bg-white p-3 ring-1 ring-line">
+            <div key={c.id} className="rounded-3xl bg-white p-3 shadow-sm shadow-navy/5 ring-1 ring-line">
               <CategoryRowForm category={c} productCount={countMap.get(c.id) ?? 0} parents={parentOpts} subCount={subs.length ? subCount : undefined} />
               <div className="ml-4 mt-2 space-y-2 border-l-2 border-brand/20 pl-3 sm:ml-8">
                 {subs.map((s) => (

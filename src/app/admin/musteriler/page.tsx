@@ -65,7 +65,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
       ) : (
         <ul className="space-y-2">
           {list.map((c) => (
-            <li key={c.phone} className="rounded-2xl bg-white p-3.5 ring-1 ring-line">
+            <li key={c.phone} className="rounded-3xl bg-white p-3.5 shadow-sm shadow-navy/5 ring-1 ring-line">
               <div className="flex items-start gap-3">
                 {c.userId ? (
                   <div className="flex shrink-0 flex-col gap-1.5">

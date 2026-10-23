@@ -127,11 +127,18 @@ export const ADMIN_TOOLS = [
       properties: {
         page: {
           type: "string",
-          enum: ["genel_bakis", "siparisler", "urunler", "kritik_stok", "barkod", "kategoriler", "musteriler", "bolgeler", "ayarlar"],
+          enum: ["genel_bakis", "satis", "siparisler", "rapor", "kuryeler", "urunler", "kritik_stok", "barkod", "kategoriler", "musteriler", "bolgeler", "ayarlar"],
         },
       },
       required: ["page"],
     },
+  },
+  {
+    name: "hide_window",
+    description:
+      "Asistan PENCERESİNİ gizler; sesli sohbet DEVAM EDER (sayfanın orta altında küçük yarı saydam pembe-mor küre kalır). Kullanıcı 'sohbeti gizle', 'pencereyi gizle', " +
+      "'küçült', 'ekranı kapat', 'paneli kapat', 'aşağı al' derse çağır. Bu bir veda DEĞİLDİR: vedalaşma, end_session çağırma; 'Tamam, pencereyi gizledim, dinliyorum.' de.",
+    parameters: { type: "object", properties: {} },
   },
   {
     name: "end_session",
@@ -160,6 +167,7 @@ KESİN KURALLAR:
 - Bunların dışındaki değişiklikler (sipariş iptali, ürün ekleme/silme, maliyet, kategori) yapılamaz: "bunu ilgili sayfadan yapabilirsin, açayım mı?" de ve isterse go_to_page çağır.
 - Sipariş alma veya sepete ekleme isteğine "bu asistan yönetim içindir; sipariş mağaza ekranından verilir" de.
 - Kısa bir yorum yapabilirsin (ör. "cumartesi en yoğun gün olmuş") ama yalnızca araç verisine dayanarak.
+- GİZLEME ≠ KAPATMA: "sohbeti gizle", "pencereyi gizle", "küçült", "ekranı/paneli kapat" sözleri sohbeti BİTİRMEZ → hide_window çağır, vedalaşma, dinlemeye devam et. Kullanıcı bir sayfa açtırınca da konuşma sürer.
 - KAPATMA: Kullanıcı sohbeti kapatmak isterse ya da vedalaşırsa TEK kısa cümle ("Tamam, görüşürüz!") söyle ve hemen end_session çağır. Vedayı tekrarlama, "başka bir şey var mı" diye sorma. Aynı cümleyi üst üste tekrarlama.
 - "[SİSTEM]" ile başlayan mesajlar uygulamadan gelir; oturum başında kısa selam ver: "Merhaba, işletmenle ilgili ne öğrenmek istersin? Ciro, stok, siparişler…"
 `.trim();

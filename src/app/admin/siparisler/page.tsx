@@ -78,7 +78,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           })}
         </div>
       ) : (
-        <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
+        <div className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <OrderTable orders={orders} />
         </div>
       )}

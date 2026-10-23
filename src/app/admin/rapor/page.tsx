@@ -254,7 +254,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
         ))}
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 rounded-2xl bg-white p-3 ring-1 ring-line">
+      <div className="flex flex-wrap items-end gap-2 rounded-3xl bg-white p-3 shadow-sm shadow-navy/5 ring-1 ring-line">
         {presets.map((p) => (
           <Link key={p.k} href={q({ bas: p.a, bit: p.b })} className={`rounded-lg px-3 py-2 text-sm font-semibold ${from === p.a && to === p.b ? "bg-brand-soft text-brand" : "bg-bg hover:ring-1 hover:ring-brand"}`}>
             {p.k}
@@ -283,7 +283,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
           [kanal === "online" ? "Ortalama sepet" : "Ortalama fiş", formatTL(rep.count ? rep.revenue / rep.count : 0)],
           [kanal === "online" ? "İptal" : "İptal fiş", rep.cancelled.n ? `${rep.cancelled.n} · ${formatTL(rep.cancelled.amount)}` : "0"],
         ].map(([k, v]) => (
-          <div key={k} className="rounded-2xl bg-white p-3.5 ring-1 ring-line">
+          <div key={k} className="rounded-3xl bg-white p-3.5 shadow-sm shadow-navy/5 ring-1 ring-line">
             <p className="text-xs font-semibold text-muted">{k}</p>
             <p className="mt-1 text-xl font-black tabular-nums">{v}</p>
           </div>
@@ -300,7 +300,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
       )}
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+        <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <h2 className="mb-3 font-extrabold">Kâr hesabı</h2>
           <dl className="divide-y divide-line text-sm">
             {rep.pl.map((l) => (
@@ -336,7 +336,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
           </p>
         </section>
 
-        <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+        <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
           <h2 className="mb-3 font-extrabold">En çok satanlar</h2>
           {rep.top.length === 0 ? (
             <p className="text-sm text-muted">Bu aralıkta satış yok.</p>
@@ -365,7 +365,7 @@ export default async function ReportPage({ searchParams }: { searchParams: Promi
         </section>
       </div>
 
-      <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <h2 className="mb-2 font-extrabold">Günlük</h2>
         <ul className="divide-y divide-line">
           {days.map(({ d, x }) => (

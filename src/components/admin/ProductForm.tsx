@@ -145,7 +145,7 @@ export function ProductForm({
       <input type="hidden" name="image_url" value={imageUrl} />
       <input type="hidden" name="extra_images" value={JSON.stringify(images.slice(1))} />
 
-      <section className="grid grid-cols-1 gap-4 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-[160px_minmax(0,1fr)]">
+      <section className="grid grid-cols-1 gap-4 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line sm:grid-cols-[160px_minmax(0,1fr)]">
         <div className="space-y-2">
           <div
             onDragOver={(e) => e.preventDefault()}
@@ -271,7 +271,7 @@ export function ProductForm({
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line sm:grid-cols-3">
         <F label="Alış fiyatı (₺)">
           <input name="cost_price" inputMode="decimal" value={costS} onChange={(e) => setCostS(e.target.value)} placeholder="KDV dahil maliyet" className="input" />
         </F>
@@ -309,7 +309,7 @@ export function ProductForm({
         <F label="Sipariş başına en fazla"><input name="max_per_order" type="number" min={1} defaultValue={product?.max_per_order ?? 20} className="input" /></F>
       </section>
 
-      <section className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-line">
+      <section className="space-y-3 rounded-3xl bg-white p-4 shadow-sm shadow-navy/5 ring-1 ring-line">
         <F label="Açıklama"><textarea name="description" defaultValue={product?.description ?? ""} className="input min-h-24" /></F>
         <div className="flex flex-wrap gap-5 text-sm font-semibold">
           <label className="flex items-center gap-2"><input type="checkbox" name="is_active" defaultChecked={product?.is_active ?? true} className="h-4 w-4 accent-brand" /> Satışta</label>
