@@ -8,7 +8,7 @@ import { ScrollRow } from "@/components/shop/ScrollRow";
 import { SubCategoryTabs } from "@/components/shop/SubCategoryTabs";
 import type { Category } from "@/lib/types";
 import { Suspense } from "react";
-import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProducts, getStoreSettings, mergeCategories } from "@/lib/data/catalog";
+import { byPopularity, getCategories, getCategoryPopularity, getMemberCatalog, getProductPopularity, getProducts, getStoreSettings, mergeCategories, rankProducts } from "@/lib/data/catalog";
 import { formatTL } from "@/lib/format";
 import { HeroVoice, OpenVoiceButton } from "@/components/shop/HeroVoice";
 import { Robot } from "@/components/shop/Robot";
@@ -19,12 +19,15 @@ import { CITY, REGION, SITE_DESCRIPTION, SITE_URL, abs, isPublicCategory, jsonLd
 export const metadata: Metadata = { alternates: { canonical: "/" } };
 
 export default async function HomePage() {
-  const [categories, products, s, pop] = await Promise.all([getCategories(), getProducts(), getStoreSettings(), getCategoryPopularity()]);
+  const [categories, raw, s, pop, ppop] = await Promise.all([getCategories(), getProducts(), getStoreSettings(), getCategoryPopularity(), getProductPopularity()]);
+  // Her listede: stokta → görseli olan → en çok tercih edilen önce
+  const products = rankProducts(raw, ppop);
   const deals = products.filter((p) => p.sale_price != null && p.stock > 0);
   const featured = products.filter((p) => p.is_featured);
   const counts = topCounts(categories, products);
   // Popüler ürünler: öne çıkanlar; yoksa indirimdekiler; o da yoksa stoktaki ilk ürünler
-  const popular = (featured.length ? featured : deals.length ? deals : products.filter((p) => p.stock > 0)).slice(0, 20);
+  const sellers = products.filter((p) => p.stock > 0 && (ppop[p.id] ?? 0) > 0);
+  const popular = (sellers.length >= 6 ? sellers : featured.length ? featured : deals.length ? deals : products.filter((p) => p.stock > 0)).slice(0, 20);
   const firstCat = topLevel(categories)[0];
   const seoCats = topLevel(categories.filter(isPublicCategory));
   const storeLd = [
@@ -273,8 +276,9 @@ async function HomeStrip({ categories, counts }: { categories: Category[]; count
 
 /** Oturuma göre ek kategoriler — normal kategoriler gibi, ayrı etiket olmadan gösterilir. */
 async function MemberSections() {
-  const [{ categories, products }, pop] = await Promise.all([getMemberCatalog(), getCategoryPopularity()]);
+  const [{ categories, products: raw }, pop, ppop] = await Promise.all([getMemberCatalog(), getCategoryPopularity(), getProductPopularity()]);
   if (!categories.length) return null;
+  const products = rankProducts(raw, ppop);
   return (
     <>
       {topLevel(categories).map((c) => (

@@ -418,3 +418,9 @@
 ## 2026-10-23 — Sesli asistan: kategori / alt kategori ayrımı
 - `list_categories` artık yalnızca ANA kategorileri sayar (her birinin altında alt kategori adları ve toplam stoklu ürün sayısı iç içe). `parent` verilirse yalnızca o ana kategorinin alt kategorilerini döner ("kahvaltılığın alt kategorileri").
 - Talimata kural: "kategori" = ana reyon, "alt kategori" = içindeki bölüm; kategoriler sorulunca alt kategoriler sayılmaz. (Şu an 12 ana, 31 alt kategori.)
+
+## 2026-10-23 — Ana sayfa ürün sırası: görselli + en çok tercih edilen önce
+- Migration `20261023010000_product_popularity`: `product_popularity()` (ürün başına son 90 gün satış; online + POS, iptaller hariç; yalnızca toplam, anonim) ve `category_top_products(p_cat, p_limit)` (stokta → görselli → çok satan → sıra; görünürlük kuralı RLS ile aynı, security definer).
+- `catalog.ts`: `getProductPopularity()` (haftalık önbellek, etiket `urun-populerlik`) + `rankProducts()`. Ana sayfadaki tüm listeler (kategori bölümleri, üye bölümleri, fırsatlar) bu sırada.
+- "Popüler Ürünler": son 90 günde satılan ürünler (≥6 varsa); yoksa öne çıkanlar / indirimdekiler.
+- Tarayıcıdan yüklenen alt kategori sekmeleri artık `category_top_products` RPC ile aynı sırada (yine 10 ürün; sayfa boyutu / ISR değişmedi).

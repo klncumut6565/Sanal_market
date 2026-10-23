@@ -130,6 +130,34 @@ export async function getCategoryPopularity(): Promise<Record<string, number>> {
   return Object.fromEntries(((data ?? []) as { category_id: string; qty: number | string }[]).map((r) => [r.category_id, Number(r.qty)]));
 }
 
+/** Ürün başına son 90 gün satış adedi (vitrin sıralaması). Haftalık önbellek — sayfaları sık yeniden yazdırmaz. */
+export async function getProductPopularity(): Promise<Record<string, number>> {
+  "use cache";
+  cacheTag("urun-populerlik");
+  cacheLife("weeks");
+  if (!hasSupabase) return {};
+  const { data, error } = await createPublicClient().rpc("product_popularity");
+  if (error) {
+    console.error("[katalog] ürün popülerliği alınamadı:", error.message);
+    return {};
+  }
+  return Object.fromEntries(((data ?? []) as { product_id: string; qty: number | string }[]).map((r) => [r.product_id, Number(r.qty)]));
+}
+
+/** Vitrin sırası: stokta olan → görseli olan → en çok satan → yönetimdeki sıra (sıralama kararlı). */
+export function rankProducts<T extends { id: string; stock: number; image_url: string | null }>(list: T[], pop: Record<string, number>): T[] {
+  return list
+    .map((p, i) => ({ p, i }))
+    .sort(
+      (a, b) =>
+        Number(b.p.stock > 0) - Number(a.p.stock > 0) ||
+        Number(!!b.p.image_url) - Number(!!a.p.image_url) ||
+        (pop[b.p.id] ?? 0) - (pop[a.p.id] ?? 0) ||
+        a.i - b.i,
+    )
+    .map((x) => x.p);
+}
+
 /** Alt kategoriler: en çok satan önce, eşitse yönetimdeki sıra. */
 export function byPopularity<T extends { id: string; sort_order: number; name: string }>(cats: T[], pop: Record<string, number>): T[] {
   return [...cats].sort((a, b) => (pop[b.id] ?? 0) - (pop[a.id] ?? 0) || a.sort_order - b.sort_order || a.name.localeCompare(b.name, "tr"));

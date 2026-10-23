@@ -8,8 +8,6 @@ import { createClient } from "@/lib/supabase/client";
 import type { Product } from "@/lib/types";
 import { ProductRow } from "./ProductCard";
 
-const COLS =
-  "id,category_id,name,slug,description,unit_label,price,sale_price,stock,critical_stock,max_per_order,image_url,extra_images,emoji,is_active,is_featured,sort_order";
 const ROW = 10;
 
 type Tab = { id: string; label: string; count: number; href: string; categoryId: string | null };
@@ -21,15 +19,8 @@ export function SubCategoryTabs({ tabs, first }: { tabs: Tab[]; first: ReactNode
   const load = async (t: Tab) => {
     if (loaded[t.id] || !t.categoryId) return;
     const sb = createClient();
-    const { data, error } = await sb
-      .from("products")
-      .select(COLS)
-      .eq("is_active", true)
-      .eq("category_id", t.categoryId)
-      .order("sort_order")
-      .order("name")
-      .order("id")
-      .limit(ROW);
+    // Stokta → görseli olan → en çok satan önce (veritabanında sıralanır, yalnızca 10 ürün gelir)
+    const { data, error } = await sb.rpc("category_top_products", { p_cat: t.categoryId, p_limit: ROW });
     setLoaded((m) => ({
       ...m,
       [t.id]: error ? "err" : ((data ?? []) as Product[]).map((p) => ({ ...p, price: Number(p.price), sale_price: p.sale_price == null ? null : Number(p.sale_price) })),
