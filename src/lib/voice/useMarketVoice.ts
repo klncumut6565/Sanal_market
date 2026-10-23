@@ -108,6 +108,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void, on
         navigate: (p) => router.push(p),
         log,
         show: (title, items) => setShown(items.length ? { title, items } : null),
+        hideOnMobile: () => onHideRef.current?.(),
         gate: {
           get: () => proposalRef.current,
           set: (p) => {

@@ -291,6 +291,7 @@ export function VoiceOrb({
   const etiket = ETIKET[durum];
   return (
     <div
+      data-asistan-ui
       className={`pointer-events-none fixed left-1/2 z-40 flex -translate-x-1/2 flex-col items-center lg:bottom-3 ${
         raised ? "bottom-[calc(124px+env(safe-area-inset-bottom))]" : "bottom-[calc(60px+env(safe-area-inset-bottom))]"
       }`}

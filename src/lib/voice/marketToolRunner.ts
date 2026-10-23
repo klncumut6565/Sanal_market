@@ -8,6 +8,7 @@ import type { Product } from "@/lib/types";
 import type { VoiceSettings, VoiceAction } from "./useMarketVoice";
 import { fetchDiscounts } from "./discounts";
 import { shopCategories, visibleIn } from "@/lib/shopCategories";
+import { matchItem, norm, scrollPage, settle, visibleItems } from "./screenTools";
 import { halusinasyonMu, kisaYankiMi, yankiMi } from "./halusinasyon";
 import { pickBudgetBasket, type BudgetSlot } from "./budgetBasket";
 import { matchWords } from "@/lib/trFold";
@@ -138,6 +139,8 @@ export function createMarketToolRunner(deps: {
   gate: CartGate;
   /** Asistanın bahsettiği ürünleri panelde görselleriyle göster */
   show?: (title: string, items: ShownProduct[]) => void;
+  /** Telefonda ekran araçlarından önce pencereyi gizle (panel ekranın yarısını kaplar) */
+  hideOnMobile?: () => void;
 }) {
   const { getSettings, navigate, log, gate } = deps;
   const show = deps.show ?? (() => {});
@@ -480,6 +483,73 @@ export function createMarketToolRunner(deps: {
         payment: "Kapıda nakit veya kapıda kartla (POS) ödeme",
         delivery_area: "Tekirdağ / Çorlu (köy mahalleleri, Silahtarağa ve Yenice hariç)",
       };
+    }
+
+    // ---- EKRAN ARAÇLARI (veritabanına gitmez; yalnızca görünen sayfa) ----
+    const ekranOzeti = () =>
+      visibleItems().map((i) => `${i.no}. [${i.type}] ${i.name}`);
+    const mobil = () => {
+      if (window.innerWidth < 640 && deps.hideOnMobile) {
+        deps.hideOnMobile();
+        return true;
+      }
+      return false;
+    };
+
+    if (name === "scroll_page") {
+      mobil();
+      const r = scrollPage(String(args.direction ?? "down"), String(args.amount ?? "sayfa"));
+      await settle(550);
+      log(`↕️ Sayfa kaydırıldı`, "info");
+      return { ...r, on_screen: ekranOzeti().slice(0, 15), note: "Kısaca 'Kaydırdım' de; müşteri sormadıkça listeyi okuma." };
+    }
+
+    if (name === "read_screen") {
+      if (mobil()) await settle(250);
+      const list = ekranOzeti();
+      return list.length
+        ? { on_screen: list, note: "Bunlar yalnızca ekranda görünenler. Müşteriye kısaca (en fazla 6 tane) söyle." }
+        : { on_screen: [], note: "Ekranda tıklanabilir öğe görünmüyor." };
+    }
+
+    if (name === "click_on_screen") {
+      if (mobil()) await settle(250);
+      const items = visibleItems();
+      const { item, options } = matchItem(items, String(args.target ?? ""));
+      if (options) return { ok: false, ambiguous: options, note: "Birden fazla eşleşme var; hangisi olduğunu Türkçe sor." };
+      if (!item) return { ok: false, error: "Ekranda bu adla görünen bir öğe yok.", on_screen: items.slice(0, 15).map((i) => `${i.no}. [${i.type}] ${i.name}`) };
+      item.el.scrollIntoView({ block: "nearest" });
+      item.el.click();
+      log(`👆 ${item.name}`, "info");
+      return { ok: true, clicked: item.name, type: item.type };
+    }
+
+    if (name === "open_category") {
+      const q = norm(String(args.category ?? ""));
+      const pq = norm(String(args.parent ?? ""));
+      if (q.length < 2) return { error: "Kategori adı söylenmedi." };
+      const allowed = await shopCategories(sb);
+      const { data } = await sb.from("categories").select("id,name,slug,parent_id").in("id", allowed.map((c) => c.id));
+      const cats = (data ?? []) as { id: string; name: string; slug: string; parent_id: string | null }[];
+      const byId = new Map(cats.map((c) => [c.id, c]));
+      const words = q.split(" ").filter((w) => w.length >= 3);
+      const score = (c: (typeof cats)[number]) => {
+        const n = norm(c.name);
+        let sc = n === q ? 100 : n.startsWith(q) || q.startsWith(n) ? 80 : n.includes(q) || q.includes(n) ? 70 : words.some((w) => n.includes(w.slice(0, Math.max(3, w.length - 2)))) ? 40 : 0;
+        if (sc && pq && c.parent_id) {
+          const pn = norm(byId.get(c.parent_id)?.name ?? "");
+          if (pn.includes(pq) || pq.includes(pn)) sc += 15;
+        }
+        return sc;
+      };
+      const ranked = cats.map((c) => ({ c, sc: score(c) })).filter((x) => x.sc > 0).sort((a, b) => b.sc - a.sc);
+      const hit = ranked[0]?.c;
+      if (!hit) return { error: "Bu adla kategori bulunamadı.", categories: cats.filter((c) => !c.parent_id).map((c) => c.name) };
+      mobil();
+      navigate(`/kategori/${hit.slug}`);
+      const parent = hit.parent_id ? byId.get(hit.parent_id)?.name : undefined;
+      log(`📂 ${parent ? `${parent} › ` : ""}${hit.name}`, "info");
+      return { ok: true, opened: hit.name, parent, note: "Kısaca 'Açtım' de." };
     }
 
     if (name === "go_to_checkout") {

@@ -11,7 +11,7 @@ export default async function ShopLayout({ children }: { children: React.ReactNo
   return (
     <>
       <Header />
-      {children}
+      <main id="icerik">{children}</main>
       <Footer />
       <Suspense fallback={null}>
         <Voice />

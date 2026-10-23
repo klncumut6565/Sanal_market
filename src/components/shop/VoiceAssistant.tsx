@@ -88,6 +88,7 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
     <>
       {!open && !hideButton && (
         <button
+          data-asistan-ui
           onClick={openAssistant}
           aria-label="Sesli sipariş asistanı"
           className={`fixed right-4 z-30 flex items-center gap-2 rounded-full bg-navy py-1.5 pl-1.5 pr-4 text-sm font-bold text-white shadow-xl ring-4 ring-white transition hover:scale-105 lg:bottom-6 ${
@@ -114,6 +115,8 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
 
       {open && !orb && (
         <div
+          data-asistan-ui
+          data-asistan-panel
           className="fixed inset-x-0 bottom-0 z-50 p-3 sm:inset-x-auto sm:right-4 sm:w-96"
           onPointerDown={v.touch}
           onScrollCapture={v.touch}

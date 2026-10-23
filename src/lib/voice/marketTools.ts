@@ -147,6 +147,51 @@ export const MARKET_TOOLS = [
     parameters: { type: "object", properties: {} },
   },
   {
+    name: "scroll_page",
+    description:
+      "Sayfayı kaydırır. 'Aşağı kaydır', 'biraz in', 'yukarı çık', 'en üste/en alta git' denince çağır. Kaydırdıktan sonra ekranda görünenler döner; müşteri sorarsa kısaca söyle.",
+    parameters: {
+      type: "object",
+      properties: {
+        direction: { type: "string", enum: ["down", "up", "top", "bottom"], description: "down=aşağı, up=yukarı, top=en üst, bottom=en alt" },
+        amount: { type: "string", enum: ["az", "sayfa"], description: "az = biraz, sayfa = bir ekran (varsayılan)" },
+      },
+      required: ["direction"],
+    },
+  },
+  {
+    name: "open_category",
+    description:
+      "Bir kategori veya ALT kategori sayfasını AÇAR (ekranda gösterir). 'Atıştırmalık kategorisini aç', 'peynirlere git', 'gazlı içecekleri aç' denince çağır. " +
+      "Alt kategori için parent de verilebilir. Ürünleri sesli saymak gerekmez; açtıktan sonra 'Açtım' de.",
+    parameters: {
+      type: "object",
+      properties: {
+        category: { type: "string", description: "Kategori / alt kategori adı veya bir kısmı" },
+        parent: { type: "string", description: "İsteğe bağlı: alt kategorinin ana kategorisi" },
+      },
+      required: ["category"],
+    },
+  },
+  {
+    name: "read_screen",
+    description:
+      "Müşterinin EKRANINDA o an GÖRÜNEN ürünleri, kategorileri, alt kategori sekmelerini ve düğmeleri sırasıyla verir (tüm ürünler değil, yalnızca görünenler). " +
+      "'Ekranda ne var', 'burada hangi ürünler var' denince ya da tıklanacak öğeden emin değilsen çağır.",
+    parameters: { type: "object", properties: {} },
+  },
+  {
+    name: "click_on_screen",
+    description:
+      "Ekranda GÖRÜNEN bir öğeye tıklar: ürün kartını (ürün sayfası açılır), kategori/alt kategori sekmesini veya düğmeyi. 'Şunu aç', 'Ülker çikolatayı tıkla', " +
+      "'üçüncü ürünü aç', 'peynir sekmesine tıkla' denince çağır. target = öğenin adı ya da sırası ('3. ürün', 'ilk kategori'). Ekranda yoksa önce scroll_page veya open_category öner.",
+    parameters: {
+      type: "object",
+      properties: { target: { type: "string", description: "Tıklanacak öğenin ekrandaki adı veya sırası" } },
+      required: ["target"],
+    },
+  },
+  {
     name: "hide_window",
     description:
       "Asistan PENCERESİNİ gizler; sesli sohbet DEVAM EDER (sayfanın altında küçük yarı saydam küre kalır). Müşteri 'sohbeti gizle', 'pencereyi gizle', " +
@@ -174,6 +219,7 @@ SAMİMİ MÜŞTERİ İLETİŞİMİ:
 - Kayıtlı müşterinin geçmişi verildiyse selamlamadan sonra (ya da uygun anda) EN FAZLA BİR kişisel öneri yap, ürün adını/markasını söyleyerek: "Dün 2 paket Marlboro Touch almıştın, bugün de ekleyeyim mi?" Önce search_products ile stokta olduğunu kontrol et; stokta yoksa önerme. Müşteri isterse propose_cart_items ile öner ve onay al. Israr etme, her cevapta tekrar etme.
 - Müşteri "nasılsın" derse kısa ve sıcak karşılık ver, sonra alışverişe dön.
 - "[SİSTEM] Sipariş tamamlandı" gelirse TEK cümlede içtenlikle teşekkür et: "Siparişin alındı, bizi tercih ettiğin için çok teşekkür ederiz, afiyet olsun!" (adı varsa adıyla) ve hemen end_session çağır; soru sorma.
+- EKRAN: "aşağı kaydır / yukarı çık" → scroll_page; "X kategorisini / alt kategorisini aç" → open_category; ekranda görünen bir ürünü/sekmeyi/düğmeyi "aç, tıkla" → click_on_screen (yalnızca ekranda görünenler; emin değilsen read_screen). Bu araçlardan sonra çok kısa onay ver ("Açtım", "Kaydırdım").
 - GİZLEME ≠ KAPATMA: "sohbeti gizle", "pencereyi gizle", "küçült", "ekranı/paneli kapat" sözleri sohbeti BİTİRMEZ → hide_window çağır, vedalaşma, dinlemeye devam et.
 - VEDALAŞMA (KISIR DÖNGÜ YASAK): Müşteri vedalaşırsa ("görüşürüz", "hoşça kal", "teşekkürler bu kadar", "kapat") TEK bir kısa veda cümlesi söyle ("Görüşürüz, iyi günler!") ve HEMEN end_session çağır. Veda cümlesini asla ikinci kez söyleme; vedadan sonra duyduğun "görüşürüz"e cevap verme. Müşteri "teşekkürler" deyip başka istek söylemezse "Rica ederim, başka bir isteğin var mı?" diye BİR KEZ sor; "yok" derse vedalaş ve end_session çağır.
 - TEKRAR YOK: Aynı cümleyi, selamı, hatırlatmayı veya soruyu üst üste tekrarlama. Bir bilgiyi bir kez söyle.

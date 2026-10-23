@@ -405,3 +405,12 @@
 ## 2026-10-23 — Sesli asistan: yalnızca Türkçe + sesle "sohbeti gizle"
 - İngilizce cevap sorunu: talimatın EN BAŞINA İngilizce + Türkçe zorunlu dil kuralı (her tur, selamlama, araç sonucu, hata dahil yalnızca tr-TR); `[SİSTEM]` selamlama mesajları "TÜRKÇE selamla". (`speechConfig.languageCode: tr-TR` zaten vardı; native-audio model buna her zaman uymuyor.)
 - Sesle "sohbeti gizle / pencereyi gizle / küçült / ekranı-paneli kapat": yeni `hide_window` aracı → pencere gizlenir, sohbet sürer, orta altta yarı saydam küre. Model yanlışlıkla `end_session` çağırırsa ve müşterinin sözünde gizleme kelimesi varsa kapatılmaz, gizlenir; veda yedek kapatması da gizleme sözünde devre dışı.
+
+## 2026-10-23 — Sesli asistan ekran komutları
+- Yeni araçlar (`marketTools.ts` + `marketToolRunner.ts`, DOM mantığı `src/lib/voice/screenTools.ts`):
+  - `scroll_page` (aşağı / yukarı / en üst / en alt, az / sayfa)
+  - `open_category` (ana veya alt kategori sayfasını açar; `parent` ile ayırt eder — tek küçük `categories` sorgusu)
+  - `read_screen` (yalnızca EKRANDA GÖRÜNEN ürünler, kategoriler, alt kategori sekmeleri, düğmeler)
+  - `click_on_screen` (görünen öğeye ada veya sıraya göre tıklar: "Coco Star'ı aç", "üçüncü ürün", "zeytin sekmesi")
+- Ekran araçları veritabanına gitmez. Asistan penceresi/küresi `data-asistan-ui` ile hariç; panelin altında kalan öğeler görünür sayılmaz. Telefonda ekran komutundan önce pencere otomatik gizlenir (orta altta küre, sohbet sürer).
+- Mağaza düzeninde içerik `<main id="icerik">` içinde.
