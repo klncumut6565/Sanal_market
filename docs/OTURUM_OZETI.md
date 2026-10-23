@@ -401,3 +401,7 @@
 - Kullanıcının gönderdiği görsel kırpıldı → `public/tasarim/hero-canta.webp` (Sanal Market çantası + ürünler, 17 KB) ve `public/tasarim/tarif-salata.webp` (salata kâsesi, 26 KB).
 - Hero: CSS çanta + emoji kompozisyonu kaldırıldı; robot + konuşma balonu + çanta görseli. Tarif kartı: soldaki 3B simgeler yerine salata görseli (sağa doğru yumuşak geçiş).
 - Not: ikinci görseldeki markalı ürünler (marka logoları) kullanılmadı.
+
+## 2026-10-23 — Sesli asistan: yalnızca Türkçe + sesle "sohbeti gizle"
+- İngilizce cevap sorunu: talimatın EN BAŞINA İngilizce + Türkçe zorunlu dil kuralı (her tur, selamlama, araç sonucu, hata dahil yalnızca tr-TR); `[SİSTEM]` selamlama mesajları "TÜRKÇE selamla". (`speechConfig.languageCode: tr-TR` zaten vardı; native-audio model buna her zaman uymuyor.)
+- Sesle "sohbeti gizle / pencereyi gizle / küçült / ekranı-paneli kapat": yeni `hide_window` aracı → pencere gizlenir, sohbet sürer, orta altta yarı saydam küre. Model yanlışlıkla `end_session` çağırırsa ve müşterinin sözünde gizleme kelimesi varsa kapatılmaz, gizlenir; veda yedek kapatması da gizleme sözünde devre dışı.

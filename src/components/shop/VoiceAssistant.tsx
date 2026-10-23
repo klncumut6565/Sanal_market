@@ -39,10 +39,18 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   // Pencere gizli ama sohbet sürüyor → orta altta yarı saydam küre
   const [hidden, setHidden] = useState(false);
   // Asistan sohbeti kendisi bitirince (veda / sipariş tamamlandı) pencere kapanır
-  const v = useMarketVoice(settings, () => {
-    setOpen(false);
-    setHidden(false);
-  });
+  const v = useMarketVoice(
+    settings,
+    () => {
+      setOpen(false);
+      setHidden(false);
+    },
+    // Sesle "sohbeti gizle" → pencere gizlenir, sohbet sürer
+    () => {
+      setOpen(true);
+      setHidden(true);
+    },
+  );
   const vStart = v.start;
   const ready = useCartHydrated();
   const hasCart = useCart((s) => s.lines.length > 0);

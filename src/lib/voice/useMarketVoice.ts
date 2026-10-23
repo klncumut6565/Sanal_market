@@ -41,9 +41,11 @@ const icerir = (t: string, list: string[]) => {
 const MUSTERI_KAPAT = [...ASIST_VEDA, "kapat", "kapatabilirsin", "bu kadar", "başka bir şey yok", "başka yok"];
 /** end_session'ı kabul etmek için müşterinin son cümlesinde aranan sözler */
 const KAPAT_IZIN = [...MUSTERI_VEDA, "yok", "gerek yok", "yeter", "evet"];
+/** Pencereyi gizleme sözleri — sohbet BİTMEZ, yalnızca pencere gizlenir (orta altta küre kalır) */
+const GIZLE = ["gizle", "küçült", "pencereyi kapat", "ekranı kapat", "paneli kapat", "aşağı al", "pencereyi indir"];
 
 
-export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
+export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void, onHide?: () => void) {
   const router = useRouter();
   const [state, setState] = useState<VoiceState>("idle");
   const [error, setError] = useState<string | null>(null);
@@ -75,10 +77,12 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const ending = useRef<{ since: number; turnDone: boolean } | null>(null);
   const settingsRef = useRef(settings);
   const onEndedRef = useRef(onEnded);
+  const onHideRef = useRef(onHide);
   useEffect(() => {
     settingsRef.current = settings;
     onEndedRef.current = onEnded;
-  }, [settings, onEnded]);
+    onHideRef.current = onHide;
+  }, [settings, onEnded, onHide]);
 
   const set = useCallback((s: VoiceState) => {
     stateRef.current = s;
@@ -217,9 +221,11 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         const asst = asstBuf.current;
         lastSpeech.current = Date.now(); // sessizlik süresi asistanın sustuğu andan sayılır
         const sahteUser = halusinasyonMu(lastUser.current) || yankiMi(lastUser.current, asst);
+        const gizle = !sahteUser && icerir(lastUser.current, GIZLE);
+        if (gizle) onHideRef.current?.(); // "sohbeti gizle" → yalnızca pencere gizlenir, sohbet sürer
         if (ending.current) {
           ending.current.turnDone = true;
-        } else if (asst && !sahteUser && icerir(asst, ASIST_VEDA) && icerir(lastUser.current, MUSTERI_KAPAT)) {
+        } else if (!gizle && asst && !sahteUser && icerir(asst, ASIST_VEDA) && icerir(lastUser.current, MUSTERI_KAPAT)) {
           // Yedek: araç çağrılmadan vedalaştıysa da kapat (karşılıklı "görüşürüz" döngüsünü keser)
           finishSession();
           const e2 = ending.current as { turnDone: boolean } | null;
@@ -293,7 +299,17 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         timers.current.push(t);
       });
       provider.onToolCall(async (name, args) => {
+        if (name === "hide_window") {
+          onHideRef.current?.();
+          return { ok: true, note: "Pencere gizlendi, sohbet devam ediyor. Vedalaşma; Türkçe kısa onay ver ve dinlemeye devam et." };
+        }
         if (name === "end_session") {
+          // "Sohbeti gizle" kapatma değildir: pencereyi gizle, sohbet sürsün
+          const said0 = (userBuf.current || lastUser.current).trim();
+          if (!orderDone.current && icerir(said0, GIZLE)) {
+            onHideRef.current?.();
+            return { ok: false, error: "Müşteri sohbeti BİTİRMEDİ, yalnızca pencereyi gizlemek istedi; pencere gizlendi. KAPATMA, veda etme; Türkçe 'Tamam, dinliyorum.' de." };
+          }
           // Yanlış kapanmaya karşı: müşteri gerçekten bitirmek istediyse (ya da sipariş tamamlandıysa) kapat.
           // Gürültüden uydurulan "izlediğiniz için teşekkürler" veya asistanın kendi yankısı kapatma sebebi sayılmaz.
           const said = (userBuf.current || lastUser.current).trim();
@@ -341,7 +357,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
         markGreeted();
         playback.enqueue(chunk);
       });
-      provider.sendText("[SİSTEM] Oturum başladı. Müşteriyi selamla.");
+      provider.sendText("[SİSTEM] Oturum başladı. Müşteriyi TÜRKÇE selamla.");
       lastSpeech.current = Date.now();
       // Gürültü kapısı + hoparlör yankısı koruması (audioStream.createNoiseGate)
       const gate = createNoiseGate(SES_ESIGI_RMS);
@@ -356,7 +372,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       set("listening");
       // Yedek: 2,5 sn içinde asistan konuşmadıysa ve müşteri de konuşmadıysa selamlamayı yeniden iste
       const greetRetry = setTimeout(() => {
-        if (!greeted && !userBuf.current && providerRef.current === provider) provider.sendText("[SİSTEM] Şimdi selamlamayı yap, müşteriyi bekleme.");
+        if (!greeted && !userBuf.current && providerRef.current === provider) provider.sendText("[SİSTEM] Şimdi Türkçe selamlamayı yap, müşteriyi bekleme.");
       }, 2500);
       timers.current.push(greetRetry as unknown as ReturnType<typeof setInterval>);
 
