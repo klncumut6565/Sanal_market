@@ -232,6 +232,9 @@ export async function startMicCapture(onChunk: (pcm: ArrayBuffer) => void): Prom
 export class AudioPlaybackQueue {
   private audioContext: AudioContext;
   private cikis: GainNode;
+  /** GÖRSELLEŞTİRME KOLU (yalnızca okuma): cikis → analiz. Analiz düğümü hiçbir yere bağlanmaz —
+   *  ses hoparlöre yine yalnızca cikis → destination yolundan gider. Kurulamazsa null. */
+  private analiz: AnalyserNode | null = null;
   private kuyruk: AudioBufferSourceNode[] = [];
   private sonrakiBaslangicZamani = 0;
   private onSpeakingChange: ((speaking: boolean) => void) | null = null;
@@ -255,6 +258,14 @@ export class AudioPlaybackQueue {
     }
     this.cikis = this.audioContext.createGain();
     this.cikis.connect(this.audioContext.destination);
+    try {
+      this.analiz = this.audioContext.createAnalyser();
+      this.analiz.fftSize = 512;
+      this.analiz.smoothingTimeConstant = 0.55;
+    } catch {
+      this.analiz = null;
+    }
+    this.analiziBagla();
     // Kullanıcı tıklamasıyla (Canlı Konuşma butonu) oluşturulur; yine de
     // askıdaysa devam ettir.
     void this.audioContext.resume().catch(() => {});
@@ -262,6 +273,18 @@ export class AudioPlaybackQueue {
 
   onSpeaking(handler: (speaking: boolean) => void) {
     this.onSpeakingChange = handler;
+  }
+
+  private analiziBagla() {
+    if (!this.analiz) return;
+    try {
+      this.cikis.connect(this.analiz);
+    } catch {}
+  }
+
+  /** Asistanın gerçekten çalınan sesini okumak için analiz düğümü (yalnızca okunur). */
+  getAnalyser(): AnalyserNode | null {
+    return this.analiz;
   }
 
   /** Ham 24kHz/16-bit/mono PCM parçasını kuyruğa ekler ve sırayla çalar. */
@@ -321,6 +344,7 @@ export class AudioPlaybackQueue {
     // Yeni konuşma için temiz bir çıkış düğümü; eskisi kısılıp atılır.
     this.cikis = this.audioContext.createGain();
     this.cikis.connect(this.audioContext.destination);
+    this.analiziBagla();
     this.sonrakiBaslangicZamani = 0;
 
     setTimeout(() => {

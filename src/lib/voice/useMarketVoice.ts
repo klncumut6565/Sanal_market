@@ -55,6 +55,8 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
   const providerRef = useRef<GeminiLiveProvider | null>(null);
   const micRef = useRef<MicCapture | null>(null);
   const playbackRef = useRef<AudioPlaybackQueue | null>(null);
+  /** Görselleştirme: kapıdan geçen müşteri ses seviyesi (0..1); state değil, her karede okunur. */
+  const userLevelRef = useRef(0);
   const stateRef = useRef<VoiceState>("idle");
   const userBuf = useRef("");
   const asstBuf = useRef("");
@@ -347,6 +349,7 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
       micRef.current = await startMicCapture((pcm) => {
         if (ending.current) return; // vedalaşma: artık dinleme yok
         const g = gate(pcm, playbackRef.current?.isPlaying() ?? false);
+        userLevelRef.current = g.voiced ? Math.min(1, g.rms / 6000) : 0;
         if (g.voiced) lastSpeech.current = Date.now();
         for (const o of g.outs) providerRef.current?.sendAudio(o);
       });
@@ -403,5 +406,8 @@ export function useMarketVoice(settings: VoiceSettings, onEnded?: () => void) {
     return () => window.removeEventListener(ORDER_DONE_EVENT, h);
   }, [finishSession]);
 
-  return { state, error, userText, assistantText, actions, shown, start, stop, touch };
+  const getAssistantAnalyser = useCallback(() => playbackRef.current?.getAnalyser() ?? null, []);
+  const getUserLevel = useCallback(() => userLevelRef.current, []);
+
+  return { state, error, userText, assistantText, actions, shown, start, stop, touch, getAssistantAnalyser, getUserLevel };
 }

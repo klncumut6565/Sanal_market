@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { Loader2, Mic, MicOff, X } from "lucide-react";
+import { ChevronDown, Loader2, Mic, MicOff, X } from "lucide-react";
+import { VoiceOrb } from "./VoiceOrb";
 import { useMarketVoice, type VoiceSettings } from "@/lib/voice/useMarketVoice";
 import { useCart, useCartHydrated } from "@/store/cart";
 import { VoiceProducts } from "./VoiceProducts";
@@ -35,8 +36,13 @@ const EXAMPLES = ["Domatesten 2 kilo ekle", "Beyaz peynir hangi markalar var?", 
 export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   const [open, setOpen] = useState(false);
   const [needConsent, setNeedConsent] = useState(false);
+  // Pencere gizli ama sohbet sürüyor → orta altta yarı saydam küre
+  const [hidden, setHidden] = useState(false);
   // Asistan sohbeti kendisi bitirince (veda / sipariş tamamlandı) pencere kapanır
-  const v = useMarketVoice(settings, () => setOpen(false));
+  const v = useMarketVoice(settings, () => {
+    setOpen(false);
+    setHidden(false);
+  });
   const vStart = v.start;
   const ready = useCartHydrated();
   const hasCart = useCart((s) => s.lines.length > 0);
@@ -48,12 +54,14 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   // Sayfadaki diğer "Sesli sipariş" butonları (ör. ana sayfa bandı) bu olayla asistanı açar.
   const openAssistant = useCallback(() => {
     setOpen(true);
+    setHidden(false);
+    if (active) return; // sohbet zaten sürüyor (pencere gizliydi) → yalnızca pencereyi göster
     if (!hasConsent()) {
       setNeedConsent(true);
       return;
     }
     void vStart(); // dokunuş içinde başlat (mikrofon + ses izni için şart)
-  }, [vStart]);
+  }, [vStart, active]);
   useEffect(() => {
     const h = () => openAssistant();
     window.addEventListener(OPEN_EVENT, h);
@@ -63,7 +71,10 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
   const close = () => {
     void v.stop();
     setOpen(false);
+    setHidden(false);
   };
+  // Sohbet bittiyse gizli küre de kalkar
+  const orb = open && hidden && active;
 
   return (
     <>
@@ -82,7 +93,18 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
         </button>
       )}
 
-      {open && (
+      {orb && (
+        <VoiceOrb
+          durum={v.state}
+          asistanAnalyser={v.getAssistantAnalyser}
+          kullaniciSeviyesi={v.getUserLevel}
+          onAc={() => setHidden(false)}
+          onBitir={close}
+          raised={ready && hasCart}
+        />
+      )}
+
+      {open && !orb && (
         <div
           className="fixed inset-x-0 bottom-0 z-50 p-3 sm:inset-x-auto sm:right-4 sm:w-96"
           onPointerDown={v.touch}
@@ -92,9 +114,21 @@ export function VoiceAssistant({ settings }: { settings: VoiceSettings }) {
           <div className="space-y-3 rounded-3xl bg-gradient-to-b from-[#123049] to-[#0b1b2a] p-4 text-white shadow-2xl ring-1 ring-accent/20">
             <div className="flex items-center justify-between">
               <p className="font-black">Sesli alışveriş asistanı</p>
-              <button onClick={close} aria-label="Kapat" className="grid h-9 w-9 place-items-center rounded-full bg-white/10">
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-1.5">
+                {active && !needConsent && (
+                  <button
+                    onClick={() => setHidden(true)}
+                    aria-label="Pencereyi gizle, sesli sohbet devam eder"
+                    title="Pencereyi gizle (sohbet devam eder)"
+                    className="grid h-9 w-9 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+                  >
+                    <ChevronDown size={18} />
+                  </button>
+                )}
+                <button onClick={close} aria-label="Kapat" title="Sohbeti bitir ve kapat" className="grid h-9 w-9 place-items-center rounded-full bg-white/10 hover:bg-white/20">
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {needConsent ? (

@@ -391,3 +391,8 @@
 - Ana sayfa sırası: hero (+ hızlı teslimat kartı) → kategori şeridi → 2 tanıtım kartı (tarifler / "Konuş, sipariş ver" → asistanı açar) → Popüler Ürünler → Kategoriler ızgarası (ürün sayılı) → güven şeridi → kategori bölümleri.
 - Ürün kartı: ad üstte (büyük harf), fiyat, altta "– adet +" seçici + yeşil sepet düğmesi (`AddToCart` kart görünümü; sepetteyse yeşil adet kontrolü). Sepet mantığı aynı (`add` + `setQty`).
 - Izgaralar sidebar kalktığı için geniş ekranda 6–7 sütun. Ek veri sorgusu / ISR yükü yok (aynı önbellekli katalog).
+
+## 2026-10-23 — WhatsApp düğmesi + sesli asistan "pencereyi gizle" küresi
+- WhatsApp: yalnızca simge (yarı saydam); "WhatsApp" yazısı fare üzerine gelince açılır, sayfayı kaplamaz.
+- Sesli asistan panelinde sohbet sürerken "Pencereyi gizle" (aşağı ok): panel kapanır, sohbet devam eder; sayfanın ORTA ALTINDA küçük, yarı saydam enerji küresi (`VoiceOrb`, TMGD VoiceOrbOverlay'in küçültülmüş hâli, tüm ekranı kaplamaz). Küreye dokununca pencere geri açılır; ✕ sohbeti bitirir. "Sesli sipariş" düğmeleri de gizli pencereyi yeniden gösterir (yeni oturum açmaz).
+- Küre gerçek sese tepki verir: `AudioPlaybackQueue.getAnalyser()` (asistan sesi, salt okuma kolu) + `useMarketVoice.getUserLevel()` (gürültü kapısından geçen müşteri sesi). `src/lib/voice/sesAnalizi.ts` TMGD'den.
