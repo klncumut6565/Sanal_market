@@ -297,7 +297,8 @@ async function recordOutbox(wamid: string, to: string, body: string, fallbackPho
 /** Numaranın 24 saatlik penceresi açık mı (webhook verisine göre; bilinmiyorsa null). */
 export async function windowOpenFor(phone: string | null): Promise<boolean | null> {
   if (!phone) return null;
-  const { data, error } = await createPublicClient().rpc("wa_window_open", { p_phone: phone });
+  if (!webhookReady()) return null;
+  const { data, error } = await createPublicClient().rpc("wa_window_open", { p_phone: phone, p_secret: webhookSecret() });
   if (error) return null;
   return (data as boolean | null) ?? null;
 }
