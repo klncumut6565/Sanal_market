@@ -27,7 +27,12 @@ export const metadata: Metadata = {
   },
   twitter: { card: "summary_large_image", title: SITE_TITLE, description: SITE_DESCRIPTION, images: ["/logo.png"] },
   // Google Search Console doğrulama kodu (Vercel > Environment Variables > GOOGLE_SITE_VERIFICATION)
-  verification: process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : undefined,
+  // Yandex Webmaster: YANDEX_VERIFICATION · Bing Webmaster: BING_VERIFICATION (Vercel ortam değişkenleri)
+  verification: {
+    ...(process.env.GOOGLE_SITE_VERIFICATION ? { google: process.env.GOOGLE_SITE_VERIFICATION } : {}),
+    ...(process.env.YANDEX_VERIFICATION ? { yandex: process.env.YANDEX_VERIFICATION } : {}),
+    ...(process.env.BING_VERIFICATION ? { other: { "msvalidate.01": process.env.BING_VERIFICATION } } : {}),
+  },
 };
 
 export const viewport: Viewport = {

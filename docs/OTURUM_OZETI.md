@@ -457,3 +457,8 @@
 - Simge: ince çizgili, saydam zeminli logo küçük boyutta seçilmiyordu ve `/favicon.ico` yoktu → yeşil yuvarlatılmış kare üzerine beyaz logo: `src/app/favicon.ico` (16/32/48), `icon.png` 192, `apple-icon.png`, PWA simgeleri, `public/icon-48.png` / `icon-96.png`.
 - Site adı: ana sayfadaki WebSite yapılandırılmış verisine `alternateName` eklendi ("Çorlu Sanal Market"). Google'ın yeniden taraması gerekir.
 - Search Console "Dizine eklenmedi ~1,5 bin": yeni sitede olağan ("Keşfedildi/Tarandı – şu anda dizine eklenmemiş"); site haritasında ana sayfa + kategoriler + öne çıkan/indirimli ilk 200 ürün var. Sebep satırına tıklanıp kontrol edilmeli.
+
+## 2026-10-26 — Yandex / Bing
+- Doğrulama etiketleri ortam değişkeniyle: `YANDEX_VERIFICATION`, `BING_VERIFICATION` (Google: `GOOGLE_SITE_VERIFICATION`).
+- IndexNow: anahtar dosyası `public/0532fab707f99eff0a2fa25b17335be7.txt`; yönetici girişliyken `/api/indexnow` açılınca site haritasındaki tüm adresler Yandex'e ve IndexNow'a (Bing vb.) bildirilir.
+- Kullanıcı yapacak: Yandex Webmaster'a site ekle → meta etiket kodunu Vercel'e YANDEX_VERIFICATION olarak gir → yeniden yayın → doğrula → site haritası gönder.
