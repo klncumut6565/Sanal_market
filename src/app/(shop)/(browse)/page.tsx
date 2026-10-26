@@ -59,7 +59,9 @@ export default async function HomePage() {
     {
       "@context": "https://schema.org",
       "@type": "WebSite",
+      // Google arama sonucunda adres yerine görünen site adı
       name: "Sanal Market",
+      alternateName: ["Çorlu Sanal Market", "Sanal Market Çorlu"],
       url: SITE_URL,
       inLanguage: "tr-TR",
       potentialAction: {

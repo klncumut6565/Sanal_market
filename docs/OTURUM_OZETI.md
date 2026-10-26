@@ -451,3 +451,9 @@
 - Kontrol edildi, sorun yok: tüm tablolarda RLS açık; herkese açık okunan tablolar yalnızca mağaza ayarları (yasal satıcı bilgisi) ve teslimat bölgeleri; depolama (ürün görselleri yalnızca yönetici yükler, WebP + 1 MB; POS fişleri yalnızca kurye kendi klasörüne, yönetici görür); tüm sunucu eylemlerinde yetki denetimi; API uçları (cron: CRON_SECRET, WhatsApp webhook: imza doğrulama, sesli oturum: kullanıcı/oran sınırı); depoda gizli anahtar yok.
 - Güvenlik başlıkları (`next.config.ts`): X-Frame-Options SAMEORIGIN, nosniff, Referrer-Policy, HSTS, Permissions-Policy (mikrofon/kamera/konum yalnızca kendi site).
 - Açık kalan: "Sızdırılmış şifre koruması" (Supabase Auth → HaveIBeenPwned) kapalı; Supabase panelinden açılır (plan gerektirebilir).
+
+## 2026-10-26 — Google: site simgesi ve site adı
+- Arama sonucunda simge çıkmıyordu (genel dünya simgesi) ve site adı "Vercel" görünüyordu.
+- Simge: ince çizgili, saydam zeminli logo küçük boyutta seçilmiyordu ve `/favicon.ico` yoktu → yeşil yuvarlatılmış kare üzerine beyaz logo: `src/app/favicon.ico` (16/32/48), `icon.png` 192, `apple-icon.png`, PWA simgeleri, `public/icon-48.png` / `icon-96.png`.
+- Site adı: ana sayfadaki WebSite yapılandırılmış verisine `alternateName` eklendi ("Çorlu Sanal Market"). Google'ın yeniden taraması gerekir.
+- Search Console "Dizine eklenmedi ~1,5 bin": yeni sitede olağan ("Keşfedildi/Tarandı – şu anda dizine eklenmemiş"); site haritasında ana sayfa + kategoriler + öne çıkan/indirimli ilk 200 ürün var. Sebep satırına tıklanıp kontrol edilmeli.
