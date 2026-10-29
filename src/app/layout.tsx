@@ -5,9 +5,9 @@ import { SITE_DESCRIPTION, SITE_TITLE, SITE_URL } from "@/lib/seo";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: SITE_TITLE, template: "%s · Sanal Market Çorlu" },
+  title: { default: SITE_TITLE, template: "%s · Çorlu Sanal Market" },
   description: SITE_DESCRIPTION,
-  applicationName: "Sanal Market",
+  applicationName: "Çorlu Sanal Market",
   keywords: [
     "Çorlu online market",
     "Çorlu sanal market",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "tr_TR",
-    siteName: "Sanal Market",
+    siteName: "Çorlu Sanal Market",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     url: "/",

@@ -60,8 +60,10 @@ export default async function HomePage() {
       "@context": "https://schema.org",
       "@type": "WebSite",
       // Google arama sonucunda adres yerine görünen site adı
-      name: "Sanal Market",
-      alternateName: ["Çorlu Sanal Market", "Sanal Market Çorlu"],
+      // Google "Sanal Market" gibi genel adları site adı olarak kabul etmeyip alan adını (Vercel) gösterebiliyor:
+      // ayırt edici ad + og:site_name + <title> başı aynı olmalı.
+      name: "Çorlu Sanal Market",
+      alternateName: ["Sanal Market Çorlu", "Çorlu Online Market"],
       url: SITE_URL,
       inLanguage: "tr-TR",
       potentialAction: {

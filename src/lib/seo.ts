@@ -7,7 +7,7 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://sanalmarke
 export const CITY = "Çorlu";
 export const REGION = "Tekirdağ";
 
-export const SITE_TITLE = "Sanal Market – Çorlu Online Market | Eve Market Siparişi";
+export const SITE_TITLE = "Çorlu Sanal Market – Online Market | Eve Market Siparişi";
 export const SITE_DESCRIPTION =
   "Çorlu'da online market alışverişi: gıda, içecek, atıştırmalık, temizlik, kağıt ve hijyen ürünleri motokuryeyle kapınızda. Kapıda nakit veya kartla ödeme, her gün 10:00 - 01:00.";
 
