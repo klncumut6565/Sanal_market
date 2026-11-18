@@ -10,8 +10,9 @@ import Image, { getImageProps } from "next/image";
 import { ChevronLeft, ChevronRight, Minus, Plus, X, ZoomIn } from "lucide-react";
 import { ProductImage } from "./ProductImage";
 
-const LENS_ZOOM = 2.5;
-const MAX_SCALE = 5;
+const LENS_ZOOM = 1.25; // mercek büyütmesi (önceki 2.5 fazla geliyordu, %50 azaltıldı)
+const MAX_SCALE = 2.5; // tam ekran en fazla büyütme (önceki 5, %50 azaltıldı)
+const TAP_ZOOM = 1.25; // çift dokunma / tıklama büyütmesi (önceki 2.5)
 
 /** Yakınlaştırma için yüksek çözünürlüklü (≈1920 px) optimize edilmiş görsel adresi. */
 const bigSrc = (src: string) => getImageProps({ src, alt: "", width: 960, height: 960 }).props.src;
@@ -270,7 +271,7 @@ function Viewer({ images, index, alt, onIndex, onClose }: { images: string[]; in
         lastTap.current = 0;
         setAnim(true);
         if (tRef.current.s > 1) setT({ s: 1, x: 0, y: 0 });
-        else zoomAt(2.5, e.clientX, e.clientY);
+        else zoomAt(TAP_ZOOM, e.clientX, e.clientY);
       } else lastTap.current = now;
       return;
     }
