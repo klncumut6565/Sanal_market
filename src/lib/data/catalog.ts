@@ -111,20 +111,36 @@ export async function getCategoryCounts(): Promise<Record<string, number>> {
  * Vercel ISR yazımı: bir ürün düzenlenince yalnızca o ürünün sayfası yeniden yazılır, diğer ürün sayfaları değil.
  */
 export async function getProductPage(slug: string): Promise<{ product: Product; similar: Product[] } | null> {
+  return getProductPageData(slug);
+}
+
+/**
+ * Önbellekli ürün sayfası verisi. ÖNEMLİ:
+ * - Supabase hatası (proje duraklatılmış / taşınıyor / ağ) ÖNBELLEĞE ALINMAZ: hata fırlatılır, sonraki istek tekrar dener.
+ *   Eskiden hata = "ürün yok" sayılıp haftalarca önbellekte kalıyordu → canlı ürünler "Sayfa bulunamadı" gösteriyordu.
+ * - Gerçekten bulunamayan ürün yalnızca birkaç dakika önbellekte tutulur (sonradan aktif edilen / adı değişen ürün kendiliğinden düzelir).
+ * (Ad "Data" ekiyle değişti: eski sürümdeki hatalı "yok" kayıtları yeni önbellek anahtarıyla devre dışı kalır.)
+ */
+async function getProductPageData(slug: string): Promise<{ product: Product; similar: Product[] } | null> {
   "use cache";
-  cacheLife("weeks"); // düzenleme/satışta urun-<id> etiketiyle anında yenilenir; günlük yeniden yazım gereksiz ISR yazımıydı
-  if (!hasSupabase) return null;
-  const sb = createPublicClient();
-  const { data } = await sb.from("products").select(PRODUCT_COLS).eq("slug", slug).eq("is_active", true).maybeSingle();
-  if (!data) {
-    cacheTag(`urun-slug-${slug}`);
+  if (!hasSupabase) {
+    cacheLife("minutes");
     return null;
   }
+  const sb = createPublicClient();
+  const { data, error } = await sb.from("products").select(PRODUCT_COLS).eq("slug", slug).eq("is_active", true).maybeSingle();
+  if (error) throw new Error(`[katalog] ürün alınamadı (${slug}): ${error.message}`);
+  if (!data) {
+    cacheTag(`urun-slug-${slug}`);
+    cacheLife("minutes");
+    return null;
+  }
+  cacheLife("weeks"); // düzenleme/satışta urun-<id> etiketiyle anında yenilenir; günlük yeniden yazım gereksiz ISR yazımıydı
   const product = num(data as Product);
   cacheTag(productTag(product.id), `urun-slug-${slug}`);
   let similar: Product[] = [];
   if (product.category_id) {
-    const { data: sim } = await sb
+    const { data: sim, error: simErr } = await sb
       .from("products")
       .select(PRODUCT_COLS)
       .eq("is_active", true)
@@ -134,6 +150,7 @@ export async function getProductPage(slug: string): Promise<{ product: Product; 
       .order("sort_order")
       .order("name")
       .limit(10);
+    if (simErr) throw new Error(`[katalog] benzer ürünler alınamadı (${slug}): ${simErr.message}`);
     similar = ((sim ?? []) as Product[]).map(num);
   }
   return { product, similar };
