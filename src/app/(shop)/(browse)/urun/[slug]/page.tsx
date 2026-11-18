@@ -112,7 +112,7 @@ async function ProductContent({ params }: Props) {
           </Link>
         )}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div className="relative">
+          <div className="relative mx-auto w-1/2">
             <ProductGallery images={[p.image_url, ...(p.extra_images ?? [])].filter((u): u is string => !!u)} emoji={p.emoji} alt={p.name} />
             {off > 0 && <span className="absolute left-3 top-3 rounded-lg bg-brand px-2 py-1 text-sm font-bold text-white">%{off} indirim</span>}
           </div>

@@ -67,7 +67,7 @@ export function ProductGallery({ images, emoji, alt }: { images: string[]; emoji
           src={images[i]}
           alt={many ? `${alt} — ${i + 1}/${images.length}` : alt}
           fill
-          sizes="(max-width:768px) 100vw, 480px"
+          sizes="(max-width:768px) 50vw, 320px"
           className={`object-contain p-1 transition-opacity ${lens ? "opacity-0" : ""}`}
           priority={i === 0}
         />
