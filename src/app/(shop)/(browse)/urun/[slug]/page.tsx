@@ -87,7 +87,7 @@ async function ProductContent({ params }: Props) {
             availability: p.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
             itemCondition: "https://schema.org/NewCondition",
             areaServed: { "@type": "City", name: CITY },
-            seller: { "@type": "Organization", name: "Sanal Market" },
+            seller: { "@type": "Organization", name: "Çorlu Sanal Market" },
           },
         },
         breadcrumbLd([

@@ -35,7 +35,8 @@ export default async function HomePage() {
       "@context": "https://schema.org",
       "@type": "GroceryStore",
       "@id": `${SITE_URL}/#magaza`,
-      name: s.store_name || "Sanal Market",
+      name: "Çorlu Sanal Market", // WebSite adıyla AYNI olmalı (Google site adı tutarlılığı)
+      ...(s.store_name && s.store_name !== "Çorlu Sanal Market" ? { alternateName: s.store_name } : {}),
       url: SITE_URL,
       logo: abs("/logo.png"),
       image: abs("/logo.png"),
@@ -64,8 +65,9 @@ export default async function HomePage() {
       // ayırt edici ad + og:site_name + <title> başı aynı olmalı.
       name: "Çorlu Sanal Market",
       alternateName: ["Sanal Market Çorlu", "Çorlu Online Market"],
-      url: SITE_URL,
+      url: `${SITE_URL}/`,
       inLanguage: "tr-TR",
+      publisher: { "@id": `${SITE_URL}/#magaza` },
       potentialAction: {
         "@type": "SearchAction",
         target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/ara?q={search_term_string}` },
